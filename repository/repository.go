@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
-	"strings"
 
+	"github.com/dailymotion/octopilot/internal/parameters"
 	"github.com/dailymotion/octopilot/update"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	// owner/name(params)
+	repoRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9_\-]+)(?:\((?P<params>.+)\))?$`)
 )
 
 type Repository struct {
@@ -22,16 +28,17 @@ type Repository struct {
 func Parse(repos []string) ([]Repository, error) {
 	var repositories []Repository
 	for _, repo := range repos {
-		nameElems := strings.SplitN(repo, "/", 2)
-		if len(nameElems) != 2 {
-			return nil, fmt.Errorf("invalid repo %s: expecting 2 elements, found %d: %v", repo, len(nameElems), nameElems)
+		matches := repoRegexp.FindStringSubmatch(repo)
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("invalid syntax for %s: found %d matches instead of 4: %v", repo, len(matches), matches)
 		}
-		// TODO extract params
+
 		r := Repository{
-			Owner:  nameElems[0],
-			Name:   nameElems[1],
-			Params: make(map[string]string),
+			Owner:  matches[1],
+			Name:   matches[2],
+			Params: parameters.Parse(matches[3]),
 		}
+
 		repositories = append(repositories, r)
 	}
 	return repositories, nil
