@@ -24,7 +24,10 @@ func newFileValuer(params map[string]string) (*FileValuer, error) {
 }
 
 func (v FileValuer) Value(ctx context.Context, repoPath string) (string, error) {
-	filePath := filepath.Join(repoPath, v.Path)
+	filePath := v.Path
+	if !filepath.IsAbs(filePath) {
+		filePath = filepath.Join(repoPath, v.Path)
+	}
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", v.Path, err)
