@@ -20,12 +20,12 @@ $ GNUPGHOME=.gnupg gpg --list-secret-keys --keyid-format LONG
 In an output such as
 
 ```
-sec   rsa2048/9B9FE83AF8A3B7CB 2020-01-03 [SCEA]
-      743D655795120B297F0493279B9FE83AF8A3B7CB
-uid                [  ultime ] scribe <scribe@example.com>
-ssb   rsa2048/220F343C57C5E3A4 2020-01-03 [SEA]
+sec   rsa2048/F7D394865A2FE709 2020-01-13 [SCEA]
+      4C671A61C17E5399FBE235ACF7D394865A2FE709
+uid                [  ultime ] Octo Pilot <octopilot@example.com>
+ssb   rsa2048/9452B1F4319DFCF1 2020-01-13 [SEA]
 ```
 
-The fingerprint we care about is `9B9FE83AF8A3B7CB` - this is the part we need to put in the [sops_test.go](sops_test.go) file to identify the master key to use to encrypt/decrypt files using sops.
+The fingerprint we care about is `F7D394865A2FE709` - this is the part we need to put in the [sops_test.go](sops_test.go) file to identify the master key to use to encrypt/decrypt files using sops.
 
 All those operations have already been done once, and you should not need to do anything unless you want to regenerate a new key for some reason.

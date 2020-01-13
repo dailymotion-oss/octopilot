@@ -1,6 +1,6 @@
-# Scribe
+# Octo Pilot
 
-**Scribe** is a tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
+**OctoPilot** is a tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
 
 It supports updating:
 - [sops](https://github.com/mozilla/sops) files
@@ -28,9 +28,9 @@ It is somewhat based on [updatebot](https://github.com/jenkins-x/updatebot), but
 If you store your certificates in git, with the certificate itself in clear text in a YAML file (base64-encoded), and the secret key in a sops-encrypted file, you can update both with the following command:
 
 ```
-$ scribe \
+$ octopilot \
     --update "sops(file=certificates/secrets.yaml,key=certificates.myapp.b64encKey)=$(kubectl -n cert-manager get secrets tls-myapp -o jsonpath=\"{.data.tls\\\.key}\")" \
-    --update "regex(file=certificates/values.yaml,pattern='certificates:\s+myapp:\s+b64encCertificate: (.*)')=$(kubectl -n cert-manager get secrets tls-myapp -o jsonpath=\"{.data.tls\\\.crt}\"))" \
+    --update "regex(file=certificates/values.yaml,pattern='myapp:\s+b64encCertificate: (.*)')=$(kubectl -n cert-manager get secrets tls-myapp -o jsonpath=\"{.data.tls\\\.crt}\"))" \
     --repo "myorg/my-gitops-env"
 ```
 
@@ -39,7 +39,7 @@ $ scribe \
 If you release a new version of your app, you can update all the apps that depends on you:
 
 ```
-$ scribe \
+$ octopilot \
     --update "helm(dependency=my-app)=file(path=VERSION)" \
     --repo "myorg/some-app" \
     --repo "myorg/another-app"
@@ -47,10 +47,10 @@ $ scribe \
 
 ### Update a specific value in a file
 
-For example to update the version of an app in a YAML file with a format that is not natively supported by Scribe, you can use the regex updater:
+For example to update the version of an app in a YAML file with a format that is not natively supported by OctoPilot, you can use the regex updater:
 
 ```
-$ scribe \
+$ octopilot \
     --update "regex(file=helmfile.yaml,pattern='chart: example/my-chart\s+version: \"(.*)\"')=file(path=VERSION)"
 ```
 
@@ -59,16 +59,16 @@ $ scribe \
 To replace the whole content of a file:
 
 ```
-$ scribe \
+$ octopilot \
     --update "regex(file=README.md,pattern='(?ms)(.*)')=new content" 
 ```
 
 ### Generic update by running a command
 
-You can also run any command(s), and Scribe will just add/commit everything, and create/update the pull request. For example to automatically update all your Go dependencies to the latest patch version:
+You can also run any command(s), and OctoPilot will just add/commit everything, and create/update the pull request. For example to automatically update all your Go dependencies to the latest patch version:
 
 ```
-$ scribe \
+$ octopilot \
     --update "exec(cmd='go get -u=patch')" \
     --update "exec(cmd='go mod tidy')" \
     --update "exec(cmd='go mod vendor')"

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dailymotion/scribe/update/value"
+	"github.com/dailymotion/octopilot/update/value"
 	"gopkg.in/yaml.v3"
 )
 

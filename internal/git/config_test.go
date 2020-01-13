@@ -68,5 +68,5 @@ func TestCurrentRepositoryURL(t *testing.T) {
 	require.NoErrorf(t, err, "failed to switch current directory to %s", gitDir)
 
 	repoURL := CurrentRepositoryURL()
-	assert.Equal(t, "https://github.com/dailymotion/scribe", repoURL)
+	assert.Equal(t, "https://github.com/dailymotion/octopilot", repoURL)
 }

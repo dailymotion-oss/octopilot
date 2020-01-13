@@ -17,7 +17,7 @@ import (
 	"go.mozilla.org/sops/v3/keys"
 	"go.mozilla.org/sops/v3/pgp"
 
-	"github.com/dailymotion/scribe/update/value"
+	"github.com/dailymotion/octopilot/update/value"
 )
 
 func TestNewUpdater(t *testing.T) {
@@ -173,7 +173,7 @@ second-app:
 	// we use GPG to encrypt/descrypt - a master key has already been generated in the following directory
 	// see the testdata/README.md file for how to regenerate it if needed, and how to retrieve the fingerprint
 	os.Setenv("GNUPGHOME", "testdata/.gnupg")
-	masterKey := pgp.NewMasterKeyFromFingerprint("9B9FE83AF8A3B7CB")
+	masterKey := pgp.NewMasterKeyFromFingerprint("F7D394865A2FE709")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

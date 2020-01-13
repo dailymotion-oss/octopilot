@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dailymotion/scribe/update"
+	"github.com/dailymotion/octopilot/update"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 )

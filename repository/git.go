@@ -25,7 +25,7 @@ func cloneGitRepository(ctx context.Context, repoFullName string, localPath stri
 	gitRepo, err := git.PlainCloneContext(ctx, localPath, false, &git.CloneOptions{
 		URL: url,
 		Auth: &http.BasicAuth{
-			Username: "scribe", // yes, this can be anything except an empty string
+			Username: "OctoPilot", // yes, this can be anything except an empty string
 			Password: options.Token,
 		},
 	})
@@ -177,7 +177,7 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 			config.RefSpec(refSpec),
 		},
 		Auth: &http.BasicAuth{
-			Username: "scribe", // yes, this can be anything except an empty string
+			Username: "OctoPilot", // yes, this can be anything except an empty string
 			Password: opts.GitHubToken,
 		},
 	})

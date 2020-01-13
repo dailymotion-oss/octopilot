@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dailymotion/scribe/update"
+	"github.com/dailymotion/octopilot/update"
 	"github.com/google/go-github/v28/github"
 	"github.com/sirupsen/logrus"
 )

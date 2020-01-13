@@ -1,4 +1,4 @@
-module github.com/dailymotion/scribe
+module github.com/dailymotion/octopilot
 
 go 1.13
 

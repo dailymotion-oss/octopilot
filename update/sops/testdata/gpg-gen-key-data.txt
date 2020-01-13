@@ -2,6 +2,6 @@ Key-Type: 1
 Key-Length: 2048
 Subkey-Type: 1
 Subkey-Length: 2048
-Name-Real: scribe
-Name-Email: scribe@example.com
+Name-Real: Octo Pilot
+Name-Email: octopilot@example.com
 Expire-Date: 0

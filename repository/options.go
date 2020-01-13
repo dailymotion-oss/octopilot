@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dailymotion/scribe/update"
+	"github.com/dailymotion/octopilot/update"
 )
 
 type UpdateOptions struct {
@@ -64,7 +64,7 @@ func (o *GitOptions) setDefaultValues(updaters []update.Updater) {
 		}
 	}
 	if len(o.CommitTitle) == 0 {
-		o.CommitTitle = "Scribe update"
+		o.CommitTitle = "OctoPilot update"
 	}
 	if len(o.CommitBody) == 0 {
 		body := new(strings.Builder)

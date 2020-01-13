@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/dailymotion/scribe/internal/parameters"
+	"github.com/dailymotion/octopilot/internal/parameters"
 )
 
 var (

@@ -6,12 +6,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dailymotion/scribe/internal/parameters"
-	"github.com/dailymotion/scribe/update/exec"
-	"github.com/dailymotion/scribe/update/helm"
-	"github.com/dailymotion/scribe/update/regex"
-	"github.com/dailymotion/scribe/update/sops"
-	"github.com/dailymotion/scribe/update/value"
+	"github.com/dailymotion/octopilot/internal/parameters"
+	"github.com/dailymotion/octopilot/update/exec"
+	"github.com/dailymotion/octopilot/update/helm"
+	"github.com/dailymotion/octopilot/update/regex"
+	"github.com/dailymotion/octopilot/update/sops"
+	"github.com/dailymotion/octopilot/update/value"
 )
 
 var (
