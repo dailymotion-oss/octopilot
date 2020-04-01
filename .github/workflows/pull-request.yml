@@ -1,0 +1,28 @@
+name: pr-validation
+
+on: [pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: '1.13'
+      - name: Run Unit Tests
+        run: go test -v ./...
+        env:
+          GOFLAGS: -mod=vendor
+
+  linters:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run linters
+        uses: actions-contrib/golangci-lint@v1
+        with:
+          golangci_lint_version: v1.24

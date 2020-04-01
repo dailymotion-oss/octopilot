@@ -93,12 +93,12 @@ func TestNewUpdater(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name             string
-		files            map[string]string
-		updater          *ExecUpdater
-		expected         bool
-		expectedErrorMsg string
-		extraCheck       func() bool
+		name                  string
+		files                 map[string]string
+		updater               *ExecUpdater
+		expected              bool
+		expectedErrorMessages []string
+		extraCheck            func() bool
 	}{
 		{
 			name: "delete a file",
@@ -124,8 +124,11 @@ func TestUpdate(t *testing.T) {
 				Args:    "does-not-exists.txt",
 				Timeout: 1 * time.Second,
 			},
-			expected:         false,
-			expectedErrorMsg: "failed to run cmd 'rm' with args 'does-not-exists.txt' - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
+			expected: false,
+			expectedErrorMessages: []string{
+				"failed to run cmd 'rm' with args 'does-not-exists.txt' - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
+				"failed to run cmd 'rm' with args 'does-not-exists.txt' - got stdout [] and stderr [rm: cannot remove 'does-not-exists.txt': No such file or directory]: exit status 1",
+			},
 		},
 	}
 
@@ -143,8 +146,9 @@ func TestUpdate(t *testing.T) {
 			}
 
 			actual, err := test.updater.Update(context.Background(), "testdata")
-			if len(test.expectedErrorMsg) > 0 {
-				require.EqualError(t, err, test.expectedErrorMsg)
+			if len(test.expectedErrorMessages) > 0 {
+				require.Error(t, err)
+				assert.Contains(t, test.expectedErrorMessages, err.Error())
 				assert.False(t, actual)
 			} else {
 				require.NoError(t, err)
