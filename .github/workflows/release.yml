@@ -1,0 +1,22 @@
+name: release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Publish Docker Image
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: dailymotion/octopilot
+          tag_with_ref: true
+          add_git_labels: true
+          always_pull: true
