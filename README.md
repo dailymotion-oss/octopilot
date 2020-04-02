@@ -5,6 +5,7 @@
 It supports updating:
 - [sops](https://github.com/mozilla/sops) files
 - [Helm](https://helm.sh/) dependencies versions
+- YAML files
 - Generic updates based on regular expressions
 - Running any tool you like
 
@@ -45,9 +46,16 @@ $ octopilot \
     --repo "myorg/another-app"
 ```
 
-### Update a specific value in a file
+### Update a specific value in a YAML file
 
-For example to update the version of an app in a YAML file with a format that is not natively supported by OctoPilot, you can use the regex updater:
+For example to update the version of an app in a YAML file with a format that is not natively supported by OctoPilot, you can use the YAML updater:
+
+```
+$ octopilot \
+    --update "yaml(file=helmfile.yaml,path='releases.(chart==example/my-chart).version')=file(path=VERSION)"
+```
+
+An alternative is to use the regex updater:
 
 ```
 $ octopilot \

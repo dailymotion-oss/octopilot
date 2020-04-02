@@ -9,6 +9,7 @@ import (
 	"github.com/dailymotion/octopilot/update/regex"
 	"github.com/dailymotion/octopilot/update/sops"
 	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion/octopilot/update/yaml"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,6 +73,17 @@ func TestParse(t *testing.T) {
 				&helm.HelmUpdater{
 					Dependency: "my-chart",
 					Valuer:     value.StringValuer("1.2.3"),
+				},
+			},
+		},
+		{
+			name:    "complex yaml updater",
+			updates: []string{"yaml(file=values.yaml,path='array.(key==prefix*).**.subkey')=1.2.3"},
+			expected: []Updater{
+				&yaml.YamlUpdater{
+					FilePath: "values.yaml",
+					Path:     "array.(key==prefix*).**.subkey",
+					Valuer:   value.StringValuer("1.2.3"),
 				},
 			},
 		},
