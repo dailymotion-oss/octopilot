@@ -12,6 +12,7 @@ import (
 	"github.com/dailymotion/octopilot/update/regex"
 	"github.com/dailymotion/octopilot/update/sops"
 	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion/octopilot/update/yaml"
 )
 
 var (
@@ -78,6 +79,8 @@ func Parse(updates []string) ([]Updater, error) {
 			updater, err = sops.NewUpdater(params, valuer)
 		case "helm":
 			updater, err = helm.NewUpdater(params, valuer)
+		case "yaml":
+			updater, err = yaml.NewUpdater(params, valuer)
 		case "exec":
 			updater, err = exec.NewUpdater(params)
 		default:
