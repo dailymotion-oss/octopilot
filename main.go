@@ -57,6 +57,7 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CommitterEmail, "git-committer-email", firstNonEmpyValue(os.Getenv("GIT_COMMITTER_EMAIL"), git.ConfigValue("user.email")), "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitTitle, "git-commit-title", "", "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitBody, "git-commit-body", "", "")
+	pflag.StringVar(&options.UpdateOptions.Git.CommitBodyFile, "git-commit-body-file", "", "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitFooter, "git-commit-footer", defaultCommitFooter(), "")
 	pflag.StringVar(&options.UpdateOptions.Git.BranchPrefix, "git-branch-prefix", "octopilot-", "")
 
