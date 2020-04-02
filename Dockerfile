@@ -9,7 +9,7 @@ FROM golang:1.13 AS builder
 
 COPY . /workspace
 WORKDIR /workspace
-RUN go build -mod=vendor
+RUN CGO_ENABLED=0 go build -mod=vendor -ldflags "-extldflags -static -linkmode internal"
 
 ####################################
 # 2nd step: define the "run" image #
