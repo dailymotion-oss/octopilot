@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ type GitOptions struct {
 	CommitterEmail string
 	CommitTitle    string
 	CommitBody     string
+	CommitBodyFile string
 	CommitFooter   string
 	BranchPrefix   string
 }
@@ -65,6 +67,10 @@ func (o *GitOptions) setDefaultValues(updaters []update.Updater) {
 	}
 	if len(o.CommitTitle) == 0 {
 		o.CommitTitle = "OctoPilot update"
+	}
+	if len(o.CommitBody) == 0 && len(o.CommitBodyFile) > 0 {
+		data, _ := ioutil.ReadFile(o.CommitBodyFile)
+		o.CommitBody = string(data)
 	}
 	if len(o.CommitBody) == 0 {
 		body := new(strings.Builder)
