@@ -229,7 +229,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": pr.GetHTMLURL(),
-	}).Debug("Pull Request merged")
+	}).Info("Pull Request merged")
 	return nil
 }
 
