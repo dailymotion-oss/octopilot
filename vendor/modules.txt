@@ -168,6 +168,10 @@ github.com/ulikunitz/xz/lzma
 github.com/xanzy/ssh-agent
 # github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 github.com/xi2/xz
+# github.com/ybbus/httpretry v1.0.1
+github.com/ybbus/httpretry
+# github.com/zoumo/goset v0.2.0
+github.com/zoumo/goset
 # go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a
 go.mozilla.org/gopgagent
 # go.mozilla.org/sops/v3 v3.5.0
