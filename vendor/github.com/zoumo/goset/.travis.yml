@@ -1,0 +1,17 @@
+language: go
+go:
+  - 1.11.x
+  - 1.12.x
+os:
+  - linux
+before_install:
+  - go get github.com/mattn/goveralls
+notifications:
+  email:
+    recipients:
+      - jim.zoumo@gmail.com 
+    on_success: never
+    on_failure: always 
+script:
+  - go test -v -covermode=count -coverprofile=coverage.out
+  - goveralls -coverprofile=coverage.out -service travis-ci -repotoken $COVERALLS_TOKEN

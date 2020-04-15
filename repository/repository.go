@@ -161,13 +161,13 @@ func (r Repository) newBranchName(prefix string) string {
 
 func (r Repository) adjustOptionsFromParams(options *UpdateOptions) {
 	if draftStr, found := r.Params["draft"]; found {
-		if draft, _ := strconv.ParseBool(draftStr); draft {
-			options.GitHub.PullRequest.Draft = true
+		if draft, err := strconv.ParseBool(draftStr); err == nil {
+			options.GitHub.PullRequest.Draft = draft
 		}
 	}
 	if mergeStr, found := r.Params["merge"]; found {
-		if merge, _ := strconv.ParseBool(mergeStr); merge {
-			options.GitHub.PullRequest.Merge.Enabled = true
+		if merge, err := strconv.ParseBool(mergeStr); err == nil {
+			options.GitHub.PullRequest.Merge.Enabled = merge
 		}
 	}
 }
