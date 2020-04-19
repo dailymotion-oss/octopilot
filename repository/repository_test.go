@@ -32,7 +32,7 @@ func TestParse(t *testing.T) {
 			name:  "single repository without parameters",
 			repos: []string{"dailymotion/octopilot"},
 			expected: []Repository{
-				Repository{
+				{
 					Owner:  "dailymotion",
 					Name:   "octopilot",
 					Params: map[string]string{},
@@ -43,12 +43,12 @@ func TestParse(t *testing.T) {
 			name:  "multiple repositories without parameters",
 			repos: []string{"dailymotion/octopilot", "some-owner/MyGreatRepo"},
 			expected: []Repository{
-				Repository{
+				{
 					Owner:  "dailymotion",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
-				Repository{
+				{
 					Owner:  "some-owner",
 					Name:   "MyGreatRepo",
 					Params: map[string]string{},
@@ -59,7 +59,7 @@ func TestParse(t *testing.T) {
 			name:  "single repository with a single parameter",
 			repos: []string{"dailymotion/octopilot(draft=true)"},
 			expected: []Repository{
-				Repository{
+				{
 					Owner: "dailymotion",
 					Name:  "octopilot",
 					Params: map[string]string{
@@ -72,7 +72,7 @@ func TestParse(t *testing.T) {
 			name:  "multiple repositories with multiple parameters",
 			repos: []string{"dailymotion/octopilot(draft=true,merge=true)", "some-owner/MyGreatRepo(merge=false)"},
 			expected: []Repository{
-				Repository{
+				{
 					Owner: "dailymotion",
 					Name:  "octopilot",
 					Params: map[string]string{
@@ -80,7 +80,7 @@ func TestParse(t *testing.T) {
 						"merge": "true",
 					},
 				},
-				Repository{
+				{
 					Owner: "some-owner",
 					Name:  "MyGreatRepo",
 					Params: map[string]string{
