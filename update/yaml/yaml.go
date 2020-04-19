@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 
 	"github.com/dailymotion/octopilot/update/value"
 
@@ -21,9 +22,10 @@ func init() {
 }
 
 type YamlUpdater struct {
-	FilePath string
-	Path     string
-	Valuer   value.Valuer
+	FilePath   string
+	Path       string
+	AutoCreate bool
+	Valuer     value.Valuer
 }
 
 func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, error) {
@@ -38,6 +40,8 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 	if len(updater.Path) == 0 {
 		return nil, errors.New("missing path parameter")
 	}
+
+	updater.AutoCreate, _ = strconv.ParseBool(params["create"])
 
 	updater.Valuer = valuer
 
@@ -90,7 +94,7 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to unmarshal YAML file %s: %w", filePath, err)
 		}
 
-		err = yq.Update(&rootNode, updateCmd, true)
+		err = yq.Update(&rootNode, updateCmd, u.AutoCreate)
 		if err != nil {
 			return false, fmt.Errorf("failed to update YAML file %s: %w", filePath, err)
 		}
@@ -122,5 +126,5 @@ func (u *YamlUpdater) Message() (title, body string) {
 }
 
 func (u *YamlUpdater) String() string {
-	return fmt.Sprintf("YAML[path=%s,file=%s]", u.Path, u.FilePath)
+	return fmt.Sprintf("YAML[path=%s,file=%s,create=%v]", u.Path, u.FilePath, u.AutoCreate)
 }

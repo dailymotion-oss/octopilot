@@ -24,12 +24,27 @@ func TestNewUpdater(t *testing.T) {
 		{
 			name: "valid params with single file",
 			params: map[string]string{
-				"file": "values.yaml",
-				"path": "level1.level2",
+				"file":   "values.yaml",
+				"path":   "level1.level2",
+				"create": "true",
 			},
 			expected: &YamlUpdater{
-				FilePath: "values.yaml",
-				Path:     "level1.level2",
+				FilePath:   "values.yaml",
+				Path:       "level1.level2",
+				AutoCreate: true,
+			},
+		},
+		{
+			name: "invalid create boolean value",
+			params: map[string]string{
+				"file":   "values.yaml",
+				"path":   "level1.level2",
+				"create": "maybe",
+			},
+			expected: &YamlUpdater{
+				FilePath:   "values.yaml",
+				Path:       "level1.level2",
+				AutoCreate: false,
 			},
 		},
 		{
@@ -196,9 +211,10 @@ key: value
 `,
 			},
 			updater: &YamlUpdater{
-				FilePath: "missing-key-values.yaml",
-				Path:     "object.mykey",
-				Valuer:   value.StringValuer("new-value"),
+				FilePath:   "missing-key-values.yaml",
+				Path:       "object.mykey",
+				AutoCreate: true,
+				Valuer:     value.StringValuer("new-value"),
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -206,6 +222,25 @@ key: value
 key: value
 object:
     mykey: new-value
+`,
+			},
+		},
+		{
+			name: "no changes if new key but no auto-create",
+			files: map[string]string{
+				"no-changes-without-auto-create.yaml": `# a simple key
+key: value
+`,
+			},
+			updater: &YamlUpdater{
+				FilePath: "no-changes-without-auto-create.yaml",
+				Path:     "object.mykey",
+				Valuer:   value.StringValuer("value"),
+			},
+			expected: false,
+			expectedFiles: map[string]string{
+				"no-changes-without-auto-create.yaml": `# a simple key
+key: value
 `,
 			},
 		},
