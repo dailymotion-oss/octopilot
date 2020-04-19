@@ -3,4 +3,4 @@ set -eu
 
 cd "$GITHUB_WORKSPACE"
 
-autotag "$@"
+/autotag "$@"
