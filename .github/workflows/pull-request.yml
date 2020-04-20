@@ -1,8 +1,26 @@
+# GitHub Actions Workflow definition for validating Pull Requests
+
 name: pr-validation
 
 on: [pull_request]
 
 jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Unshallow
+        run: git fetch --prune --unshallow
+
+      - name: Setup Go
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: '1.14'
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v1
+        with:
+          args: release --snapshot --skip-publish --rm-dist
+
   unit-tests:
     runs-on: ubuntu-18.04
     steps:

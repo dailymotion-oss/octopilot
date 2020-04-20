@@ -1,0 +1,30 @@
+# Configuration file for http://goreleaser.com
+
+builds:
+  - ldflags:
+      - -X main.buildVersion={{.Version}} -X main.buildCommit={{.Commit}} -X main.buildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+      - GOFLAGS=-mod=vendor
+
+archives:
+  - format: binary
+
+dockers:
+  - dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "dailymotion/{{.ProjectName}}:{{ .Tag }}"
+      - "dailymotion/{{.ProjectName}}:v{{ .Major }}"
+      - "dailymotion/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
+      - "dailymotion/{{.ProjectName}}:latest"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+
+changelog:
+  sort: asc
