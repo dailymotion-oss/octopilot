@@ -1,7 +1,12 @@
 # Configuration file for http://goreleaser.com
 
 builds:
-  - ldflags:
+  - goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+    ldflags:
       - -X main.buildVersion={{.Version}} -X main.buildCommit={{.Commit}} -X main.buildDate={{.Date}}
     env:
       - CGO_ENABLED=0
