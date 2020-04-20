@@ -1,12 +1,13 @@
 module github.com/dailymotion/octopilot
 
-go 1.13
+go 1.14
 
 require (
-	github.com/Azure/go-autorest/autorest v0.9.3 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.8.1 // indirect
+	github.com/Azure/go-autorest/autorest v0.9.7 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.8.3 // indirect
 	github.com/aws/aws-sdk-go v1.23.22 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
+	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-github/v28 v28.0.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
@@ -22,7 +23,7 @@ require (
 	github.com/ybbus/httpretry v1.0.1
 	github.com/zoumo/goset v0.2.0
 	go.mozilla.org/sops/v3 v3.5.0
-	go.opencensus.io v0.22.2 // indirect
+	go.opencensus.io v0.22.3 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.22.3 // indirect
