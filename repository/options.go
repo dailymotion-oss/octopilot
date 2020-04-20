@@ -9,6 +9,13 @@ import (
 	"github.com/dailymotion/octopilot/update"
 )
 
+const (
+	IgnoreUpdateOperation  = "ignore"
+	ReplaceUpdateOperation = "replace"
+	PrependUpdateOperation = "prepend"
+	AppendUpdateOperation  = "append"
+)
+
 type UpdateOptions struct {
 	DryRun    bool
 	KeepFiles bool
@@ -36,13 +43,16 @@ type GitHubOptions struct {
 }
 
 type PullRequestOptions struct {
-	Labels     []string
-	BaseBranch string
-	Title      string
-	Body       string
-	Comments   []string
-	Draft      bool
-	Merge      PullRequestMergeOptions
+	Labels               []string
+	BaseBranch           string
+	Title                string
+	TitleUpdateOperation string
+	Body                 string
+	BodyFile             string
+	BodyUpdateOperation  string
+	Comments             []string
+	Draft                bool
+	Merge                PullRequestMergeOptions
 }
 
 type PullRequestMergeOptions struct {
@@ -92,10 +102,23 @@ func (o *GitHubOptions) setDefaultValues(git GitOptions) {
 	if len(o.PullRequest.Title) == 0 {
 		o.PullRequest.Title = git.CommitTitle
 	}
+	if len(o.PullRequest.Body) == 0 && len(o.PullRequest.BodyFile) > 0 {
+		data, _ := ioutil.ReadFile(o.PullRequest.BodyFile)
+		o.PullRequest.Body = string(data)
+	}
 	if len(o.PullRequest.Body) == 0 {
 		o.PullRequest.Body = git.CommitBody
 	}
 	if len(git.CommitFooter) > 0 {
 		o.PullRequest.Body += fmt.Sprintf("\n\n-- \n%s", git.CommitFooter)
+	}
+}
+
+func (o *GitHubOptions) setDefaultUpdateOperation(defaultUpdateOperation string) {
+	if len(o.PullRequest.TitleUpdateOperation) == 0 {
+		o.PullRequest.TitleUpdateOperation = defaultUpdateOperation
+	}
+	if len(o.PullRequest.BodyUpdateOperation) == 0 {
+		o.PullRequest.BodyUpdateOperation = defaultUpdateOperation
 	}
 }

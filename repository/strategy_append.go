@@ -53,6 +53,8 @@ func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, er
 	}
 
 	s.Options.Git.setDefaultValues(s.Updaters)
+	s.Options.GitHub.setDefaultValues(s.Options.Git)
+	s.Options.GitHub.setDefaultUpdateOperation(IgnoreUpdateOperation)
 
 	changesCommitted, err := commitChanges(ctx, gitRepo, s.Options)
 	if err != nil {
@@ -79,7 +81,6 @@ func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, er
 	if existingPR != nil {
 		pr, err = s.Repository.updatePullRequest(ctx, s.Options.GitHub, existingPR)
 	} else {
-		s.Options.GitHub.setDefaultValues(s.Options.Git)
 		pr, err = s.Repository.createPullRequest(ctx, s.Options.GitHub, branchName)
 	}
 	if err != nil {

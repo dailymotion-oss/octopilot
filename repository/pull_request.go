@@ -87,12 +87,34 @@ func (r Repository) updatePullRequest(ctx context.Context, options GitHubOptions
 	)
 
 	if len(options.PullRequest.Title) > 0 {
-		pr.Title = github.String(options.PullRequest.Title)
-		needUpdate = true
+		switch options.PullRequest.TitleUpdateOperation {
+		case IgnoreUpdateOperation:
+			// nothing to do
+		case ReplaceUpdateOperation:
+			pr.Title = github.String(options.PullRequest.Title)
+			needUpdate = true
+		case PrependUpdateOperation:
+			pr.Title = github.String(fmt.Sprintf("%s %s", options.PullRequest.Title, pr.GetTitle()))
+			needUpdate = true
+		case AppendUpdateOperation:
+			pr.Title = github.String(fmt.Sprintf("%s %s", pr.GetTitle(), options.PullRequest.Title))
+			needUpdate = true
+		}
 	}
 	if len(options.PullRequest.Body) > 0 {
-		pr.Body = github.String(options.PullRequest.Body)
-		needUpdate = true
+		switch options.PullRequest.BodyUpdateOperation {
+		case IgnoreUpdateOperation:
+			// nothing to do
+		case ReplaceUpdateOperation:
+			pr.Body = github.String(options.PullRequest.Body)
+			needUpdate = true
+		case PrependUpdateOperation:
+			pr.Body = github.String(fmt.Sprintf("%s\n\n%s", options.PullRequest.Body, pr.GetBody()))
+			needUpdate = true
+		case AppendUpdateOperation:
+			pr.Body = github.String(fmt.Sprintf("%s\n\n%s", pr.GetBody(), options.PullRequest.Body))
+			needUpdate = true
+		}
 	}
 
 	if needUpdate {

@@ -52,6 +52,7 @@ func (s *ResetStrategy) Run(ctx context.Context) (bool, *github.PullRequest, err
 
 	s.Options.Git.setDefaultValues(s.Updaters)
 	s.Options.GitHub.setDefaultValues(s.Options.Git)
+	s.Options.GitHub.setDefaultUpdateOperation(ReplaceUpdateOperation)
 
 	changesCommitted, err := commitChanges(ctx, gitRepo, s.Options)
 	if err != nil {
