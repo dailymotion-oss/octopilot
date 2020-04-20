@@ -27,11 +27,13 @@ func TestNewUpdater(t *testing.T) {
 				"file":   "values.yaml",
 				"path":   "level1.level2",
 				"create": "true",
+				"style":  "double",
 			},
 			expected: &YamlUpdater{
 				FilePath:   "values.yaml",
 				Path:       "level1.level2",
 				AutoCreate: true,
+				Style:      "double",
 			},
 		},
 		{
@@ -199,6 +201,27 @@ array:
   - name: third entry
     ref: abc456
     key: updated value
+`,
+			},
+		},
+		{
+			name: "update with custom style",
+			files: map[string]string{
+				"custom-style.yaml": `
+# a simple key
+key: value
+`,
+			},
+			updater: &YamlUpdater{
+				FilePath: "custom-style.yaml",
+				Path:     "key",
+				Style:    "double",
+				Valuer:   value.StringValuer("updated-value"),
+			},
+			expected: true,
+			expectedFiles: map[string]string{
+				"custom-style.yaml": `# a simple key
+key: "updated-value"
 `,
 			},
 		},

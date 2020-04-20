@@ -441,8 +441,9 @@ func (n *StringNode) String() string {
 		}
 		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
 		return fmt.Sprintf("%s%s%s", header, lbc, block)
+	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		return fmt.Sprintf(`'%s'`, n.Value)
 	}
-
 	return n.Value
 }
 
@@ -471,7 +472,7 @@ func (n *LiteralNode) AddColumn(col int) {
 
 // GetValue returns string value
 func (n *LiteralNode) GetValue() interface{} {
-	return n.Value.GetValue()
+	return n.String()
 }
 
 // String literal to text
@@ -502,6 +503,11 @@ func (n *MergeKeyNode) GetValue() interface{} {
 // String returns '<<' value
 func (n *MergeKeyNode) String() string {
 	return n.Token.Value
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *MergeKeyNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
 }
 
 // BoolNode type of boolean node
@@ -675,7 +681,7 @@ func (n *MappingNode) blockStyleString() string {
 
 // String mapping values to text
 func (n *MappingNode) String() string {
-	if n.IsFlowStyle {
+	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
 	return n.blockStyleString()
@@ -724,9 +730,9 @@ func (n *MappingValueNode) String() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && m.IsFlowStyle {
+	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && s.IsFlowStyle {
+	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
@@ -827,7 +833,7 @@ func (n *SequenceNode) blockStyleString() string {
 
 // String sequence to text
 func (n *SequenceNode) String() string {
-	if n.IsFlowStyle {
+	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
 	return n.blockStyleString()
@@ -871,6 +877,10 @@ func (n *AnchorNode) AddColumn(col int) {
 func (n *AnchorNode) String() string {
 	value := n.Value.String()
 	if len(strings.Split(value, "\n")) > 1 {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	} else if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	}
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)

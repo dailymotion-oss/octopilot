@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v28 v28.0.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/mikefarah/yq/v3 v3.0.0-20200304043226-a06320f13c07
+	github.com/mikefarah/yq/v3 v3.0.0-20200418141808-3ccd32a47e54
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/otiai10/copy v1.0.2
@@ -29,5 +29,5 @@ require (
 	gopkg.in/ini.v1 v1.44.2 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v3 v3.0.0-20200121175148-a6ecf24a6d71
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
