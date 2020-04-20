@@ -1,0 +1,10 @@
+# Dockerfile used by GoReleaser
+# Requires the binary to be pre-built
+
+FROM alpine:3.11
+
+RUN apk add --no-cache ca-certificates
+
+COPY octopilot /usr/local/bin/octopilot
+
+ENTRYPOINT ["octopilot"]
