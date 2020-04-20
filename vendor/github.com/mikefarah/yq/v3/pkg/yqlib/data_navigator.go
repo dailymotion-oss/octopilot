@@ -260,11 +260,22 @@ func (n *navigator) appendArray(value *yaml.Node, head interface{}, tail []inter
 }
 
 func (n *navigator) recurseArray(value *yaml.Node, index int64, head interface{}, tail []interface{}, pathStack []interface{}) error {
-	for int64(len(value.Content)) <= index {
+	var contentLength = int64(len(value.Content))
+	for contentLength <= index {
 		value.Content = append(value.Content, &yaml.Node{Kind: guessKind(head, tail, 0)})
+		contentLength = int64(len(value.Content))
+	}
+	var indexToUse = index
+
+	if indexToUse < 0 {
+		indexToUse = contentLength + indexToUse
 	}
 
-	value.Content[index] = n.getOrReplace(value.Content[index], guessKind(head, tail, value.Content[index].Kind))
+	if indexToUse < 0 {
+		return fmt.Errorf("Index [%v] out of range, array size is %v", index, contentLength)
+	}
 
-	return n.doTraverse(value.Content[index], head, tail, append(pathStack, index))
+	value.Content[indexToUse] = n.getOrReplace(value.Content[indexToUse], guessKind(head, tail, value.Content[indexToUse].Kind))
+
+	return n.doTraverse(value.Content[indexToUse], head, tail, append(pathStack, index))
 }

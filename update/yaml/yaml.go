@@ -25,6 +25,7 @@ type YamlUpdater struct {
 	FilePath   string
 	Path       string
 	AutoCreate bool
+	Style      string
 	Valuer     value.Valuer
 }
 
@@ -42,6 +43,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 	}
 
 	updater.AutoCreate, _ = strconv.ParseBool(params["create"])
+	updater.Style = params["style"]
 
 	updater.Valuer = valuer
 
@@ -63,7 +65,7 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		Command:   "update",
 		Overwrite: true,
 		Path:      u.Path,
-		Value:     valueParser.Parse(value, ""),
+		Value:     valueParser.Parse(value, "", u.Style),
 	}
 
 	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
