@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ type YamlUpdater struct {
 	Path       string
 	AutoCreate bool
 	Style      string
+	Trim       bool
 	Valuer     value.Valuer
 }
 
@@ -43,6 +45,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 	}
 
 	updater.AutoCreate, _ = strconv.ParseBool(params["create"])
+	updater.Trim, _ = strconv.ParseBool(params["trim"])
 	updater.Style = params["style"]
 
 	updater.Valuer = valuer
@@ -104,6 +107,10 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		updatedData, err := yaml.Marshal(&rootNode)
 		if err != nil {
 			return false, fmt.Errorf("failed to marshal updated YAML content for %s: %w", filePath, err)
+		}
+
+		if u.Trim {
+			updatedData = bytes.TrimSpace(updatedData)
 		}
 
 		if reflect.DeepEqual(data, updatedData) {

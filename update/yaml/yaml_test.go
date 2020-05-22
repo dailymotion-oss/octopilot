@@ -226,6 +226,48 @@ key: "updated-value"
 			},
 		},
 		{
+			name: "update with folded style",
+			files: map[string]string{
+				"folded-style.yaml": `
+# a simple key
+key: value
+`,
+			},
+			updater: &YamlUpdater{
+				FilePath: "folded-style.yaml",
+				Path:     "key",
+				Style:    "folded",
+				Valuer:   value.StringValuer("updated-value"),
+			},
+			expected: true,
+			expectedFiles: map[string]string{
+				"folded-style.yaml": `# a simple key
+key: >-
+    updated-value
+`,
+			},
+		},
+		{
+			name: "trim file",
+			files: map[string]string{
+				"trim.yaml": `
+# a simple key
+key: value
+`,
+			},
+			updater: &YamlUpdater{
+				FilePath: "trim.yaml",
+				Path:     "key",
+				Trim:     true,
+				Valuer:   value.StringValuer("updated-value"),
+			},
+			expected: true,
+			expectedFiles: map[string]string{
+				"trim.yaml": `# a simple key
+key: updated-value`,
+			},
+		},
+		{
 			name: "create missing key/value in a single file",
 			files: map[string]string{
 				"missing-key-values.yaml": `
