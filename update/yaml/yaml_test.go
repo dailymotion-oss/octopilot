@@ -28,12 +28,14 @@ func TestNewUpdater(t *testing.T) {
 				"path":   "level1.level2",
 				"create": "true",
 				"style":  "double",
+				"trim":   "true",
 			},
 			expected: &YamlUpdater{
 				FilePath:   "values.yaml",
 				Path:       "level1.level2",
 				AutoCreate: true,
 				Style:      "double",
+				Trim:       true,
 			},
 		},
 		{
@@ -47,6 +49,7 @@ func TestNewUpdater(t *testing.T) {
 				FilePath:   "values.yaml",
 				Path:       "level1.level2",
 				AutoCreate: false,
+				Trim:       false,
 			},
 		},
 		{
