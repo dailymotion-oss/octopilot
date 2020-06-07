@@ -9,6 +9,7 @@ require (
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-github/v28 v28.0.2
+	github.com/imdario/mergo v0.3.9
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mikefarah/yq/v3 v3.0.0-20200418141808-3ccd32a47e54

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +14,7 @@ func TestParse(t *testing.T) {
 	tests := []struct {
 		name             string
 		repos            []string
+		preTestHook      func()
 		expected         []Repository
 		expectedErrorMsg string
 	}{
@@ -21,7 +24,7 @@ func TestParse(t *testing.T) {
 		{
 			name:             "empty input",
 			repos:            []string{""},
-			expectedErrorMsg: "invalid syntax for : found 0 matches instead of 4: []",
+			expectedErrorMsg: "invalid syntax for : missing repo type or name",
 		},
 		{
 			name:             "invalid input",
@@ -89,13 +92,39 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "discover from environment",
+			repos: []string{"discover-from(env=OCTOPILOT_TEST_DISCOVER_FROM,sep=;,merge=true)"},
+			preTestHook: func() {
+				os.Setenv("OCTOPILOT_TEST_DISCOVER_FROM", "dailymotion/octopilot;some-owner/MyGreatRepo(merge=false)")
+			},
+			expected: []Repository{
+				{
+					Owner: "dailymotion",
+					Name:  "octopilot",
+					Params: map[string]string{
+						"merge": "true",
+					},
+				},
+				{
+					Owner: "some-owner",
+					Name:  "MyGreatRepo",
+					Params: map[string]string{
+						"merge": "false",
+					},
+				},
+			},
+		},
 	}
 
 	for i := range tests {
 		test := tests[i]
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := Parse(test.repos)
+			if test.preTestHook != nil {
+				test.preTestHook()
+			}
+			actual, err := Parse(context.Background(), test.repos, "")
 			if len(test.expectedErrorMsg) > 0 {
 				require.EqualError(t, err, test.expectedErrorMsg)
 				assert.Empty(t, actual)
