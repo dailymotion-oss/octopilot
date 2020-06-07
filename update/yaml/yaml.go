@@ -149,5 +149,5 @@ func (u *YamlUpdater) Message() (title, body string) {
 }
 
 func (u *YamlUpdater) String() string {
-	return fmt.Sprintf("YAML[path=%s,file=%s,style=%s,create=%v,trim=%v]", u.Path, u.FilePath, u.Style, u.AutoCreate, u.Trim)
+	return fmt.Sprintf("YAML[path=%s,file=%s,style=%s,create=%v,trim=%v,indent=%v]", u.Path, u.FilePath, u.Style, u.AutoCreate, u.Trim, u.Indent)
 }
