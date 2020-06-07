@@ -29,6 +29,7 @@ func TestNewUpdater(t *testing.T) {
 				"create": "true",
 				"style":  "double",
 				"trim":   "true",
+				"indent": "4",
 			},
 			expected: &YamlUpdater{
 				FilePath:   "values.yaml",
@@ -36,6 +37,7 @@ func TestNewUpdater(t *testing.T) {
 				AutoCreate: true,
 				Style:      "double",
 				Trim:       true,
+				Indent:     4,
 			},
 		},
 		{
@@ -44,12 +46,14 @@ func TestNewUpdater(t *testing.T) {
 				"file":   "values.yaml",
 				"path":   "level1.level2",
 				"create": "maybe",
+				"indent": "not-an-int",
 			},
 			expected: &YamlUpdater{
 				FilePath:   "values.yaml",
 				Path:       "level1.level2",
 				AutoCreate: false,
 				Trim:       false,
+				Indent:     2,
 			},
 		},
 		{
@@ -61,6 +65,7 @@ func TestNewUpdater(t *testing.T) {
 			expected: &YamlUpdater{
 				FilePath: "**/values.yaml",
 				Path:     "level1.level2",
+				Indent:   2,
 			},
 		},
 		{
@@ -127,6 +132,7 @@ object:
 				FilePath: "basic-values.yaml",
 				Path:     "object.mykey",
 				Valuer:   value.StringValuer("updated-value"),
+				Indent:   2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -134,10 +140,10 @@ object:
 key: value
 # an object
 object:
-    # with a key we want to update
-    mykey: updated-value
-    # and another one we don't care about
-    anotherkey: another-value
+  # with a key we want to update
+  mykey: updated-value
+  # and another one we don't care about
+  anotherkey: another-value
 `,
 			},
 		},
