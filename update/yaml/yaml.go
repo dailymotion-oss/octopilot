@@ -28,6 +28,7 @@ type YamlUpdater struct {
 	AutoCreate bool
 	Style      string
 	Trim       bool
+	Indent     int
 	Valuer     value.Valuer
 }
 
@@ -42,6 +43,11 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 	updater.Path = params["path"]
 	if len(updater.Path) == 0 {
 		return nil, errors.New("missing path parameter")
+	}
+
+	updater.Indent, _ = strconv.Atoi(params["indent"])
+	if updater.Indent <= 0 {
+		updater.Indent = 2
 	}
 
 	updater.AutoCreate, _ = strconv.ParseBool(params["create"])
@@ -104,10 +110,18 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to update YAML file %s: %w", filePath, err)
 		}
 
-		updatedData, err := yaml.Marshal(&rootNode)
+		var buffer bytes.Buffer
+		encoder := yaml.NewEncoder(&buffer)
+		encoder.SetIndent(u.Indent)
+		err = encoder.Encode(&rootNode)
 		if err != nil {
-			return false, fmt.Errorf("failed to marshal updated YAML content for %s: %w", filePath, err)
+			return false, fmt.Errorf("failed to encode updated YAML content for %s: %w", filePath, err)
 		}
+		err = encoder.Close()
+		if err != nil {
+			return false, fmt.Errorf("failed to close YAML encoder for %s: %w", filePath, err)
+		}
+		updatedData := buffer.Bytes()
 
 		if u.Trim {
 			updatedData = bytes.TrimSpace(updatedData)

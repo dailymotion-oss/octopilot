@@ -78,13 +78,14 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:    "complex yaml updater",
-			updates: []string{"yaml(file=values.yaml,path='array.(key==prefix*).**.subkey',trim=true)=1.2.3"},
+			updates: []string{"yaml(file=values.yaml,path='array.(key==prefix*).**.subkey',trim=true,indent=4)=1.2.3"},
 			expected: []Updater{
 				&yaml.YamlUpdater{
 					FilePath: "values.yaml",
 					Path:     "array.(key==prefix*).**.subkey",
 					Valuer:   value.StringValuer("1.2.3"),
 					Trim:     true,
+					Indent:   4,
 				},
 			},
 		},
