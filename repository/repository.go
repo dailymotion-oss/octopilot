@@ -15,8 +15,11 @@ import (
 )
 
 var (
+	// type(params)
+	repoRegexp = regexp.MustCompile(`^(?P<type>[A-Za-z0-9_\-/]+)(?:\((?P<params>.+)\))?$`)
+
 	// owner/name(params)
-	repoRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9_\-]+)(?:\((?P<params>.+)\))?$`)
+	repoWithNameRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9_\-]+)(?:\((?P<params>.+)\))?$`)
 )
 
 type Repository struct {
@@ -25,23 +28,48 @@ type Repository struct {
 	Params map[string]string
 }
 
-func Parse(repos []string) ([]Repository, error) {
+func Parse(ctx context.Context, repos []string, githubToken string) ([]Repository, error) {
 	var repositories []Repository
 	for _, repo := range repos {
 		matches := repoRegexp.FindStringSubmatch(repo)
-		if len(matches) < 4 {
-			return nil, fmt.Errorf("invalid syntax for %s: found %d matches instead of 4: %v", repo, len(matches), matches)
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("invalid syntax for %s: missing repo type or name", repo)
 		}
 
-		r := Repository{
-			Owner:  matches[1],
-			Name:   matches[2],
-			Params: parameters.Parse(matches[3]),
-		}
+		switch matches[1] {
+		case "discover-from":
+			discoveredRepos, err := discoverRepositoriesFrom(ctx, parameters.Parse(matches[2]), githubToken)
+			if err != nil {
+				return nil, fmt.Errorf("failed to discover repositories: %w", err)
+			}
+			repositories = append(repositories, discoveredRepos...)
+		default:
+			matches := repoWithNameRegexp.FindStringSubmatch(repo)
+			if len(matches) < 4 {
+				return nil, fmt.Errorf("invalid syntax for %s: found %d matches instead of 4: %v", repo, len(matches), matches)
+			}
 
-		repositories = append(repositories, r)
+			repositories = append(repositories, Repository{
+				Owner:  matches[1],
+				Name:   matches[2],
+				Params: parameters.Parse(matches[3]),
+			})
+		}
 	}
 	return repositories, nil
+}
+
+func discoverRepositoriesFrom(ctx context.Context, params map[string]string, githubToken string) ([]Repository, error) {
+	if query, ok := params["query"]; ok {
+		return discoverRepositoriesFromQuery(ctx, query, params, githubToken)
+	}
+
+	if envVar, ok := params["env"]; ok {
+		delete(params, "env")
+		return discoverRepositoriesFromEnvironment(ctx, envVar, params, githubToken)
+	}
+
+	return nil, fmt.Errorf("can't discover repositories from params %v: missing either query or env param", params)
 }
 
 func (r Repository) Update(ctx context.Context, updaters []update.Updater, options UpdateOptions) (bool, error) {

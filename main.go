@@ -82,6 +82,7 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
 	pflag.Parse()
 	printHelpOrVersion()
 	setLogLevel()
@@ -98,7 +99,7 @@ func main() {
 	logrus.WithField("updaters", updaters).Debug("Updaters ready")
 
 	logrus.WithField("repos", options.repos).Trace("Parsing repositories")
-	repositories, err := repository.Parse(options.repos)
+	repositories, err := repository.Parse(ctx, options.repos, options.GitHub.Token)
 	if err != nil {
 		logrus.
 			WithError(err).
@@ -108,10 +109,7 @@ func main() {
 	logrus.WithField("repositories", repositories).Debug("Repositories ready")
 
 	logrus.WithField("repositories-count", len(repositories)).Trace("Starting updates")
-	var (
-		ctx = context.Background()
-		wg  sync.WaitGroup
-	)
+	var wg sync.WaitGroup
 	for _, repo := range repositories {
 		wg.Add(1)
 		go func(repo repository.Repository) {
