@@ -69,6 +69,7 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CommitTitle, "git-commit-title", "", "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitBody, "git-commit-body", "", "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitBodyFile, "git-commit-body-file", "", "")
+	pflag.StringVar(&options.UpdateOptions.Git.CommitBodyFromRelease, "git-commit-body-from-release", "", "owner/repo/tag: dailymotion/octopilot/v1.2.3")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitFooter, "git-commit-footer", defaultCommitFooter(), "")
 	pflag.StringVar(&options.UpdateOptions.Git.BranchPrefix, "git-branch-prefix", "octopilot-", "")
 

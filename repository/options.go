@@ -25,16 +25,17 @@ type UpdateOptions struct {
 }
 
 type GitOptions struct {
-	CloneDir       string
-	AuthorName     string
-	AuthorEmail    string
-	CommitterName  string
-	CommitterEmail string
-	CommitTitle    string
-	CommitBody     string
-	CommitBodyFile string
-	CommitFooter   string
-	BranchPrefix   string
+	CloneDir              string
+	AuthorName            string
+	AuthorEmail           string
+	CommitterName         string
+	CommitterEmail        string
+	CommitTitle           string
+	CommitBody            string
+	CommitBodyFile        string
+	CommitBodyFromRelease string
+	CommitFooter          string
+	BranchPrefix          string
 }
 
 type GitHubOptions struct {
