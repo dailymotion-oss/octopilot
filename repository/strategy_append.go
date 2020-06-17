@@ -52,8 +52,12 @@ func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, er
 		return false, nil, nil
 	}
 
-	s.Options.Git.setDefaultValues(s.Updaters)
-	s.Options.GitHub.setDefaultValues(s.Options.Git)
+	if err = s.Options.Git.setDefaultValues(s.Updaters, templateExecutorFor(s.Options, s.Repository, s.RepoPath)); err != nil {
+		return false, nil, fmt.Errorf("failed to set default git values: %w", err)
+	}
+	if err = s.Options.GitHub.setDefaultValues(s.Options.Git, templateExecutorFor(s.Options, s.Repository, s.RepoPath)); err != nil {
+		return false, nil, fmt.Errorf("failed to set default github values: %w", err)
+	}
 	s.Options.GitHub.setDefaultUpdateOperation(IgnoreUpdateOperation)
 
 	changesCommitted, err := commitChanges(ctx, gitRepo, s.Options)

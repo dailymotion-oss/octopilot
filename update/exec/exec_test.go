@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
@@ -30,26 +31,28 @@ func TestNewUpdater(t *testing.T) {
 			},
 		},
 		{
-			name: "valid params with cmd and args",
+			name: "valid params with cmd and multiple args",
 			params: map[string]string{
 				"cmd":  "ls",
-				"args": "-lh",
+				"args": "one two three",
 			},
 			expected: &ExecUpdater{
 				Command: "ls",
-				Args:    "-lh",
+				Args:    []string{"one", "two", "three"},
 			},
 		},
 		{
-			name: "valid params with cmd, args and timeout",
+			name: "valid params with cmd, args, stdout and timeout",
 			params: map[string]string{
 				"cmd":     "ls",
 				"args":    "-lh",
+				"stdout":  "/path/to/some/file",
 				"timeout": "3s",
 			},
 			expected: &ExecUpdater{
 				Command: "ls",
-				Args:    "-lh",
+				Args:    []string{"-lh"},
+				Stdout:  "/path/to/some/file",
 				Timeout: 3 * time.Second,
 			},
 		},
@@ -107,7 +110,7 @@ func TestUpdate(t *testing.T) {
 			},
 			updater: &ExecUpdater{
 				Command: "rm",
-				Args:    "file-to-delete.txt",
+				Args:    []string{"file-to-delete.txt"},
 				Timeout: 1 * time.Second,
 			},
 			expected: true,
@@ -121,13 +124,30 @@ func TestUpdate(t *testing.T) {
 			name: "fail deleting a non-existing file",
 			updater: &ExecUpdater{
 				Command: "rm",
-				Args:    "does-not-exists.txt",
+				Args:    []string{"does-not-exists.txt"},
 				Timeout: 1 * time.Second,
 			},
 			expected: false,
 			expectedErrorMessages: []string{
-				"failed to run cmd 'rm' with args 'does-not-exists.txt' - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
-				"failed to run cmd 'rm' with args 'does-not-exists.txt' - got stdout [] and stderr [rm: cannot remove 'does-not-exists.txt': No such file or directory]: exit status 1",
+				"failed to run cmd 'rm' with args [does-not-exists.txt] - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
+				"failed to run cmd 'rm' with args [does-not-exists.txt] - got stdout [] and stderr [rm: cannot remove 'does-not-exists.txt': No such file or directory]: exit status 1",
+			},
+		},
+		{
+			name: "run a cmd and write its stdout to a file",
+			files: map[string]string{
+				"file-to-print.txt": "some content",
+			},
+			updater: &ExecUpdater{
+				Command: "cat",
+				Args:    []string{"file-to-print.txt"},
+				Stdout:  "file-to-print.stdout",
+				Timeout: 1 * time.Second,
+			},
+			expected: true,
+			extraCheck: func() bool {
+				actualFileContent, _ := ioutil.ReadFile(filepath.Join("testdata", "file-to-print.stdout"))
+				return bytes.Equal(actualFileContent, []byte("some content"))
 			},
 		},
 	}

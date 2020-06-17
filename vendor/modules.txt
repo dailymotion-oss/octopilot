@@ -24,6 +24,13 @@ github.com/Azure/go-autorest/autorest/validation
 github.com/Azure/go-autorest/logger
 # github.com/Azure/go-autorest/tracing v0.5.0
 github.com/Azure/go-autorest/tracing
+# github.com/Masterminds/goutils v1.1.0
+github.com/Masterminds/goutils
+# github.com/Masterminds/semver/v3 v3.1.0
+github.com/Masterminds/semver/v3
+# github.com/Masterminds/sprig/v3 v3.1.0
+## explicit
+github.com/Masterminds/sprig/v3
 # github.com/aws/aws-sdk-go v1.23.22
 ## explicit
 github.com/aws/aws-sdk-go/aws
@@ -108,10 +115,14 @@ github.com/golang/snappy
 github.com/google/go-github/v28/github
 # github.com/google/go-querystring v1.0.0
 github.com/google/go-querystring/query
+# github.com/google/uuid v1.1.1
+github.com/google/uuid
 # github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 github.com/goware/prefixer
 # github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 github.com/howeyc/gopass
+# github.com/huandu/xstrings v1.3.1
+github.com/huandu/xstrings
 # github.com/imdario/mergo v0.3.9
 ## explicit
 github.com/imdario/mergo
@@ -138,11 +149,15 @@ github.com/mholt/archiver
 # github.com/mikefarah/yq/v3 v3.0.0-20200418141808-3ccd32a47e54
 ## explicit
 github.com/mikefarah/yq/v3/pkg/yqlib
+# github.com/mitchellh/copystructure v1.0.0
+github.com/mitchellh/copystructure
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.0
 github.com/mitchellh/go-wordwrap
+# github.com/mitchellh/reflectwalk v1.0.0
+github.com/mitchellh/reflectwalk
 # github.com/mozilla-services/yaml v0.0.0-20191106225358-5c216288813c
 github.com/mozilla-services/yaml
 # github.com/nwaples/rardecode v1.0.0
@@ -166,6 +181,8 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sirupsen/logrus v1.4.2
 ## explicit
 github.com/sirupsen/logrus
+# github.com/spf13/cast v1.3.1
+github.com/spf13/cast
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
@@ -174,7 +191,7 @@ github.com/src-d/gcfg
 github.com/src-d/gcfg/scanner
 github.com/src-d/gcfg/token
 github.com/src-d/gcfg/types
-# github.com/stretchr/testify v1.4.0
+# github.com/stretchr/testify v1.5.1
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
@@ -183,6 +200,9 @@ github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/hash
 github.com/ulikunitz/xz/internal/xlog
 github.com/ulikunitz/xz/lzma
+# github.com/writeas/go-strip-markdown v2.0.1+incompatible
+## explicit
+github.com/writeas/go-strip-markdown
 # github.com/xanzy/ssh-agent v0.2.1
 github.com/xanzy/ssh-agent
 # github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
@@ -237,7 +257,9 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+# golang.org/x/crypto v0.0.0-20200414173820-0848c9571904
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
@@ -250,11 +272,14 @@ golang.org/x/crypto/openpgp/elgamal
 golang.org/x/crypto/openpgp/errors
 golang.org/x/crypto/openpgp/packet
 golang.org/x/crypto/openpgp/s2k
+golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/poly1305
+golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
+golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/knownhosts
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20190724013045-ca1201d0de80

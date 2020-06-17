@@ -1,0 +1,79 @@
+package repository
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+	stripmd "github.com/writeas/go-strip-markdown"
+)
+
+type templateExecutor func(text string) (string, error)
+
+func templateExecutorFor(options UpdateOptions, repo Repository, repoPath string) templateExecutor {
+	return func(text string) (string, error) {
+		return executeTemplate(options, repo, repoPath, text)
+	}
+}
+
+func executeTemplate(options UpdateOptions, repo Repository, repoPath string, text string) (string, error) {
+	t, err := template.
+		New("").
+		Funcs(sprig.TxtFuncMap()).
+		Funcs(template.FuncMap{
+			"readFile":      tplReadFileFunc(repoPath),
+			"githubRelease": tplGitHubReleaseFunc(options.GitHub.Token),
+			"md2txt":        stripmd.Strip,
+		}).
+		Parse(text)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template %s: %w", text, err)
+	}
+
+	var buffer bytes.Buffer
+	err = t.Execute(&buffer, map[string]interface{}{
+		"repo": repo,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to execute template %s: %w", text, err)
+	}
+
+	return buffer.String(), nil
+}
+
+func tplReadFileFunc(repoPath string) func(string) string {
+	return func(path string) string {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(repoPath, path)
+		}
+		content, err := ioutil.ReadFile(path)
+		if err != nil {
+			panic(fmt.Sprintf("failed to readFile %s: %v", path, err))
+		}
+		return string(content)
+	}
+}
+
+func tplGitHubReleaseFunc(githubToken string) func(string) string {
+	return func(releaseID string) string {
+		elems := strings.SplitN(releaseID, "/", 3)
+		if len(elems) < 3 {
+			panic("invalid syntax for the commitBodyFromRelease flag - expected 3 parts got " + string(len(elems)))
+		}
+		owner, repo, tag := elems[0], elems[1], elems[2]
+
+		ctx := context.Background()
+		release, _, err := githubClient(ctx, githubToken).Repositories.GetReleaseByTag(ctx, owner, repo, tag)
+		if err != nil {
+			panic(fmt.Sprintf("failed to retrieve GitHub Release for %s/%s %s: %v", owner, repo, tag, err))
+		}
+		return fmt.Sprintf("# **%s** release [%s](%s)\n\nReleased %s\n\n%s",
+			repo, tag, release.GetHTMLURL(), release.GetPublishedAt().Format("on Monday January 2, 2006 at 15:04 (UTC)"), release.GetBody(),
+		)
+	}
+}

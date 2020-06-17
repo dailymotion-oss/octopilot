@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -25,17 +24,15 @@ type UpdateOptions struct {
 }
 
 type GitOptions struct {
-	CloneDir              string
-	AuthorName            string
-	AuthorEmail           string
-	CommitterName         string
-	CommitterEmail        string
-	CommitTitle           string
-	CommitBody            string
-	CommitBodyFile        string
-	CommitBodyFromRelease string
-	CommitFooter          string
-	BranchPrefix          string
+	CloneDir       string
+	AuthorName     string
+	AuthorEmail    string
+	CommitterName  string
+	CommitterEmail string
+	CommitTitle    string
+	CommitBody     string
+	CommitFooter   string
+	BranchPrefix   string
 }
 
 type GitHubOptions struct {
@@ -49,7 +46,6 @@ type PullRequestOptions struct {
 	Title                string
 	TitleUpdateOperation string
 	Body                 string
-	BodyFile             string
 	BodyUpdateOperation  string
 	Comments             []string
 	Draft                bool
@@ -66,11 +62,7 @@ type PullRequestMergeOptions struct {
 	PollTimeout   time.Duration
 }
 
-func (o *GitOptions) setDefaultValues(updaters []update.Updater) {
-	if len(o.CommitBody) == 0 && len(o.CommitBodyFile) > 0 {
-		data, _ := ioutil.ReadFile(o.CommitBodyFile)
-		o.CommitBody = string(data)
-	}
+func (o *GitOptions) setDefaultValues(updaters []update.Updater, tplExecutorFunc templateExecutor) error {
 	if len(updaters) == 1 {
 		title, body := updaters[0].Message()
 		if len(o.CommitTitle) == 0 {
@@ -97,15 +89,26 @@ func (o *GitOptions) setDefaultValues(updaters []update.Updater) {
 		}
 		o.CommitBody = body.String()
 	}
+
+	commitTitle, err := tplExecutorFunc(o.CommitTitle)
+	if err != nil {
+		return fmt.Errorf("failed to run template for git commit title %s: %w", o.CommitTitle, err)
+	} else {
+		o.CommitTitle = commitTitle
+	}
+	commitBody, err := tplExecutorFunc(o.CommitBody)
+	if err != nil {
+		return fmt.Errorf("failed to run template for git commit body %s: %w", o.CommitBody, err)
+	} else {
+		o.CommitBody = commitBody
+	}
+
+	return nil
 }
 
-func (o *GitHubOptions) setDefaultValues(git GitOptions) {
+func (o *GitHubOptions) setDefaultValues(git GitOptions, tplExecutorFunc templateExecutor) error {
 	if len(o.PullRequest.Title) == 0 {
 		o.PullRequest.Title = git.CommitTitle
-	}
-	if len(o.PullRequest.Body) == 0 && len(o.PullRequest.BodyFile) > 0 {
-		data, _ := ioutil.ReadFile(o.PullRequest.BodyFile)
-		o.PullRequest.Body = string(data)
 	}
 	if len(o.PullRequest.Body) == 0 {
 		o.PullRequest.Body = git.CommitBody
@@ -113,6 +116,21 @@ func (o *GitHubOptions) setDefaultValues(git GitOptions) {
 	if len(git.CommitFooter) > 0 {
 		o.PullRequest.Body += fmt.Sprintf("\n\n-- \n%s", git.CommitFooter)
 	}
+
+	prTitle, err := tplExecutorFunc(o.PullRequest.Title)
+	if err != nil {
+		return fmt.Errorf("failed to run template for pull reequest title %s: %w", o.PullRequest.Title, err)
+	} else {
+		o.PullRequest.Title = prTitle
+	}
+	prBody, err := tplExecutorFunc(o.PullRequest.Body)
+	if err != nil {
+		return fmt.Errorf("failed to run template for pull request body %s: %w", o.PullRequest.Body, err)
+	} else {
+		o.PullRequest.Body = prBody
+	}
+
+	return nil
 }
 
 func (o *GitHubOptions) setDefaultUpdateOperation(defaultUpdateOperation string) {
