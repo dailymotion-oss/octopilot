@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Azure/go-autorest/autorest v0.9.7 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.8.3 // indirect
+	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.23.22 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
@@ -19,7 +20,8 @@ require (
 	github.com/rs/xid v1.2.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
+	github.com/writeas/go-strip-markdown v2.0.1+incompatible
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/ybbus/httpretry v1.0.1
 	github.com/zoumo/goset v0.2.0

@@ -46,7 +46,6 @@ func init() {
 	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "")
 	pflag.StringVar(&options.GitHub.PullRequest.TitleUpdateOperation, "pr-title-update-operation", "", "operation when updating the PR's title: ignore (keep old value), replace, prepend or append. Default is: ignore for append strategy, replace for reset strategy.")
 	pflag.StringVar(&options.GitHub.PullRequest.Body, "pr-body", "", "")
-	pflag.StringVar(&options.GitHub.PullRequest.BodyFile, "pr-body-file", "", "")
 	pflag.StringVar(&options.GitHub.PullRequest.BodyUpdateOperation, "pr-body-update-operation", "", "operation when updating the PR's body: ignore (keep old value), replace, prepend or append. Default is: ignore for append strategy, replace for reset strategy.")
 	pflag.StringArrayVar(&options.GitHub.PullRequest.Comments, "pr-comment", []string{}, "")
 	pflag.StringSliceVar(&options.GitHub.PullRequest.Labels, "pr-labels", []string{"octopilot-update"}, "List of labels set on the pull requests, and used to find existing pull requests to update.")
@@ -68,8 +67,6 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CommitterEmail, "git-committer-email", firstNonEmpyValue(os.Getenv("GIT_COMMITTER_EMAIL"), git.ConfigValue("user.email")), "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitTitle, "git-commit-title", "", "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitBody, "git-commit-body", "", "")
-	pflag.StringVar(&options.UpdateOptions.Git.CommitBodyFile, "git-commit-body-file", "", "")
-	pflag.StringVar(&options.UpdateOptions.Git.CommitBodyFromRelease, "git-commit-body-from-release", "", "owner/repo/tag: dailymotion/octopilot/v1.2.3")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitFooter, "git-commit-footer", defaultCommitFooter(), "")
 	pflag.StringVar(&options.UpdateOptions.Git.BranchPrefix, "git-branch-prefix", "octopilot-", "")
 

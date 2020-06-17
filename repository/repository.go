@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/dailymotion/octopilot/internal/parameters"
 	"github.com/dailymotion/octopilot/update"
@@ -90,21 +89,6 @@ func (r Repository) Update(ctx context.Context, updaters []update.Updater, optio
 				}).WithError(err).Warning("Failed to delete temporary files")
 			}
 		}()
-	}
-
-	if len(options.Git.CommitBody) == 0 && len(options.Git.CommitBodyFromRelease) > 0 {
-		elems := strings.SplitN(options.Git.CommitBodyFromRelease, "/", 3)
-		if len(elems) < 3 {
-			return false, fmt.Errorf("invalid syntax for the commitBodyFromRelease flag - expected 3 parts got %d", len(elems))
-		}
-		owner, repo, tag := elems[0], elems[1], elems[2]
-		release, _, err := githubClient(ctx, options.GitHub.Token).Repositories.GetReleaseByTag(ctx, owner, repo, tag)
-		if err != nil {
-			return false, fmt.Errorf("failed to retrieve GitHub Release for %s/%s %s: %w", owner, repo, tag, err)
-		}
-		options.Git.CommitBody = fmt.Sprintf("# **%s** release [%s](%s)\n\nReleased %s\n\n%s",
-			repo, tag, release.GetHTMLURL(), release.GetPublishedAt().Format("on Monday January 2, 2006 at 15:04 (UTC)"), release.GetBody(),
-		)
 	}
 
 	var strategy Strategy
