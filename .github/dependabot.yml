@@ -6,11 +6,10 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    labels:
-      - "dependencies"
+    # disabled until dependabot supports vendoring
+    # https://github.com/dependabot/dependabot-core/issues/670
+    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-    labels:
-      - "dependencies"
