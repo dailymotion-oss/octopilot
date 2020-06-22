@@ -16,7 +16,7 @@ require (
 	github.com/mikefarah/yq/v3 v3.0.0-20200418141808-3ccd32a47e54
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nwaples/rardecode v1.0.0 // indirect
-	github.com/otiai10/copy v1.0.2
+	github.com/otiai10/copy v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
