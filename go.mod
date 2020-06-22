@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go v1.23.22 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
-	github.com/google/go-github/v28 v28.0.2
+	github.com/google/go-github/v28 v28.1.1
 	github.com/imdario/mergo v0.3.9
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
