@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_DMCONTINOUS_PASSWORD }}
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v1
+        uses: goreleaser/goreleaser-action@v2.1.0
         with:
           args: release --rm-dist
         env:
