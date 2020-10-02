@@ -16,7 +16,7 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2.1.2
+        uses: actions/setup-go@v2.1.3
         with:
           go-version: '1.14'
 
@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_DMCONTINOUS_PASSWORD }}
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2.2.0
+        uses: goreleaser/goreleaser-action@v2.2.1
         with:
           args: release --rm-dist
         env:
