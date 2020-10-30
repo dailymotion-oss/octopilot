@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -26,9 +27,11 @@ func executeTemplate(options UpdateOptions, repo Repository, repoPath string, te
 		New("").
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(template.FuncMap{
-			"readFile":      tplReadFileFunc(repoPath),
-			"githubRelease": tplGitHubReleaseFunc(options.GitHub.Token),
-			"md2txt":        stripmd.Strip,
+			"readFile":            tplReadFileFunc(repoPath),
+			"githubRelease":       tplGitHubReleaseFunc(options.GitHub.Token),
+			"expandGithubLinks":   tplExpandGitHubLinksToMarkdown(repo),
+			"extractMarkdownURLs": tplExtractMarkdownURLs(),
+			"md2txt":              stripmd.Strip,
 		}).
 		Parse(text)
 	if err != nil {
@@ -63,7 +66,7 @@ func tplGitHubReleaseFunc(githubToken string) func(string) string {
 	return func(releaseID string) string {
 		elems := strings.SplitN(releaseID, "/", 3)
 		if len(elems) < 3 {
-			panic("invalid syntax for the commitBodyFromRelease flag - expected 3 parts got " + string(len(elems)))
+			panic("invalid syntax for the commitBodyFromRelease flag - expected 3 parts got " + fmt.Sprint(len(elems)))
 		}
 		owner, repo, tag := elems[0], elems[1], elems[2]
 
@@ -75,5 +78,19 @@ func tplGitHubReleaseFunc(githubToken string) func(string) string {
 		return fmt.Sprintf("# **%s** release [%s](%s)\n\nReleased %s\n\n%s",
 			repo, tag, release.GetHTMLURL(), release.GetPublishedAt().Format("on Monday January 2, 2006 at 15:04 (UTC)"), release.GetBody(),
 		)
+	}
+}
+
+func tplExpandGitHubLinksToMarkdown(repo Repository) func(string) string {
+	linkReg := regexp.MustCompile(`([^[]|\s)(#([0-9]+))`)
+	return func(input string) string {
+		return linkReg.ReplaceAllString(input, fmt.Sprintf("$1[$2](https://github.com/%s/%s/issues/$3)", repo.Owner, repo.Name))
+	}
+}
+
+func tplExtractMarkdownURLs() func(string) string {
+	linkReg := regexp.MustCompile(`\[(.*?)\][\[\(](.*?)[\]\)]`)
+	return func(input string) string {
+		return linkReg.ReplaceAllString(input, "$2")
 	}
 }
