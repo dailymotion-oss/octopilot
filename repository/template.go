@@ -29,8 +29,8 @@ func executeTemplate(options UpdateOptions, repo Repository, repoPath string, te
 		Funcs(template.FuncMap{
 			"readFile":            tplReadFileFunc(repoPath),
 			"githubRelease":       tplGitHubReleaseFunc(options.GitHub.Token),
-			"expandGithubLinks":   tplExpandGitHubLinksToMarkdown(repo),
-			"extractMarkdownURLs": tplExtractMarkdownURLs(),
+			"expandGithubLinks":   tplExpandGitHubLinksToMarkdownFunc(),
+			"extractMarkdownURLs": tplExtractMarkdownURLsFunc(),
 			"md2txt":              stripmd.Strip,
 		}).
 		Parse(text)
@@ -81,14 +81,14 @@ func tplGitHubReleaseFunc(githubToken string) func(string) string {
 	}
 }
 
-func tplExpandGitHubLinksToMarkdown(repo Repository) func(string) string {
+func tplExpandGitHubLinksToMarkdownFunc() func(string, string) string {
 	linkReg := regexp.MustCompile(`([^[]|\s)(#([0-9]+))`)
-	return func(input string) string {
-		return linkReg.ReplaceAllString(input, fmt.Sprintf("$1[$2](https://github.com/%s/%s/issues/$3)", repo.Owner, repo.Name))
+	return func(fullRepoName, input string) string {
+		return linkReg.ReplaceAllString(input, fmt.Sprintf("$1[$2](https://github.com/%s/issues/$3)", fullRepoName))
 	}
 }
 
-func tplExtractMarkdownURLs() func(string) string {
+func tplExtractMarkdownURLsFunc() func(string) string {
 	linkReg := regexp.MustCompile(`\[(.*?)\][\[\(](.*?)[\]\)]`)
 	return func(input string) string {
 		return linkReg.ReplaceAllString(input, "$2")
