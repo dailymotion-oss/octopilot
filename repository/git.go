@@ -107,6 +107,13 @@ func commitChanges(ctx context.Context, gitRepo *git.Repository, options UpdateO
 		"status":          status.String(),
 	}).Debug("Git status")
 
+	for _, pattern := range options.Git.StagePatterns {
+		err = workTree.AddGlob(pattern)
+		if err != nil {
+			return false, fmt.Errorf("failed to stage files using pattern %s: %w", pattern, err)
+		}
+	}
+
 	now := time.Now()
 	commitMsg := new(strings.Builder)
 	commitMsg.WriteString(options.Git.CommitTitle)
@@ -121,7 +128,7 @@ func commitChanges(ctx context.Context, gitRepo *git.Repository, options UpdateO
 
 	commit, err := workTree.Commit(commitMsg.String(),
 		&git.CommitOptions{
-			All: true,
+			All: options.Git.StageAllChanged,
 			Author: &object.Signature{
 				Name:  options.Git.AuthorName,
 				Email: options.Git.AuthorEmail,
