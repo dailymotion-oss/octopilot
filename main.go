@@ -61,6 +61,8 @@ func init() {
 
 	// git-related flags
 	pflag.StringVar(&options.UpdateOptions.Git.CloneDir, "git-clone-dir", temporaryDirectory(), "")
+	pflag.StringArrayVar(&options.UpdateOptions.Git.StagePatterns, "git-stage-pattern", nil, "")
+	pflag.BoolVar(&options.UpdateOptions.Git.StageAllChanged, "git-stage-all-changed", true, "")
 	pflag.StringVar(&options.UpdateOptions.Git.AuthorName, "git-author-name", firstNonEmpyValue(os.Getenv("GIT_AUTHOR_NAME"), git.ConfigValue("user.name")), "")
 	pflag.StringVar(&options.UpdateOptions.Git.AuthorEmail, "git-author-email", firstNonEmpyValue(os.Getenv("GIT_AUTHOR_EMAIL"), git.ConfigValue("user.email")), "")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitterName, "git-committer-name", firstNonEmpyValue(os.Getenv("GIT_COMMITTER_NAME"), git.ConfigValue("user.name")), "")
