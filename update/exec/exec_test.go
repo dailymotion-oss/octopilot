@@ -42,17 +42,19 @@ func TestNewUpdater(t *testing.T) {
 			},
 		},
 		{
-			name: "valid params with cmd, args, stdout and timeout",
+			name: "valid params with cmd, args, stdout, stderr and timeout",
 			params: map[string]string{
 				"cmd":     "ls",
 				"args":    "-lh",
 				"stdout":  "/path/to/some/file",
+				"stderr":  "/path/to/some/other/file",
 				"timeout": "3s",
 			},
 			expected: &ExecUpdater{
 				Command: "ls",
 				Args:    []string{"-lh"},
 				Stdout:  "/path/to/some/file",
+				Stderr:  "/path/to/some/other/file",
 				Timeout: 3 * time.Second,
 			},
 		},

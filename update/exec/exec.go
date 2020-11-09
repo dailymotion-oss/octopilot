@@ -17,6 +17,7 @@ type ExecUpdater struct {
 	Command string
 	Args    []string
 	Stdout  string
+	Stderr  string
 	Timeout time.Duration
 }
 
@@ -32,6 +33,7 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 		updater.Args = strings.Split(args, " ")
 	}
 	updater.Stdout = params["stdout"]
+	updater.Stderr = params["stderr"]
 
 	timeout := params["timeout"]
 	if len(timeout) > 0 {
@@ -67,17 +69,13 @@ func (r *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 	}
 
 	if len(r.Stdout) > 0 {
-		path := r.Stdout
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(repoPath, path)
+		if err = r.writeCmdOutputToFile(stdout, repoPath, r.Stdout); err != nil {
+			return false, fmt.Errorf("failed to write stdout of cmd '%s' to %s: %w", r.Command, r.Stdout, err)
 		}
-		err = os.MkdirAll(filepath.Dir(path), os.ModePerm)
-		if err != nil {
-			return false, fmt.Errorf("failed to create directory %s: %w", filepath.Dir(path), err)
-		}
-		err = ioutil.WriteFile(path, stdout.Bytes(), 0644)
-		if err != nil {
-			return false, fmt.Errorf("failed to write stdout of cmd '%s' to %s: %w", r.Command, path, err)
+	}
+	if len(r.Stderr) > 0 {
+		if err = r.writeCmdOutputToFile(stderr, repoPath, r.Stderr); err != nil {
+			return false, fmt.Errorf("failed to write stderr of cmd '%s' to %s: %w", r.Command, r.Stderr, err)
 		}
 	}
 
@@ -95,4 +93,22 @@ func (r *ExecUpdater) Message() (title, body string) {
 
 func (r *ExecUpdater) String() string {
 	return fmt.Sprintf("Exec[cmd=%s,args=%v]", r.Command, r.Args)
+}
+
+func (r *ExecUpdater) writeCmdOutputToFile(output bytes.Buffer, repoPath, filePath string) error {
+	if !filepath.IsAbs(filePath) {
+		filePath = filepath.Join(repoPath, filePath)
+	}
+
+	err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(filePath), err)
+	}
+
+	err = ioutil.WriteFile(filePath, output.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write output of cmd '%s' to %s: %w", r.Command, filePath, err)
+	}
+
+	return nil
 }
