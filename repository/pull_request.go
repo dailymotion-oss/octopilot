@@ -221,36 +221,57 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 }
 
 func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	var (
+		client = githubClient(ctx, options.Token)
+		prURL  = pr.GetHTMLURL()
+	)
+
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
-		"pull-request": pr.GetHTMLURL(),
+		"pull-request": prURL,
 		"timeout":      options.PullRequest.Merge.PollTimeout.String(),
 	}).Trace("Starting Pull Request merge process")
 
 	err := r.waitUntilPullRequestIsMergeable(ctx, options, pr)
 	if err != nil {
-		return fmt.Errorf("failed to wait until Pull Request %s is mergeable: %w", pr.GetHTMLURL(), err)
+		return fmt.Errorf("failed to wait until Pull Request %s is mergeable: %w", prURL, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
-		"pull-request": pr.GetHTMLURL(),
+		"pull-request": prURL,
+	}).Trace("Getting Pull Request status")
+	pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
+	if err != nil {
+		return fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+	}
+	if pr.GetMerged() {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": prURL,
+		}).Info("Pull Request is already merged")
+		return nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":   r.FullName(),
+		"pull-request": prURL,
 	}).Trace("Merging Pull Request")
-	res, _, err := githubClient(ctx, options.Token).PullRequests.Merge(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Merge.CommitMessage, &github.PullRequestOptions{
+	res, _, err := client.PullRequests.Merge(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Merge.CommitMessage, &github.PullRequestOptions{
 		MergeMethod: options.PullRequest.Merge.Method,
 		CommitTitle: options.PullRequest.Merge.CommitTitle,
 		SHA:         options.PullRequest.Merge.SHA,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to merge Pull Request %s: %w", pr.GetHTMLURL(), err)
+		return fmt.Errorf("failed to merge Pull Request %s: %w", prURL, err)
 	}
 	if !res.GetMerged() {
-		return fmt.Errorf("Pull Request %s was not merged: %s", pr.GetHTMLURL(), res.GetMessage())
+		return fmt.Errorf("Pull Request %s was not merged: %s", prURL, res.GetMessage())
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
-		"pull-request": pr.GetHTMLURL(),
+		"pull-request": prURL,
 	}).Info("Pull Request merged")
 	return nil
 }
@@ -275,6 +296,14 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 		pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
 		if err != nil {
 			return fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+		}
+
+		if pr.GetMerged() {
+			logrus.WithFields(logrus.Fields{
+				"repository":   r.FullName(),
+				"pull-request": pr.GetHTMLURL(),
+			}).Debug("Pull Request is already merged")
+			return nil
 		}
 
 		if pr.Mergeable != nil {
