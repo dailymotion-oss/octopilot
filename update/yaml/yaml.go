@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/value"
 
 	"github.com/mikefarah/yq/v3/pkg/yqlib"
 	gologging "gopkg.in/op/go-logging.v1"

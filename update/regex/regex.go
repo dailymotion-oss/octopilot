@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
 type RegexUpdater struct {

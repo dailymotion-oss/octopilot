@@ -17,7 +17,7 @@ import (
 	"go.mozilla.org/sops/v3/keys"
 	"go.mozilla.org/sops/v3/pgp"
 
-	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
 func TestNewUpdater(t *testing.T) {

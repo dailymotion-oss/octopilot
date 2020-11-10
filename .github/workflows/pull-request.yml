@@ -6,7 +6,7 @@ on: [pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Unshallow
@@ -15,28 +15,27 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2.1.3
         with:
-          go-version: '1.14'
+          go-version: '1.15'
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2.2.1
         with:
+          version: v0.143.0
           args: release --snapshot --skip-publish --rm-dist
 
   unit-tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 
       - name: Setup Go
         uses: actions/setup-go@v2.1.3
         with:
-          go-version: '1.14'
+          go-version: '1.15'
       - name: Run Unit Tests
         run: go test -v ./...
-        env:
-          GOFLAGS: -mod=vendor
 
   linters:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 

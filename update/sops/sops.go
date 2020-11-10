@@ -15,7 +15,7 @@ import (
 	"go.mozilla.org/sops/v3/cmd/sops/formats"
 	"go.mozilla.org/sops/v3/keyservice"
 
-	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
 type SopsUpdater struct {

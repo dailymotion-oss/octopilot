@@ -29,10 +29,10 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "single repository without parameters",
-			envVarValue: "dailymotion/octopilot",
+			envVarValue: "dailymotion-oss/octopilot",
 			expected: []Repository{
 				{
-					Owner:  "dailymotion",
+					Owner:  "dailymotion-oss",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
@@ -40,10 +40,10 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "multiple repositories without parameters",
-			envVarValue: "dailymotion/octopilot some-owner/MyGreatRepo",
+			envVarValue: "dailymotion-oss/octopilot some-owner/MyGreatRepo",
 			expected: []Repository{
 				{
-					Owner:  "dailymotion",
+					Owner:  "dailymotion-oss",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
@@ -56,13 +56,13 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "multiple repositories with custom separator",
-			envVarValue: "dailymotion/octopilot|some-owner/MyGreatRepo",
+			envVarValue: "dailymotion-oss/octopilot|some-owner/MyGreatRepo",
 			params: map[string]string{
 				"sep": "|",
 			},
 			expected: []Repository{
 				{
-					Owner:  "dailymotion",
+					Owner:  "dailymotion-oss",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
@@ -75,10 +75,10 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "single repository with a single parameter",
-			envVarValue: "dailymotion/octopilot(draft=true)",
+			envVarValue: "dailymotion-oss/octopilot(draft=true)",
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"draft": "true",
@@ -88,10 +88,10 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "multiple repositories with multiple parameters",
-			envVarValue: "dailymotion/octopilot(draft=true,merge=true) some-owner/MyGreatRepo(merge=false)",
+			envVarValue: "dailymotion-oss/octopilot(draft=true,merge=true) some-owner/MyGreatRepo(merge=false)",
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"draft": "true",
@@ -109,13 +109,13 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 		},
 		{
 			name:        "multiple repositories with multiple parameters with overrides",
-			envVarValue: "dailymotion/octopilot(draft=true,merge=false) some-owner/MyGreatRepo(draft=true)",
+			envVarValue: "dailymotion-oss/octopilot(draft=true,merge=false) some-owner/MyGreatRepo(draft=true)",
 			params: map[string]string{
 				"merge": "true",
 			},
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"draft": "true",

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dailymotion/octopilot/update"
+	"github.com/dailymotion-oss/octopilot/update"
 )
 
 const (

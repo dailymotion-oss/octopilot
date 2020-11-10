@@ -11,6 +11,8 @@ $ GNUPGHOME=.gnupg gpg --batch --gen-key gpg-gen-key-data.txt
 It requires the [gpg](https://gnupg.org/) tool, and uses the data from the [gpg-gen-key-data.txt](gpg-gen-key-data.txt) file to create a key. This command should be run from inside this directory (`testdata`), and will write files inside the `.gnupg` directory.
 Note that the key doesn't have any passphrase, to make it easier to use in a unit-testing environment.
 
+If you have an issue with the gpg command, with an error message such as: `gpg: can't connect to the agent: IPC connect call failed`, it may be because the `GNUPGHOME` path is too long. You can confirm this by running `GNUPGHOME=.gnupg gpg-agent --daemon -v`, and if it fails with "socket name is too long", then you'll need to move this repo up in your FS hierarchy.
+
 The key fingerprint was then retrieved using the following command:
 
 ```

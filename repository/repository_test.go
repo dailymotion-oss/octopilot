@@ -33,10 +33,10 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "single repository without parameters",
-			repos: []string{"dailymotion/octopilot"},
+			repos: []string{"dailymotion-oss/octopilot"},
 			expected: []Repository{
 				{
-					Owner:  "dailymotion",
+					Owner:  "dailymotion-oss",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
@@ -44,10 +44,10 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "multiple repositories without parameters",
-			repos: []string{"dailymotion/octopilot", "some-owner/MyGreatRepo"},
+			repos: []string{"dailymotion-oss/octopilot", "some-owner/MyGreatRepo"},
 			expected: []Repository{
 				{
-					Owner:  "dailymotion",
+					Owner:  "dailymotion-oss",
 					Name:   "octopilot",
 					Params: map[string]string{},
 				},
@@ -60,10 +60,10 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "single repository with a single parameter",
-			repos: []string{"dailymotion/octopilot(draft=true)"},
+			repos: []string{"dailymotion-oss/octopilot(draft=true)"},
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"draft": "true",
@@ -73,10 +73,10 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "multiple repositories with multiple parameters",
-			repos: []string{"dailymotion/octopilot(draft=true,merge=true)", "some-owner/MyGreatRepo(merge=false)"},
+			repos: []string{"dailymotion-oss/octopilot(draft=true,merge=true)", "some-owner/MyGreatRepo(merge=false)"},
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"draft": "true",
@@ -96,11 +96,11 @@ func TestParse(t *testing.T) {
 			name:  "discover from environment",
 			repos: []string{"discover-from(env=OCTOPILOT_TEST_DISCOVER_FROM,sep=;,merge=true)"},
 			preTestHook: func() {
-				os.Setenv("OCTOPILOT_TEST_DISCOVER_FROM", "dailymotion/octopilot;some-owner/MyGreatRepo(merge=false)")
+				os.Setenv("OCTOPILOT_TEST_DISCOVER_FROM", "dailymotion-oss/octopilot;some-owner/MyGreatRepo(merge=false)")
 			},
 			expected: []Repository{
 				{
-					Owner: "dailymotion",
+					Owner: "dailymotion-oss",
 					Name:  "octopilot",
 					Params: map[string]string{
 						"merge": "true",

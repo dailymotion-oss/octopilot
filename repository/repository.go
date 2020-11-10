@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/dailymotion/octopilot/internal/parameters"
-	"github.com/dailymotion/octopilot/update"
+	"github.com/dailymotion-oss/octopilot/internal/parameters"
+	"github.com/dailymotion-oss/octopilot/update"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 )

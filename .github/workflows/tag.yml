@@ -9,12 +9,12 @@ on:
 
 jobs:
   tag:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_DM_BOT_TOKEN }}
+          token: ${{ secrets.DM_BOT_TOKEN }}
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
       - name: Tag
@@ -22,5 +22,5 @@ jobs:
       - name: Push
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.GH_DM_BOT_TOKEN }}
+          github_token: ${{ secrets.DM_BOT_TOKEN }}
           tags: true
