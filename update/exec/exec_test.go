@@ -75,7 +75,7 @@ func TestNewUpdater(t *testing.T) {
 				"cmd":     "ls",
 				"timeout": "15 seconds",
 			},
-			expectedErrorMsg: "failed to parse duration for cmd timeout '15 seconds': time: unknown unit  seconds in duration 15 seconds",
+			expectedErrorMsg: "failed to parse duration for cmd timeout '15 seconds': time: unknown unit \" seconds\" in duration \"15 seconds\"",
 		},
 	}
 

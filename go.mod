@@ -1,6 +1,6 @@
-module github.com/dailymotion/octopilot
+module github.com/dailymotion-oss/octopilot
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Azure/go-autorest/autorest v0.9.7 // indirect

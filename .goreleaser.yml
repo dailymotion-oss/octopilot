@@ -7,11 +7,11 @@ builds:
     goarch:
       - amd64
     ldflags:
-      - -X main.buildVersion={{.Version}} -X main.buildCommit={{.Commit}} -X main.buildDate={{.Date}}
+      - -X main.buildVersion={{.Version}}
+      - -X main.buildCommit={{.Commit}}
+      - -X main.buildDate={{.Date}}
     env:
       - CGO_ENABLED=0
-      - GO111MODULE=on
-      - GOFLAGS=-mod=vendor
 
 archives:
   - format: binary
@@ -19,10 +19,11 @@ archives:
 dockers:
   - dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "dailymotion/{{.ProjectName}}:{{ .Tag }}"
-      - "dailymotion/{{.ProjectName}}:v{{ .Major }}"
-      - "dailymotion/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
-      - "dailymotion/{{.ProjectName}}:latest"
+      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:{{ .Version }}"
+      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:{{ .Tag }}"
+      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:v{{ .Major }}"
+      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:latest"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"

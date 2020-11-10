@@ -4,12 +4,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dailymotion/octopilot/update/exec"
-	"github.com/dailymotion/octopilot/update/helm"
-	"github.com/dailymotion/octopilot/update/regex"
-	"github.com/dailymotion/octopilot/update/sops"
-	"github.com/dailymotion/octopilot/update/value"
-	"github.com/dailymotion/octopilot/update/yaml"
+	"github.com/dailymotion-oss/octopilot/update/exec"
+	"github.com/dailymotion-oss/octopilot/update/helm"
+	"github.com/dailymotion-oss/octopilot/update/regex"
+	"github.com/dailymotion-oss/octopilot/update/sops"
+	"github.com/dailymotion-oss/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/yaml"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

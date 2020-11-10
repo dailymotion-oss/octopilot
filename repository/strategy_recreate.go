@@ -6,7 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/dailymotion/octopilot/update"
+	"github.com/dailymotion-oss/octopilot/update"
 	"github.com/google/go-github/v28/github"
 )
 

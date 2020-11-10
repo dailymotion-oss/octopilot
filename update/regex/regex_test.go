@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dailymotion/octopilot/update/value"
+	"github.com/dailymotion-oss/octopilot/update/value"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
