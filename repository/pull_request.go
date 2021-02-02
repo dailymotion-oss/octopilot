@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/go-github/v28/github"
@@ -221,24 +220,24 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 	return nil
 }
 
-func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest, retryCount ...int) error {
+func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest, retryCounts ...int) error {
 	var (
-		client = githubClient(ctx, options.Token)
-		prURL  = pr.GetHTMLURL()
-		retry  = 0
+		client     = githubClient(ctx, options.Token)
+		prURL      = pr.GetHTMLURL()
+		retryCount = 0
 	)
-	if len(retryCount) > 0 && retryCount[0] > 0 {
-		retry = retryCount[0]
+	if len(retryCounts) > 0 && retryCounts[0] > 0 {
+		retryCount = retryCounts[0]
 	}
-	if retry >= 3 {
-		return fmt.Errorf("failed to merge Pull Request %s after %d retries", prURL, retry)
+	if retryCount >= options.PullRequest.Merge.RetryCount {
+		return fmt.Errorf("failed to merge Pull Request %s after %d retries (max retry count is set to %d)", prURL, retryCount, options.PullRequest.Merge.RetryCount)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": prURL,
 		"timeout":      options.PullRequest.Merge.PollTimeout.String(),
-		"retry":        retry,
+		"retry":        retryCount,
 	}).Trace("Starting Pull Request merge process")
 
 	err := r.waitUntilPullRequestIsMergeable(ctx, options, pr)
@@ -249,7 +248,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": prURL,
-		"retry":        retry,
+		"retry":        retryCount,
 	}).Trace("Getting Pull Request status")
 	pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
 	if err != nil {
@@ -259,7 +258,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 		logrus.WithFields(logrus.Fields{
 			"repository":   r.FullName(),
 			"pull-request": prURL,
-			"retry":        retry,
+			"retry":        retryCount,
 		}).Info("Pull Request is already merged")
 		return nil
 	}
@@ -267,21 +266,21 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": prURL,
-		"retry":        retry,
+		"retry":        retryCount,
 	}).Trace("Merging Pull Request")
 	res, resp, err := client.PullRequests.Merge(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Merge.CommitMessage, &github.PullRequestOptions{
 		MergeMethod: options.PullRequest.Merge.Method,
 		CommitTitle: options.PullRequest.Merge.CommitTitle,
 		SHA:         options.PullRequest.Merge.SHA,
 	})
-	if err != nil && shouldRetryMerge(resp) {
+	if err != nil && shouldRetryMerge(resp, err) {
 		logrus.WithFields(logrus.Fields{
 			"repository":   r.FullName(),
 			"pull-request": prURL,
-			"retry":        retry,
+			"retry":        retryCount,
 		}).WithError(err).Warning("Failed to merge Pull Request - will retry")
-		retry++
-		err = r.mergePullRequest(ctx, options, pr, retry)
+		retryCount++
+		err = r.mergePullRequest(ctx, options, pr, retryCount)
 		if err == nil {
 			return nil
 		}
@@ -296,7 +295,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": prURL,
-		"retry":        retry,
+		"retry":        retryCount,
 	}).Info("Pull Request merged")
 	return nil
 }
@@ -432,11 +431,14 @@ func prHasLabels(pr *github.PullRequest, labels []string) bool {
 	return matchingLabels == len(labels)
 }
 
-func shouldRetryMerge(resp *github.Response) bool {
-	if resp.StatusCode == 405 && strings.Contains(resp.Status, "Base branch was modified") {
-		// PUT https://api.github.com/repos/{org}/{repo}/pulls/{pull}/merge: 405 Base branch was modified. Review and try the merge again.
-		// see https://github.com/jenkins-x/lighthouse/blob/v0.0.922/pkg/keeper/keeper.go#L1110 for more context
-		return true
+// shouldRetryMerge returns true if we should retry the merge operation at a later time
+// see https://github.com/jenkins-x/lighthouse/blob/v0.0.922/pkg/keeper/keeper.go#L1110 for more context
+func shouldRetryMerge(resp *github.Response, err error) bool {
+	switch githubErr := err.(type) {
+	case *github.ErrorResponse:
+		if resp.StatusCode == 405 && githubErr.Message == "Base branch was modified. Review and try the merge again." {
+			return true
+		}
 	}
 	return false
 }
