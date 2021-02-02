@@ -62,6 +62,7 @@ type PullRequestMergeOptions struct {
 	SHA           string
 	PollInterval  time.Duration
 	PollTimeout   time.Duration
+	RetryCount    int
 }
 
 func (o *GitOptions) setDefaultValues(updaters []update.Updater, tplExecutorFunc templateExecutor) error {

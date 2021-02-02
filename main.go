@@ -58,6 +58,7 @@ func init() {
 	pflag.StringVar(&options.GitHub.PullRequest.Merge.SHA, "pr-merge-sha", "", "")
 	pflag.DurationVar(&options.GitHub.PullRequest.Merge.PollTimeout, "pr-merge-poll-timeout", 10*time.Minute, "")
 	pflag.DurationVar(&options.GitHub.PullRequest.Merge.PollInterval, "pr-merge-poll-interval", 30*time.Second, "")
+	pflag.IntVar(&options.GitHub.PullRequest.Merge.RetryCount, "pr-merge-retry-count", 3, "")
 
 	// git-related flags
 	pflag.StringVar(&options.UpdateOptions.Git.CloneDir, "git-clone-dir", temporaryDirectory(), "")
