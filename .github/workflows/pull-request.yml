@@ -43,3 +43,25 @@ jobs:
         uses: actions-contrib/golangci-lint@v1
         with:
           golangci_lint_version: v1.24
+
+  next-version:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      
+      - id: nextversiondocker
+        name: nextversiondocker
+        uses: docker://gcr.io/jenkinsxio/jx-release-version:2.2.0
+        with:
+          args: -debug
+          entrypoint: jx-release-version
+      - id: nextversionaction
+        name: nextversionaction
+        uses: jenkins-x-plugins/jx-release-version@v2.2.0
+      - name: echoaction
+        run: echo next version is $VERSION
+        env:
+          VERSION: ${{ steps.nextversionaction.outputs.version }}
