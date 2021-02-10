@@ -28,7 +28,7 @@ func executeTemplate(options UpdateOptions, repo Repository, repoPath string, te
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(template.FuncMap{
 			"readFile":            tplReadFileFunc(repoPath),
-			"githubRelease":       tplGitHubReleaseFunc(options.GitHub.Token),
+			"githubRelease":       tplGitHubReleaseFunc(options.GitHub),
 			"expandGithubLinks":   tplExpandGitHubLinksToMarkdownFunc(),
 			"extractMarkdownURLs": tplExtractMarkdownURLsFunc(),
 			"md2txt":              stripmd.Strip,
@@ -62,7 +62,7 @@ func tplReadFileFunc(repoPath string) func(string) string {
 	}
 }
 
-func tplGitHubReleaseFunc(githubToken string) func(string) string {
+func tplGitHubReleaseFunc(githubOpts GitHubOptions) func(string) string {
 	return func(releaseID string) string {
 		elems := strings.SplitN(releaseID, "/", 3)
 		if len(elems) < 3 {
@@ -71,7 +71,11 @@ func tplGitHubReleaseFunc(githubToken string) func(string) string {
 		owner, repo, tag := elems[0], elems[1], elems[2]
 
 		ctx := context.Background()
-		release, _, err := githubClient(ctx, githubToken).Repositories.GetReleaseByTag(ctx, owner, repo, tag)
+		ghClient, _, err := githubClient(ctx, githubOpts)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create github client: %s", err))
+		}
+		release, _, err := ghClient.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
 		if err != nil {
 			panic(fmt.Sprintf("failed to retrieve GitHub Release for %s/%s %s: %v", owner, repo, tag, err))
 		}

@@ -7,6 +7,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.8.3 // indirect
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.23.22 // indirect
+	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-github/v28 v28.0.2

@@ -7,9 +7,7 @@ import (
 
 	"github.com/google/go-github/v28/github"
 	"github.com/sirupsen/logrus"
-	"github.com/ybbus/httpretry"
 	"github.com/zoumo/goset"
-	"golang.org/x/oauth2"
 )
 
 func (r Repository) findMatchingPullRequest(ctx context.Context, options GitHubOptions) (*github.PullRequest, error) {
@@ -17,7 +15,10 @@ func (r Repository) findMatchingPullRequest(ctx context.Context, options GitHubO
 		"repository": r.FullName(),
 		"labels":     options.PullRequest.Labels,
 	}).Trace("Looking for existing Pull Requests")
-	client := githubClient(ctx, options.Token)
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 	prs, _, err := client.PullRequests.List(ctx, r.Owner, r.Name, &github.PullRequestListOptions{
 		Base: options.PullRequest.BaseBranch,
 	})
@@ -48,7 +49,10 @@ func (r Repository) createPullRequest(ctx context.Context, options GitHubOptions
 		"repository": r.FullName(),
 	}).Trace("Creating new Pull Request")
 
-	client := githubClient(ctx, options.Token)
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 	pr, _, err := client.PullRequests.Create(ctx, r.Owner, r.Name, &github.NewPullRequest{
 		Title:               github.String(options.PullRequest.Title),
 		Base:                github.String(options.PullRequest.BaseBranch),
@@ -80,11 +84,11 @@ func (r Repository) createPullRequest(ctx context.Context, options GitHubOptions
 }
 
 func (r Repository) updatePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest) (*github.PullRequest, error) {
-	var (
-		client     = githubClient(ctx, options.Token)
-		needUpdate bool
-		err        error
-	)
+	var needUpdate bool
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 
 	if len(options.PullRequest.Title) > 0 {
 		switch options.PullRequest.TitleUpdateOperation {
@@ -160,12 +164,15 @@ func (r Repository) ensurePullRequestLabels(ctx context.Context, options GitHubO
 		return nil
 	}
 
-	client := githubClient(ctx, options.Token)
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
 	logrus.WithFields(logrus.Fields{
 		"repository":   r.FullName(),
 		"pull-request": pr.GetHTMLURL(),
 	}).Trace("Adding labels to Pull Request")
-	_, _, err := client.Issues.AddLabelsToIssue(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Labels)
+	_, _, err = client.Issues.AddLabelsToIssue(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Labels)
 	if err != nil {
 		return fmt.Errorf("failed to add labels %v on PR %s: %w", options.PullRequest.Labels, pr.GetHTMLURL(), err)
 	}
@@ -186,7 +193,10 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 		return nil
 	}
 
-	client := githubClient(ctx, options.Token)
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
 	for i, comment := range options.PullRequest.Comments {
 		logrus.WithFields(logrus.Fields{
 			"repository":   r.FullName(),
@@ -222,10 +232,13 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 
 func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest, retryCounts ...int) error {
 	var (
-		client     = githubClient(ctx, options.Token)
 		prURL      = pr.GetHTMLURL()
 		retryCount = 0
 	)
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
 	if len(retryCounts) > 0 && retryCounts[0] > 0 {
 		retryCount = retryCounts[0]
 	}
@@ -240,7 +253,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 		"retry":        retryCount,
 	}).Trace("Starting Pull Request merge process")
 
-	err := r.waitUntilPullRequestIsMergeable(ctx, options, pr)
+	err = r.waitUntilPullRequestIsMergeable(ctx, options, pr)
 	if err != nil {
 		return fmt.Errorf("failed to wait until Pull Request %s is mergeable: %w", prURL, err)
 	}
@@ -301,10 +314,12 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 }
 
 func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
-	var (
-		client    = githubClient(ctx, options.Token)
-		startTime = time.Now()
-	)
+	var startTime = time.Now()
+
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
 
 	// first, ensure PR is mergeable
 	// https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests
@@ -441,11 +456,4 @@ func shouldRetryMerge(resp *github.Response, err error) bool {
 		}
 	}
 	return false
-}
-
-func githubClient(ctx context.Context, token string) *github.Client {
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	httpClient := oauth2.NewClient(ctx, tokenSource)
-	httpClient = httpretry.NewCustomClient(httpClient)
-	return github.NewClient(httpClient)
 }

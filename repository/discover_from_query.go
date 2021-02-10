@@ -7,9 +7,12 @@ import (
 	"github.com/google/go-github/v28/github"
 )
 
-func discoverRepositoriesFromQuery(ctx context.Context, query string, params map[string]string, githubToken string) ([]Repository, error) {
+func discoverRepositoriesFromQuery(ctx context.Context, query string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
 	repos := []Repository{}
-	ghClient := githubClient(ctx, githubToken)
+	ghClient, _, err := githubClient(ctx, githubOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 
 	page := 1
 	for {
