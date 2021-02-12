@@ -141,7 +141,7 @@ func TestDiscoverRepositoriesFromEnvironment(t *testing.T) {
 			os.Setenv(envVar, test.envVarValue)
 			defer os.Unsetenv(envVar)
 
-			actual, err := discoverRepositoriesFromEnvironment(context.Background(), envVar, test.params, "")
+			actual, err := discoverRepositoriesFromEnvironment(context.Background(), envVar, test.params, GitHubOptions{})
 			if len(test.expectedErrorMsg) > 0 {
 				require.EqualError(t, err, test.expectedErrorMsg)
 				assert.Empty(t, actual)

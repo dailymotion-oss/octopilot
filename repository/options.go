@@ -38,8 +38,13 @@ type GitOptions struct {
 }
 
 type GitHubOptions struct {
-	Token       string
-	PullRequest PullRequestOptions
+	AuthMethod     string
+	Token          string
+	AppID          int64
+	InstallationID int64
+	PrivateKey     string
+	PrivateKeyPath string
+	PullRequest    PullRequestOptions
 }
 
 type PullRequestOptions struct {

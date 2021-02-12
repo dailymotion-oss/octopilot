@@ -39,8 +39,15 @@ func init() {
 	assert(pflag.CommandLine.SetAnnotation("update", "mandatory", []string{"true"}))
 	pflag.StringArrayVarP(&options.repos, "repo", "r", nil, "")
 	assert(pflag.CommandLine.SetAnnotation("repo", "mandatory", []string{"true"}))
-	pflag.StringVar(&options.GitHub.Token, "github-token", os.Getenv("GITHUB_TOKEN"), "Mandatory GitHub token. Default to the GITHUB_TOKEN env var.")
-	assert(pflag.CommandLine.SetAnnotation("github-token", "mandatory", []string{"true"}))
+	pflag.StringVar(&options.GitHub.AuthMethod, "github-auth-method", "token", "Mandatory GitHub authentication method: can be `token` or `app`. Defaults to token.")
+	assert(pflag.CommandLine.SetAnnotation("github-auth-method", "mandatory", []string{"true"}))
+
+	// GitHub auth flags
+	pflag.StringVar(&options.GitHub.Token, "github-token", os.Getenv("GITHUB_TOKEN"), "For the `token` GitHub auth method, contains the GitHub token. Default to the GITHUB_TOKEN env var.")
+	pflag.Int64Var(&options.GitHub.AppID, "github-app-id", int64(getenvInt("GITHUB_APP_ID")), "For the `app` GitHub auth method, contains the GitHubApp AppID. Default to the GITHUB_APP_ID env var.")
+	pflag.Int64Var(&options.GitHub.InstallationID, "github-installation-id", int64(getenvInt("GITHUB_INSTALLATION_ID")), "For the `app` GitHub auth method, contains the GitHubApp Installation ID. Default to the GITHUB_INSTALLATION_ID env var.")
+	pflag.StringVar(&options.GitHub.PrivateKey, "github-privatekey", os.Getenv("GITHUB_PRIVATEKEY"), "For the `app` GitHub auth method, contains the GitHubApp Private key file in PEM format. Default to the GITHUB_PRIVATEKEY env var.")
+	pflag.StringVar(&options.GitHub.PrivateKeyPath, "github-privatekey-path", os.Getenv("GITHUB_PRIVATEKEY_PATH"), "For the `app` GitHub auth method, contains the GitHubApp Private key file path `/some/key.pem` (used if the github-privatekey is empty). Default to the GITHUB_PRIVATEKEY_PATH env var.")
 
 	// pull-request flags
 	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "")
@@ -100,7 +107,7 @@ func main() {
 	logrus.WithField("updaters", updaters).Debug("Updaters ready")
 
 	logrus.WithField("repos", options.repos).Trace("Parsing repositories")
-	repositories, err := repository.Parse(ctx, options.repos, options.GitHub.Token)
+	repositories, err := repository.Parse(ctx, options.repos, options.GitHub)
 	if err != nil {
 		logrus.
 			WithError(err).
@@ -224,4 +231,14 @@ func assert(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func getenvInt(key string) int {
+	s := os.Getenv(key)
+	if s != "" {
+		v, err := strconv.Atoi(s)
+		assert(err)
+		return v
+	}
+	return 0
 }

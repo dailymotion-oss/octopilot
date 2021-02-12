@@ -9,7 +9,7 @@ import (
 	"github.com/imdario/mergo"
 )
 
-func discoverRepositoriesFromEnvironment(ctx context.Context, envVar string, params map[string]string, githubToken string) ([]Repository, error) {
+func discoverRepositoriesFromEnvironment(ctx context.Context, envVar string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
 	separator := params["sep"]
 	if len(separator) == 0 {
 		separator = " "
@@ -26,7 +26,7 @@ func discoverRepositoriesFromEnvironment(ctx context.Context, envVar string, par
 		return nil, nil
 	}
 
-	repos, err := Parse(ctx, repoNames, githubToken)
+	repos, err := Parse(ctx, repoNames, githubOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %v: %w", repoNames, err)
 	}

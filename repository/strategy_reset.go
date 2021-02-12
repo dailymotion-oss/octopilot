@@ -17,7 +17,7 @@ type ResetStrategy struct {
 }
 
 func (s *ResetStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
-	gitRepo, err := cloneGitRepository(ctx, s.Repository.FullName(), s.RepoPath, s.Options.GitHub)
+	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to clone repository %s: %w", s.Repository.FullName(), err)
 	}
@@ -72,9 +72,9 @@ func (s *ResetStrategy) Run(ctx context.Context) (bool, *github.PullRequest, err
 	}
 
 	err = pushChanges(ctx, gitRepo, pushOptions{
-		GitHubToken: s.Options.GitHub.Token,
-		BranchName:  branchName,
-		ForcePush:   true,
+		GitHubOpts: s.Options.GitHub,
+		BranchName: branchName,
+		ForcePush:  true,
 	})
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to push changes to git repository %s: %w", s.Repository.FullName(), err)

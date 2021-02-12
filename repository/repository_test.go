@@ -124,7 +124,7 @@ func TestParse(t *testing.T) {
 			if test.preTestHook != nil {
 				test.preTestHook()
 			}
-			actual, err := Parse(context.Background(), test.repos, "")
+			actual, err := Parse(context.Background(), test.repos, GitHubOptions{})
 			if len(test.expectedErrorMsg) > 0 {
 				require.EqualError(t, err, test.expectedErrorMsg)
 				assert.Empty(t, actual)

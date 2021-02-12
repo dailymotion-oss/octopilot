@@ -15,18 +15,23 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
-func cloneGitRepository(ctx context.Context, repoFullName string, localPath string, options GitHubOptions) (*git.Repository, error) {
-	url := fmt.Sprintf("https://github.com/%s.git", repoFullName)
+func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options GitHubOptions) (*git.Repository, error) {
+	url := fmt.Sprintf("https://github.com/%s.git", repo.FullName())
 	logrus.WithFields(logrus.Fields{
 		"git-url":    url,
 		"local-path": localPath,
 	}).Trace("Cloning git repository")
 
+	_, token, err := githubClient(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
+
 	gitRepo, err := git.PlainCloneContext(ctx, localPath, false, &git.CloneOptions{
 		URL: url,
 		Auth: &http.BasicAuth{
-			Username: "OctoPilot", // yes, this can be anything except an empty string
-			Password: options.Token,
+			Username: "x-access-token", // For GitHub Apps, the username must be `x-access-token`. For Personal Tokens, it doesn't matter.
+			Password: token,
 		},
 	})
 	if err != nil {
@@ -153,9 +158,9 @@ func commitChanges(ctx context.Context, gitRepo *git.Repository, options UpdateO
 }
 
 type pushOptions struct {
-	GitHubToken string
-	BranchName  string
-	ForcePush   bool
+	GitHubOpts GitHubOptions
+	BranchName string
+	ForcePush  bool
 }
 
 func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
@@ -174,6 +179,11 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 		refSpec = fmt.Sprintf("+%s", refSpec)
 	}
 
+	_, token, err := githubClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"repository-name": repoName,
 		"branch":          opts.BranchName,
@@ -184,8 +194,8 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 			config.RefSpec(refSpec),
 		},
 		Auth: &http.BasicAuth{
-			Username: "OctoPilot", // yes, this can be anything except an empty string
-			Password: opts.GitHubToken,
+			Username: "x-access-token", // For GitHub Apps, the username must be `x-access-token`. For Personal Tokens, it doesn't matter.
+			Password: token,
 		},
 	})
 	if err != nil {

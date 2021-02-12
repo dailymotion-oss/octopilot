@@ -28,7 +28,7 @@ type Repository struct {
 	Params map[string]string
 }
 
-func Parse(ctx context.Context, repos []string, githubToken string) ([]Repository, error) {
+func Parse(ctx context.Context, repos []string, githubOpts GitHubOptions) ([]Repository, error) {
 	var repositories []Repository
 	for _, repo := range repos {
 		matches := repoRegexp.FindStringSubmatch(repo)
@@ -38,7 +38,7 @@ func Parse(ctx context.Context, repos []string, githubToken string) ([]Repositor
 
 		switch matches[1] {
 		case "discover-from":
-			discoveredRepos, err := discoverRepositoriesFrom(ctx, parameters.Parse(matches[2]), githubToken)
+			discoveredRepos, err := discoverRepositoriesFrom(ctx, parameters.Parse(matches[2]), githubOpts)
 			if err != nil {
 				return nil, fmt.Errorf("failed to discover repositories: %w", err)
 			}
@@ -59,14 +59,14 @@ func Parse(ctx context.Context, repos []string, githubToken string) ([]Repositor
 	return repositories, nil
 }
 
-func discoverRepositoriesFrom(ctx context.Context, params map[string]string, githubToken string) ([]Repository, error) {
+func discoverRepositoriesFrom(ctx context.Context, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
 	if query, ok := params["query"]; ok {
-		return discoverRepositoriesFromQuery(ctx, query, params, githubToken)
+		return discoverRepositoriesFromQuery(ctx, query, params, githubOpts)
 	}
 
 	if envVar, ok := params["env"]; ok {
 		delete(params, "env")
-		return discoverRepositoriesFromEnvironment(ctx, envVar, params, githubToken)
+		return discoverRepositoriesFromEnvironment(ctx, envVar, params, githubOpts)
 	}
 
 	return nil, fmt.Errorf("can't discover repositories from params %v: missing either query or env param", params)
