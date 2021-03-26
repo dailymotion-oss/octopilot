@@ -3,24 +3,28 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v28/github"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/httpretry"
 	"golang.org/x/oauth2"
-	"net/http"
 )
 
 func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client, string, error) {
-	var httpClient *http.Client
-	var token string
-	var err error
-	logrus.Debugf("Creating gh client: %v", ghOptions.AuthMethod)
-	if ghOptions.AuthMethod == "token" {
+	var (
+		httpClient *http.Client
+		token      string
+		err        error
+	)
+	logrus.Tracef("Creating github client using auth method %q", ghOptions.AuthMethod)
+	switch ghOptions.AuthMethod {
+	case "token":
 		httpClient, token, err = githubTokenClient(ctx, ghOptions.Token)
-	} else if ghOptions.AuthMethod == "app" {
+	case "app":
 		httpClient, token, err = githubAppClient(ctx, ghOptions.AppID, ghOptions.InstallationID, ghOptions.PrivateKey, ghOptions.PrivateKeyPath)
-	} else {
+	default:
 		return nil, "", fmt.Errorf("GitHub auth method unrecognized (allowed values: app, token): %s", ghOptions.AuthMethod)
 	}
 	if err != nil {
@@ -37,9 +41,11 @@ func githubTokenClient(ctx context.Context, token string) (*http.Client, string,
 }
 
 func githubAppClient(ctx context.Context, appId int64, installationId int64, privateKey string, privateKeyPath string) (*http.Client, string, error) {
-	tr := http.DefaultTransport
-	var itr *ghinstallation.Transport
-	var err error
+	var (
+		tr  = http.DefaultTransport
+		itr *ghinstallation.Transport
+		err error
+	)
 	if len(privateKey) > 0 {
 		itr, err = ghinstallation.New(tr, appId, installationId, []byte(privateKey))
 	} else {
