@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/go-github/v28/github"
@@ -376,7 +377,12 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 	// https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref
 	requiredStatusChecks, _, err := client.Repositories.GetRequiredStatusChecks(ctx, r.Owner, r.Name, pr.GetBase().GetRef())
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the required status checks for branch %s: %w", pr.GetBase().GetRef(), err)
+		if errIsStatusNotFound(err) {
+			// Branch doesn't have "require status checks" configured
+			requiredStatusChecks = &github.RequiredStatusChecks{Contexts: []string{}}
+		} else {
+			return fmt.Errorf("failed to retrieve the required status checks for branch %s: %w", pr.GetBase().GetRef(), err)
+		}
 	}
 	for {
 		logrus.WithFields(logrus.Fields{
@@ -431,6 +437,15 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 	}
 
 	return nil
+}
+
+func errIsStatusNotFound(err error) bool {
+	detailedErr, ok := err.(*github.ErrorResponse)
+	if !ok {
+		return false
+	}
+
+	return detailedErr.Response.StatusCode == http.StatusNotFound
 }
 
 func prHasLabels(pr *github.PullRequest, labels []string) bool {
