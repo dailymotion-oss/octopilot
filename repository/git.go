@@ -17,9 +17,16 @@ import (
 
 func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options GitHubOptions) (*git.Repository, error) {
 	url := fmt.Sprintf("https://github.com/%s.git", repo.FullName())
+
+	branch := "HEAD"
+	if b, ok := repo.Params["branch"]; ok && strings.TrimSpace(b) != "" {
+		branch = fmt.Sprintf("refs/heads/%s", b)
+	}
+	referenceName := plumbing.ReferenceName(branch)
 	logrus.WithFields(logrus.Fields{
-		"git-url":    url,
-		"local-path": localPath,
+		"git-url":       url,
+		"git-reference": referenceName.String(),
+		"local-path":    localPath,
 	}).Trace("Cloning git repository")
 
 	_, token, err := githubClient(ctx, options)
@@ -28,7 +35,8 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	}
 
 	gitRepo, err := git.PlainCloneContext(ctx, localPath, false, &git.CloneOptions{
-		URL: url,
+		ReferenceName: referenceName,
+		URL:           url,
 		Auth: &http.BasicAuth{
 			Username: "x-access-token", // For GitHub Apps, the username must be `x-access-token`. For Personal Tokens, it doesn't matter.
 			Password: token,
@@ -39,9 +47,11 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"git-url":    url,
-		"local-path": localPath,
+		"git-url":       url,
+		"git-reference": referenceName.String(),
+		"local-path":    localPath,
 	}).Debug("Git repository cloned")
+
 	return gitRepo, nil
 }
 
