@@ -18,6 +18,10 @@ It can update a single repository or multiple at the same time, with different s
 - re-use existing pull requests based on labels, by adding commits to the existing branch
 - re-use existing pull requests based on labels, but re-creating the branch from the master branch
 
+It can update repositories based on specific branch instead of the HEAD one's if mentionned
+- The option `--repo "xxx/yyy(branch=xyz)"` will update the repo `xxx/yyy` based on the `xyz` branch if it exists
+- The option `--repo "xxx/yyy"` will update the repo xxx/yyy based on the `HEAD` branch as usual
+
 It is somewhat based on [updatebot](https://github.com/jenkins-x/updatebot), but written in [Go](https://golang.org/), and with more features:
 - supports running multiple "updaters" in the same execution - for example create a PR with both a sops change and a regex change
 - run any tool to update a repo
