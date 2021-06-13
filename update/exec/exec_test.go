@@ -97,6 +97,12 @@ func TestNewUpdater(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Parallel()
+
+	currentDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	testDataDir := filepath.Join(currentDir, "testdata")
+
 	tests := []struct {
 		name                  string
 		files                 map[string]string
@@ -118,7 +124,7 @@ func TestUpdate(t *testing.T) {
 			expected: true,
 			extraCheck: func() bool {
 				// ensure the file has been deleted
-				_, err := os.Stat(filepath.Join("testdata", "file-to-delete.txt"))
+				_, err := os.Stat(filepath.Join(testDataDir, "file-to-delete.txt"))
 				return err != nil
 			},
 		},
@@ -148,8 +154,26 @@ func TestUpdate(t *testing.T) {
 			},
 			expected: true,
 			extraCheck: func() bool {
-				actualFileContent, _ := ioutil.ReadFile(filepath.Join("testdata", "file-to-print.stdout"))
+				actualFileContent, _ := ioutil.ReadFile(filepath.Join(testDataDir, "file-to-print.stdout"))
 				return bytes.Equal(actualFileContent, []byte("some content"))
+			},
+		},
+		{
+			name: "run a cmd with a specified file containing * and write its stdout to a file",
+			files: map[string]string{
+				"file-to-list.txt": "some content",
+			},
+			updater: &ExecUpdater{
+				Command:  "ls",
+				FilePath: "file-*-list.*",
+				Args:     []string{},
+				Stdout:   "ls-result.stdout",
+				Timeout:  1 * time.Second,
+			},
+			expected: true,
+			extraCheck: func() bool {
+				actualFileContent, _ := ioutil.ReadFile(filepath.Join(testDataDir, "ls-result.stdout"))
+				return bytes.Equal(actualFileContent, []byte(filepath.Join(testDataDir, "file-to-list.txt\n")))
 			},
 		},
 	}
@@ -160,14 +184,14 @@ func TestUpdate(t *testing.T) {
 			t.Parallel()
 			{
 				for filename, content := range test.files {
-					err := os.MkdirAll(filepath.Dir(filepath.Join("testdata", filename)), 0755)
+					err := os.MkdirAll(filepath.Dir(filepath.Join(testDataDir, filename)), 0755)
 					require.NoErrorf(t, err, "can't create testdata directories for %s", filename)
-					err = ioutil.WriteFile(filepath.Join("testdata", filename), []byte(content), 0644)
+					err = ioutil.WriteFile(filepath.Join(testDataDir, filename), []byte(content), 0644)
 					require.NoErrorf(t, err, "can't write testdata file %s", filename)
 				}
 			}
 
-			actual, err := test.updater.Update(context.Background(), "testdata")
+			actual, err := test.updater.Update(context.Background(), filepath.Join(testDataDir))
 			if len(test.expectedErrorMessages) > 0 {
 				require.Error(t, err)
 				assert.Contains(t, test.expectedErrorMessages, err.Error())

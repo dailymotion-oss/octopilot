@@ -14,11 +14,12 @@ import (
 )
 
 type ExecUpdater struct {
-	Command string
-	Args    []string
-	Stdout  string
-	Stderr  string
-	Timeout time.Duration
+	Command  string
+	FilePath string
+	Args     []string
+	Stdout   string
+	Stderr   string
+	Timeout  time.Duration
 }
 
 func NewUpdater(params map[string]string) (*ExecUpdater, error) {
@@ -27,6 +28,10 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	updater.Command = params["cmd"]
 	if len(updater.Command) == 0 {
 		return nil, errors.New("missing cmd parameter")
+	}
+
+	if file, ok := params["file"]; ok && len(strings.TrimSpace(file)) > 0 {
+		updater.FilePath = file
 	}
 
 	if args, ok := params["args"]; ok {
@@ -58,6 +63,17 @@ func (r *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		stdout bytes.Buffer
 		stderr bytes.Buffer
 	)
+
+	if r.FilePath != "" {
+		filePaths, err := filepath.Glob(filepath.Join(repoPath, r.FilePath))
+		if err != nil {
+			return false, fmt.Errorf("failed to expand glob pattern %s: %w", r.FilePath, err)
+		}
+		if len(filePaths) > 0 {
+			r.Args = append(r.Args, filePaths...)
+		}
+	}
+
 	cmd := exec.CommandContext(ctx, r.Command, r.Args...)
 	cmd.Dir = repoPath
 	cmd.Stdout = &stdout
