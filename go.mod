@@ -8,6 +8,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.23.22 // indirect
 	github.com/bradleyfalzon/ghinstallation v1.1.1
+	github.com/cosiner/argv v0.1.1-0.20200416041250-86e3c689263e
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-github/v28 v28.0.2

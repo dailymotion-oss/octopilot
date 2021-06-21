@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/cosiner/argv"
 )
 
 type ExecUpdater struct {
@@ -30,7 +32,15 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	}
 
 	if args, ok := params["args"]; ok {
-		updater.Args = strings.Split(args, " ")
+		argv, err := argv.Argv(args, func(backquoted string) (string, error) {
+			return backquoted, nil
+		}, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert args '%s' with argv: %w", args, err)
+		}
+		if len(argv) > 0 {
+			updater.Args = argv[0]
+		}
 	}
 	updater.Stdout = params["stdout"]
 	updater.Stderr = params["stderr"]

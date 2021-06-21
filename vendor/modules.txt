@@ -73,6 +73,9 @@ github.com/blang/semver
 # github.com/bradleyfalzon/ghinstallation v1.1.1
 ## explicit
 github.com/bradleyfalzon/ghinstallation
+# github.com/cosiner/argv v0.1.1-0.20200416041250-86e3c689263e
+## explicit
+github.com/cosiner/argv
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
