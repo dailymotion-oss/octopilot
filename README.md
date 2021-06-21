@@ -22,6 +22,10 @@ It can update repositories based on specific branch instead of the HEAD one's if
 - The option `--repo "xxx/yyy(branch=xyz)"` will update the repo `xxx/yyy` based on the `xyz` branch if it exists
 - The option `--repo "xxx/yyy"` will update the repo xxx/yyy based on the `HEAD` branch as usual
 
+It can exec command and expand files on the arguments, only if using `sh -c` with `sh` as cmd and args starting by `-c` and using after backquotes
+- It is possible because of the lib https://github.com/cosiner/argv
+- It doesn't manage pipe on the args
+
 It is somewhat based on [updatebot](https://github.com/jenkins-x/updatebot), but written in [Go](https://golang.org/), and with more features:
 - supports running multiple "updaters" in the same execution - for example create a PR with both a sops change and a regex change
 - run any tool to update a repo

@@ -152,6 +152,23 @@ func TestUpdate(t *testing.T) {
 				return bytes.Equal(actualFileContent, []byte("some content"))
 			},
 		},
+		{
+			name: "run a cmd using sh -c with a specified args containing * and write its stdout to a file",
+			files: map[string]string{
+				"sh-c-file-to-list.txt": "some content",
+			},
+			updater: &ExecUpdater{
+				Command: "sh",
+				Args:    []string{"-c", `ls sh-c-file-*-list.*`},
+				Stdout:  "ls-result.stdout",
+				Timeout: 1 * time.Second,
+			},
+			expected: true,
+			extraCheck: func() bool {
+				actualFileContent, _ := ioutil.ReadFile(filepath.Join("testdata", "ls-result.stdout"))
+				return bytes.Equal(actualFileContent, []byte("sh-c-file-to-list.txt\n"))
+			},
+		},
 	}
 
 	for i := range tests {
