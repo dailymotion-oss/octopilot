@@ -15,11 +15,11 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2.1.3
         with:
-          go-version: '1.15'
+          go-version: '1.16'
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2.6.1
         with:
-          version: v0.143.0
+          version: v0.171.0
           args: release --snapshot --skip-publish --rm-dist
 
   unit-tests:
@@ -30,7 +30,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2.1.3
         with:
-          go-version: '1.15'
+          go-version: '1.16'
       - name: Run Unit Tests
         run: go test -v ./...
 
@@ -42,4 +42,4 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.37
+          version: v1.41.1
