@@ -48,80 +48,94 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*SopsUpdater, er
 
 func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	var (
-		filePath = filepath.Join(repoPath, u.FilePath)
-		cipher   = aes.NewCipher()
-		svcs     = []keyservice.KeyServiceClient{keyservice.NewLocalClient()}
+		cipher = aes.NewCipher()
+		svcs   = []keyservice.KeyServiceClient{keyservice.NewLocalClient()}
 	)
 
-	fileInfo, err := os.Stat(filePath)
+	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
 	if err != nil {
-		return false, fmt.Errorf("failed to access file %s: %w", u.FilePath, err)
+		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}
 
-	tree, err := common.LoadEncryptedFileWithBugFixes(common.GenericDecryptOpts{
-		Cipher:      cipher,
-		InputStore:  u.Store,
-		InputPath:   filePath,
-		KeyServices: svcs,
-	})
-	if err != nil {
-		return false, fmt.Errorf("failed to load encrypted file %s: %w", u.FilePath, err)
+	var updated bool
+	for _, filePath := range filePaths {
+		relFilePath, err := filepath.Rel(repoPath, filePath)
+		if err != nil {
+			relFilePath = filePath
+		}
+
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
+		}
+
+		tree, err := common.LoadEncryptedFileWithBugFixes(common.GenericDecryptOpts{
+			Cipher:      cipher,
+			InputStore:  u.Store,
+			InputPath:   filePath,
+			KeyServices: svcs,
+		})
+		if err != nil {
+			return false, fmt.Errorf("failed to load encrypted file %s: %w", filePath, err)
+		}
+
+		dataKey, err := common.DecryptTree(common.DecryptTreeOpts{
+			Cipher:      cipher,
+			Tree:        tree,
+			KeyServices: svcs,
+		})
+		if err != nil {
+			return false, fmt.Errorf("failed to decrypt tree for %s: %w", filePath, err)
+		}
+
+		originalData, err := u.Store.EmitPlainFile(tree.Branches)
+		if err != nil {
+			return false, fmt.Errorf("failed to emit original tree for %s: %w", filePath, err)
+		}
+
+		path := convertKeyToPath(u.Key)
+		value, err := u.Valuer.Value(ctx, repoPath)
+		if err != nil {
+			return false, fmt.Errorf("failed to get value: %w", err)
+		}
+		for i := range tree.Branches {
+			// FIXME if the path top-level element doesn't exist, it will return a new branch with only our path
+			// and so the existing other top-level elements will be lost
+			tree.Branches[i] = tree.Branches[i].Set(path, value)
+		}
+
+		// check if we updated something or not, before re-encrypting...
+		updatedData, err := u.Store.EmitPlainFile(tree.Branches)
+		if err != nil {
+			return false, fmt.Errorf("failed to emit updated tree for %s: %w", filePath, err)
+		}
+		if string(updatedData) == string(originalData) {
+			continue
+		}
+
+		err = common.EncryptTree(common.EncryptTreeOpts{
+			DataKey: dataKey,
+			Tree:    tree,
+			Cipher:  cipher,
+		})
+		if err != nil {
+			return false, fmt.Errorf("failed to encrypt tree for %s: %w", filePath, err)
+		}
+
+		encryptedFile, err := u.Store.EmitEncryptedFile(*tree)
+		if err != nil {
+			return false, fmt.Errorf("failed to generate re-encrypted file %s: %w", filePath, err)
+		}
+
+		err = ioutil.WriteFile(filePath, encryptedFile, fileInfo.Mode())
+		if err != nil {
+			return false, fmt.Errorf("failed to write re-encrypted data to file %s: %w", filePath, err)
+		}
+
+		updated = true
 	}
 
-	dataKey, err := common.DecryptTree(common.DecryptTreeOpts{
-		Cipher:      cipher,
-		Tree:        tree,
-		KeyServices: svcs,
-	})
-	if err != nil {
-		return false, fmt.Errorf("failed to decrypt tree for %s: %w", u.FilePath, err)
-	}
-
-	originalData, err := u.Store.EmitPlainFile(tree.Branches)
-	if err != nil {
-		return false, fmt.Errorf("failed to emit original tree for %s: %w", u.FilePath, err)
-	}
-
-	path := convertKeyToPath(u.Key)
-	value, err := u.Valuer.Value(ctx, repoPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to get value: %w", err)
-	}
-	for i := range tree.Branches {
-		// FIXME if the path top-level element doesn't exist, it will return a new branch with only our path
-		// and so the existing other top-level elements will be lost
-		tree.Branches[i] = tree.Branches[i].Set(path, value)
-	}
-
-	// check if we updated something or not, before re-encrypting...
-	updatedData, err := u.Store.EmitPlainFile(tree.Branches)
-	if err != nil {
-		return false, fmt.Errorf("failed to emit updated tree for %s: %w", u.FilePath, err)
-	}
-	if string(updatedData) == string(originalData) {
-		return false, nil
-	}
-
-	err = common.EncryptTree(common.EncryptTreeOpts{
-		DataKey: dataKey,
-		Tree:    tree,
-		Cipher:  cipher,
-	})
-	if err != nil {
-		return false, fmt.Errorf("failed to encrypt tree for %s: %w", u.FilePath, err)
-	}
-
-	encryptedFile, err := u.Store.EmitEncryptedFile(*tree)
-	if err != nil {
-		return false, fmt.Errorf("failed to generate re-encrypted file %s: %w", u.FilePath, err)
-	}
-
-	err = ioutil.WriteFile(filePath, encryptedFile, fileInfo.Mode())
-	if err != nil {
-		return false, fmt.Errorf("failed to write re-encrypted data to file %s: %w", u.FilePath, err)
-	}
-
-	return true, nil
+	return updated, nil
 }
 
 func (u SopsUpdater) Message() (title, body string) {
