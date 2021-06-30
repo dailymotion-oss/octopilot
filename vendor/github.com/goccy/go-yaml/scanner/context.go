@@ -88,14 +88,14 @@ func (c *Context) addBuf(r rune) {
 		return
 	}
 	c.buf = append(c.buf, r)
-	if r != ' ' {
+	if r != ' ' && r != '\t' {
 		c.notSpaceCharPos = len(c.buf)
 	}
 }
 
 func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
-	if r != ' ' {
+	if r != ' ' && r != '\t' {
 		c.notSpaceOrgCharPos = len(c.obuf)
 	}
 }
@@ -190,7 +190,12 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	if len(source) == 0 {
 		return nil
 	}
-	tk := token.New(string(source), string(c.obuf), pos)
+	var tk *token.Token
+	if c.isDocument() {
+		tk = token.String(string(source), string(c.obuf), pos)
+	} else {
+		tk = token.New(string(source), string(c.obuf), pos)
+	}
 	c.resetBuffer()
 	return tk
 }

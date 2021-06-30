@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/dailymotion-oss/octopilot/update/value"
 	"gopkg.in/yaml.v3"
@@ -14,6 +15,7 @@ import (
 
 type HelmUpdater struct {
 	Dependency string
+	Indent     int
 	Valuer     value.Valuer
 }
 
@@ -23,6 +25,11 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*HelmUpdater, er
 	updater.Dependency = params["dependency"]
 	if len(updater.Dependency) == 0 {
 		return nil, errors.New("missing dependency parameter")
+	}
+
+	updater.Indent, _ = strconv.Atoi(params["indent"])
+	if updater.Indent <= 0 {
+		updater.Indent = 2
 	}
 
 	updater.Valuer = valuer
@@ -64,11 +71,6 @@ func (u *HelmUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 }
 
 func (u *HelmUpdater) updateChartDependenciesFile(filePath string, version string) (bool, error) {
-	fi, err := os.Stat(filePath)
-	if err != nil {
-		return false, fmt.Errorf("failed to access file %s: %w", filePath, err)
-	}
-
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to read file %s: %w", filePath, err)
@@ -85,14 +87,21 @@ func (u *HelmUpdater) updateChartDependenciesFile(filePath string, version strin
 		return false, nil
 	}
 
-	data, err = yaml.Marshal(&rootNode)
+	f, err := os.Create(filePath)
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal updated YAML content for %s: %w", filePath, err)
+		return false, fmt.Errorf("failed to create file %s: %w", filePath, err)
 	}
+	defer f.Close()
 
-	err = ioutil.WriteFile(filePath, data, fi.Mode())
+	enc := yaml.NewEncoder(f)
+	enc.SetIndent(u.Indent)
+	err = enc.Encode(&rootNode)
 	if err != nil {
-		return false, fmt.Errorf("failed to write file %s: %w", filePath, err)
+		return false, fmt.Errorf("failed to encode updated YAML content for %s: %w", filePath, err)
+	}
+	err = enc.Close()
+	if err != nil {
+		return false, fmt.Errorf("failed to close the YAML encoder for %s: %w", filePath, err)
 	}
 
 	return updated, nil

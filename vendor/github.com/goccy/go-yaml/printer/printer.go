@@ -201,11 +201,11 @@ func (p *Printer) PrintErrorMessage(msg string, isColored bool) string {
 }
 
 func (p *Printer) removeLeftSideNewLineChar(src string) string {
-	return strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n")
+	return strings.TrimLeft(strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n"), "\r\n")
 }
 
 func (p *Printer) removeRightSideNewLineChar(src string) string {
-	return strings.TrimRight(strings.TrimRight(src, "\r"), "\n")
+	return strings.TrimRight(strings.TrimRight(strings.TrimRight(src, "\r"), "\n"), "\r\n")
 }
 
 func (p *Printer) removeRightSideWhiteSpaceChar(src string) string {
@@ -231,80 +231,122 @@ func (p *Printer) newLineCount(s string) int {
 	return cnt
 }
 
-func (p *Printer) isNewLineChar(c byte) bool {
-	if c == '\n' {
-		return true
-	}
-	if c == '\r' {
-		return true
+func (p *Printer) isNewLineLastChar(s string) bool {
+	for i := len(s) - 1; i > 0; i-- {
+		c := s[i]
+		switch c {
+		case ' ':
+			continue
+		case '\n', '\r':
+			return true
+		}
+		break
 	}
 	return false
 }
 
-func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
-	errToken := tk
-	pos := tk.Position
-	curLine := pos.Line
-	curExtLine := curLine + p.newLineCount(p.removeLeftSideNewLineChar(tk.Origin))
-	if p.isNewLineChar(tk.Origin[len(tk.Origin)-1]) {
-		// if last character is new line character, ignore it.
-		curExtLine--
-	}
-	minLine := int(math.Max(float64(curLine-3), 1))
-	maxLine := curExtLine + 3
+func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token.Tokens {
 	for {
-		if tk.Position.Line < minLine {
+		if tk.Prev == nil {
 			break
 		}
-		if tk.Prev == nil {
+		if tk.Prev.Position.Line < minLine {
 			break
 		}
 		tk = tk.Prev
 	}
-	tokens := token.Tokens{}
-	lastTk := tk
-	for tk.Position.Line <= curExtLine {
-		tokens.Add(tk)
-		lastTk = tk
-		tk = tk.Next
-		if tk == nil {
-			break
-		}
+	minTk := tk.Clone()
+	if minTk.Prev != nil {
+		// add white spaces to minTk by prev token
+		prev := minTk.Prev
+		whiteSpaceLen := len(prev.Origin) - len(strings.TrimRight(prev.Origin, " "))
+		minTk.Origin = strings.Repeat(" ", whiteSpaceLen) + minTk.Origin
 	}
-	org := lastTk.Origin
-	trimmed := p.removeRightSideWhiteSpaceChar(org)
-	lastTk.Origin = trimmed
-	if tk != nil {
-		tk.Origin = p.removeLeftSideNewLineChar(tk.Origin)
+	minTk.Origin = p.removeLeftSideNewLineChar(minTk.Origin)
+	tokens := token.Tokens{minTk}
+	tk = minTk.Next
+	for tk != nil && tk.Position.Line <= extLine {
+		clonedTk := tk.Clone()
+		tokens.Add(clonedTk)
+		tk = clonedTk.Next
+	}
+	lastTk := tokens[len(tokens)-1]
+	trimmedOrigin := p.removeRightSideWhiteSpaceChar(lastTk.Origin)
+	suffix := lastTk.Origin[len(trimmedOrigin):]
+	lastTk.Origin = trimmedOrigin
+
+	if lastTk.Next != nil && len(suffix) > 1 {
+		next := lastTk.Next.Clone()
+		// add suffix to header of next token
+		if suffix[0] == '\n' || suffix[0] == '\r' {
+			suffix = suffix[1:]
+		}
+		next.Origin = suffix + next.Origin
+		lastTk.Next = next
+	}
+	return tokens
+}
+
+func (p *Printer) printAfterTokens(tk *token.Token, maxLine int) token.Tokens {
+	tokens := token.Tokens{}
+	if tk == nil {
+		return tokens
+	}
+	if tk.Position.Line > maxLine {
+		return tokens
+	}
+	minTk := tk.Clone()
+	minTk.Origin = p.removeLeftSideNewLineChar(minTk.Origin)
+	tokens.Add(minTk)
+	tk = minTk.Next
+	for tk != nil && tk.Position.Line <= maxLine {
+		clonedTk := tk.Clone()
+		tokens.Add(clonedTk)
+		tk = clonedTk.Next
+	}
+	return tokens
+}
+
+func (p *Printer) setupErrorTokenFormat(annotateLine int, isColored bool) {
+	prefix := func(annotateLine, num int) string {
+		if annotateLine == num {
+			return fmt.Sprintf("> %2d | ", num)
+		}
+		return fmt.Sprintf("  %2d | ", num)
 	}
 	p.LineNumber = true
 	p.LineNumberFormat = func(num int) string {
 		if isColored {
 			fn := color.New(color.Bold, color.FgHiWhite).SprintFunc()
-			if curLine == num {
-				return fn(fmt.Sprintf("> %2d | ", num))
-			}
-			return fn(fmt.Sprintf("  %2d | ", num))
+			return fn(prefix(annotateLine, num))
 		}
-		if curLine == num {
-			return fmt.Sprintf("> %2d | ", num)
-		}
-		return fmt.Sprintf("  %2d | ", num)
+		return prefix(annotateLine, num)
 	}
 	if isColored {
 		p.setDefaultColorSet()
 	}
-	beforeSource := p.PrintTokens(tokens)
-	prefixSpaceNum := len(fmt.Sprintf("  %2d | ", 1))
-	annotateLine := strings.Repeat(" ", prefixSpaceNum+errToken.Position.Column-2) + "^"
-	tokens = token.Tokens{}
-	for tk != nil {
-		if tk.Position.Line > maxLine {
-			break
-		}
-		tokens.Add(tk)
-		tk = tk.Next
+}
+
+func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
+	errToken := tk
+	curLine := tk.Position.Line
+	curExtLine := curLine + p.newLineCount(p.removeLeftSideNewLineChar(tk.Origin))
+	if p.isNewLineLastChar(tk.Origin) {
+		// if last character ( exclude white space ) is new line character, ignore it.
+		curExtLine--
 	}
-	afterSource := p.PrintTokens(tokens)
+
+	minLine := int(math.Max(float64(curLine-3), 1))
+	maxLine := curExtLine + 3
+	p.setupErrorTokenFormat(curLine, isColored)
+
+	beforeTokens := p.printBeforeTokens(tk, minLine, curExtLine)
+	lastTk := beforeTokens[len(beforeTokens)-1]
+	afterTokens := p.printAfterTokens(lastTk.Next, maxLine)
+
+	beforeSource := p.PrintTokens(beforeTokens)
+	prefixSpaceNum := len(fmt.Sprintf("  %2d | ", curLine))
+	annotateLine := strings.Repeat(" ", prefixSpaceNum+errToken.Position.Column-1) + "^"
+	afterSource := p.PrintTokens(afterTokens)
 	return fmt.Sprintf("%s\n%s\n%s", beforeSource, annotateLine, afterSource)
 }

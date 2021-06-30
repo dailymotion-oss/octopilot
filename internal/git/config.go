@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	configformat "github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/mitchellh/go-homedir"
-	configformat "gopkg.in/src-d/go-git.v4/plumbing/format/config"
 )
 
 // ConfigValue returns the "best" value for the given configuration key.

@@ -340,23 +340,23 @@ const (
 	// IntegerTag `!!int` tag
 	IntegerTag ReservedTagKeyword = "!!int"
 	// FloatTag `!!float` tag
-	FloatTag = "!!float"
+	FloatTag ReservedTagKeyword = "!!float"
 	// NullTag `!!null` tag
-	NullTag = "!!null"
+	NullTag ReservedTagKeyword = "!!null"
 	// SequenceTag `!!seq` tag
-	SequenceTag = "!!seq"
+	SequenceTag ReservedTagKeyword = "!!seq"
 	// MappingTag `!!map` tag
-	MappingTag = "!!map"
+	MappingTag ReservedTagKeyword = "!!map"
 	// StringTag `!!str` tag
-	StringTag = "!!str"
+	StringTag ReservedTagKeyword = "!!str"
 	// BinaryTag `!!binary` tag
-	BinaryTag = "!!binary"
+	BinaryTag ReservedTagKeyword = "!!binary"
 	// OrderedMapTag `!!omap` tag
-	OrderedMapTag = "!!omap"
+	OrderedMapTag ReservedTagKeyword = "!!omap"
 	// SetTag `!!set` tag
-	SetTag = "!!set"
+	SetTag ReservedTagKeyword = "!!set"
 	// TimestampTag `!!timestamp` tag
-	TimestampTag = "!!timestamp"
+	TimestampTag ReservedTagKeyword = "!!timestamp"
 )
 
 var (
@@ -560,6 +560,22 @@ func getNumberStat(str string) *numStat {
 	return stat
 }
 
+func looksLikeTimeValue(value string) bool {
+	for i, c := range value {
+		switch c {
+		case ':', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			continue
+		case '0':
+			if i == 0 {
+				return false
+			}
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // IsNeedQuoted whether need quote for passed string or not
 func IsNeedQuoted(value string) bool {
 	if value == "" {
@@ -571,15 +587,27 @@ func IsNeedQuoted(value string) bool {
 	if stat := getNumberStat(value); stat.isNum {
 		return true
 	}
-	if strings.IndexByte(value, ':') == 1 {
+	first := value[0]
+	switch first {
+	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
 		return true
 	}
-	if strings.IndexByte(value, '#') > 0 {
+	last := value[len(value)-1]
+	switch last {
+	case ':':
 		return true
 	}
-	for _, c := range value {
-		if c == '\\' {
+	if looksLikeTimeValue(value) {
+		return true
+	}
+	for i, c := range value {
+		switch c {
+		case '#', '\\':
 			return true
+		case ':':
+			if i+1 < len(value) && value[i+1] == ' ' {
+				return true
+			}
 		}
 	}
 	return false
@@ -628,14 +656,7 @@ func New(value string, org string, pos *Position) *Token {
 		}
 		return tk
 	}
-	return &Token{
-		Type:          StringType,
-		CharacterType: CharacterTypeMiscellaneous,
-		Indicator:     NotIndicator,
-		Value:         value,
-		Origin:        org,
-		Position:      pos,
-	}
+	return String(value, org, pos)
 }
 
 // Position type for position in YAML document
@@ -688,6 +709,19 @@ func (t *Token) AddColumn(col int) {
 	t.Position.Column += col
 }
 
+// Clone copy token ( preserve Prev/Next reference )
+func (t *Token) Clone() *Token {
+	if t == nil {
+		return nil
+	}
+	copied := *t
+	if t.Position != nil {
+		pos := *(t.Position)
+		copied.Position = &pos
+	}
+	return &copied
+}
+
 // Tokens type of token collection
 type Tokens []*Token
 
@@ -715,6 +749,18 @@ func (t *Tokens) Add(tks ...*Token) {
 func (t Tokens) Dump() {
 	for _, tk := range t {
 		fmt.Printf("- %+v\n", tk)
+	}
+}
+
+// String create token for String
+func String(value string, org string, pos *Position) *Token {
+	return &Token{
+		Type:          StringType,
+		CharacterType: CharacterTypeMiscellaneous,
+		Indicator:     NotIndicator,
+		Value:         value,
+		Origin:        org,
+		Position:      pos,
 	}
 }
 
@@ -915,13 +961,13 @@ func DoubleQuote(value string, org string, pos *Position) *Token {
 }
 
 // Directive create token for Directive
-func Directive(pos *Position) *Token {
+func Directive(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DirectiveType,
 		CharacterType: CharacterTypeIndicator,
 		Indicator:     DirectiveIndicator,
 		Value:         string(DirectiveCharacter),
-		Origin:        string(DirectiveCharacter),
+		Origin:        org,
 		Position:      pos,
 	}
 }
@@ -951,25 +997,25 @@ func MergeKey(org string, pos *Position) *Token {
 }
 
 // DocumentHeader create token for DocumentHeader
-func DocumentHeader(pos *Position) *Token {
+func DocumentHeader(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DocumentHeaderType,
 		CharacterType: CharacterTypeMiscellaneous,
 		Indicator:     NotIndicator,
 		Value:         "---",
-		Origin:        "---",
+		Origin:        org,
 		Position:      pos,
 	}
 }
 
 // DocumentEnd create token for DocumentEnd
-func DocumentEnd(pos *Position) *Token {
+func DocumentEnd(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DocumentEndType,
 		CharacterType: CharacterTypeMiscellaneous,
 		Indicator:     NotIndicator,
 		Value:         "...",
-		Origin:        "...",
+		Origin:        org,
 		Position:      pos,
 	}
 }

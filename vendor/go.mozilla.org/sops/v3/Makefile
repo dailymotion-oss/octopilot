@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-PROJECT		:= go.mozilla.org/sops
+PROJECT		:= go.mozilla.org/sops/v3
 GO 		:= GO15VENDOREXPERIMENT=1 GO111MODULE=on GOPROXY=https://proxy.golang.org go
 GOLINT 		:= golint
 
@@ -48,28 +48,29 @@ functional-tests-all:
 	$(GO) build -o functional-tests/sops go.mozilla.org/sops/v3/cmd/sops
 	cd functional-tests && cargo test && cargo test -- --ignored
 
-deb-pkg: install
+deb-pkg: vendor
 	rm -rf tmppkg
 	mkdir -p tmppkg/usr/local/bin
-	cp $$GOPATH/bin/sops tmppkg/usr/local/bin/
+	GOOS=linux CGO_ENABLED=0 go build -mod vendor -o tmppkg/usr/local/bin/sops go.mozilla.org/sops/v3/cmd/sops
 	fpm -C tmppkg -n sops --license MPL2.0 --vendor mozilla \
 		--description "Sops is an editor of encrypted files that supports YAML, JSON and BINARY formats and encrypts with AWS KMS and PGP." \
-		-m "Julien Vehent <jvehent+sops@mozilla.com>" \
+		-m "AJ Bahnken <ajvb+sops@mozilla.com>" \
 		--url https://go.mozilla.org/sops \
 		--architecture x86_64 \
-		-v "$$(git describe --abbrev=0 --tags)" \
+		-v "$$(grep '^const Version' version/version.go |cut -d \" -f 2)" \
 		-s dir -t deb .
 
-rpm-pkg: install
+rpm-pkg: vendor
 	rm -rf tmppkg
 	mkdir -p tmppkg/usr/local/bin
-	cp $$GOPATH/bin/sops tmppkg/usr/local/bin/
+	GOOS=linux CGO_ENABLED=0 go build -mod vendor -o tmppkg/usr/local/bin/sops go.mozilla.org/sops/v3/cmd/sops
 	fpm -C tmppkg -n sops --license MPL2.0 --vendor mozilla \
 		--description "Sops is an editor of encrypted files that supports YAML, JSON and BINARY formats and encrypts with AWS KMS and PGP." \
-		-m "Julien Vehent <jvehent+sops@mozilla.com>" \
+		-m "AJ Bahnken <ajvb+sops@mozilla.com>" \
 		--url https://go.mozilla.org/sops \
 		--architecture x86_64 \
-		-v "$$(git describe --abbrev=0 --tags)" \
+		--rpm-os linux \
+		-v "$$(grep '^const Version' version/version.go |cut -d \" -f 2)" \
 		-s dir -t rpm .
 
 dmg-pkg: install
@@ -84,7 +85,7 @@ else
 		-m "Julien Vehent <jvehent+sops@mozilla.com>" \
 		--url https://go.mozilla.org/sops \
 		--architecture x86_64 \
-		-v "$$(git describe --abbrev=0 --tags)" \
+		-v "$$(grep '^const Version' version/version.go |cut -d \" -f 2)" \
 		-s dir -t osxpkg \
 		--osxpkg-identifier-prefix org.mozilla.sops \
 		-p tmppkg/sops-$$(git describe --abbrev=0 --tags).pkg .

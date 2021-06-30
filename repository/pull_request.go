@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v36/github"
 	"github.com/sirupsen/logrus"
 	"github.com/zoumo/goset"
 )

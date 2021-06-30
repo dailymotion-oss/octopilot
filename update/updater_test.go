@@ -10,6 +10,7 @@ import (
 	"github.com/dailymotion-oss/octopilot/update/sops"
 	"github.com/dailymotion-oss/octopilot/update/value"
 	"github.com/dailymotion-oss/octopilot/update/yaml"
+	"github.com/dailymotion-oss/octopilot/update/yq"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,6 +74,22 @@ func TestParse(t *testing.T) {
 				&helm.HelmUpdater{
 					Dependency: "my-chart",
 					Valuer:     value.StringValuer("1.2.3"),
+					Indent:     2,
+				},
+			},
+		},
+		{
+			name:    "single yq updater",
+			updates: []string{`yq(file=values.yaml,expression='.path.to.subkey = "value"')`},
+			expected: []Updater{
+				&yq.YQUpdater{
+					FilePath:     "values.yaml",
+					Expression:   `.path.to.subkey = "value"`,
+					Output:       "",
+					OutputToJSON: false,
+					Trim:         false,
+					UnwrapScalar: true,
+					Indent:       2,
 				},
 			},
 		},

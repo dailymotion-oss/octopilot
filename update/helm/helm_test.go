@@ -25,9 +25,11 @@ func TestNewUpdater(t *testing.T) {
 			name: "valid params",
 			params: map[string]string{
 				"dependency": "some-chart",
+				"indent":     "4",
 			},
 			expected: &HelmUpdater{
 				Dependency: "some-chart",
+				Indent:     4,
 			},
 		},
 		{
@@ -40,6 +42,16 @@ func TestNewUpdater(t *testing.T) {
 				"whatever": "here too",
 			},
 			expectedErrorMsg: "missing dependency parameter",
+		},
+		{
+			name: "missing optional indent param",
+			params: map[string]string{
+				"dependency": "some-chart",
+			},
+			expected: &HelmUpdater{
+				Dependency: "some-chart",
+				Indent:     2,
+			},
 		},
 	}
 
@@ -76,26 +88,27 @@ func TestUpdate(t *testing.T) {
 				filepath.Join("helm2", "requirements.yaml"): `
 # some comment
 dependencies:
-# this is a comment for my chart
-- name: my-chart
-  # and a version I like
-  version: 1.0.0
-  # our enterprise repo
-  repository: example.com/charts
-  # an unknown field
-  whatever: something else
+  # this is a comment for my chart
+  - name: my-chart
+    # and a version I like
+    version: 1.0.0
+    # our enterprise repo
+    repository: example.com/charts
+    # an unknown field
+    whatever: something else
 `,
 			},
 			updater: &HelmUpdater{
 				Dependency: "my-chart",
 				Valuer:     value.StringValuer("2.0.0"),
+				Indent:     2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
 				filepath.Join("helm2", "requirements.yaml"): `# some comment
 dependencies:
-  - # this is a comment for my chart
-    name: my-chart
+  # this is a comment for my chart
+  - name: my-chart
     # and a version I like
     version: 2.0.0
     # our enterprise repo
@@ -106,7 +119,7 @@ dependencies:
 			},
 		},
 		{
-			name: "update a single version in a single chart in helm 2 format",
+			name: "update a single version in a single chart in helm 3 format",
 			files: map[string]string{
 				filepath.Join("helm3", "Chart.yaml"): `
 # metadata fields
@@ -114,20 +127,21 @@ name: some-chart
 version: 1.2.3
 # all dependencies
 dependencies:
-# first dependency
-- name: first-chart
-  version: 1.0.0
-# second dependency
-- name: second-chart
-  version: 1.0.0
-# third dependency
-- name: third-chart
-  version: 1.0.0
+  # first dependency
+  - name: first-chart
+    version: 1.0.0
+  # second dependency
+  - name: second-chart
+    version: 1.0.0
+  # third dependency
+  - name: third-chart
+    version: 1.0.0
 `,
 			},
 			updater: &HelmUpdater{
 				Dependency: "second-chart",
 				Valuer:     value.StringValuer("2.0.0"),
+				Indent:     2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -136,14 +150,14 @@ name: some-chart
 version: 1.2.3
 # all dependencies
 dependencies:
-  - # first dependency
-    name: first-chart
+  # first dependency
+  - name: first-chart
     version: 1.0.0
-  - # second dependency
-    name: second-chart
+  # second dependency
+  - name: second-chart
     version: 2.0.0
-  - # third dependency
-    name: third-chart
+  # third dependency
+  - name: third-chart
     version: 1.0.0
 `,
 			},
