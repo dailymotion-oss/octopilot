@@ -1,0 +1,23 @@
+# GitHub Actions Workflow definition for running unit tests and code coverage
+
+name: unit-tests
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2.1.3
+        with:
+          go-version: '1.16'
+
+      - name: Run Unit Tests
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+      - name: Upload coverage to Codecov
+        run: bash <(curl -s https://codecov.io/bash)
