@@ -10,16 +10,16 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/dailymotion-oss/octopilot/update/value"
 
-	"github.com/mikefarah/yq/v3/pkg/yqlib"
+	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	gologging "gopkg.in/op/go-logging.v1"
-	"gopkg.in/yaml.v3"
 )
 
 func init() {
-	gologging.SetLevel(gologging.CRITICAL, "yq")
+	gologging.SetLevel(gologging.CRITICAL, "yq-lib")
 }
 
 type YamlUpdater struct {
@@ -60,21 +60,14 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 }
 
 func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
-	var (
-		yq          = yqlib.NewYqLib()
-		valueParser = yqlib.NewValueParser()
-	)
-
 	value, err := u.Valuer.Value(ctx, repoPath)
 	if err != nil {
 		return false, fmt.Errorf("failed to get value: %w", err)
 	}
 
-	updateCmd := yqlib.UpdateCommand{
-		Command:   "update",
-		Overwrite: true,
-		Path:      u.Path,
-		Value:     valueParser.Parse(value, "", u.Style),
+	expression, expressionNode, err := u.yqExpression(value)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse yq expression %s: %w", expression, err)
 	}
 
 	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
@@ -82,7 +75,10 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}
 
-	var updated bool
+	var (
+		streamEvaluator = yqlib.NewStreamEvaluator()
+		updated         = false
+	)
 	for _, filePath := range filePaths {
 		relFilePath, err := filepath.Rel(repoPath, filePath)
 		if err != nil {
@@ -94,44 +90,27 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
 		}
 
-		data, err := ioutil.ReadFile(filePath)
+		fileData, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
 
-		var rootNode yaml.Node
-		err = yaml.Unmarshal(data, &rootNode)
+		buffer := new(bytes.Buffer)
+		printer := yqlib.NewPrinter(buffer, false, false, false, u.Indent, true)
+		err = streamEvaluator.Evaluate(relFilePath, bytes.NewReader(fileData), expressionNode, printer)
 		if err != nil {
-			return false, fmt.Errorf("failed to unmarshal YAML file %s: %w", filePath, err)
+			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", expression, filePath, err)
 		}
-
-		err = yq.Update(&rootNode, updateCmd, u.AutoCreate)
-		if err != nil {
-			return false, fmt.Errorf("failed to update YAML file %s: %w", filePath, err)
-		}
-
-		var buffer bytes.Buffer
-		encoder := yaml.NewEncoder(&buffer)
-		encoder.SetIndent(u.Indent)
-		err = encoder.Encode(&rootNode)
-		if err != nil {
-			return false, fmt.Errorf("failed to encode updated YAML content for %s: %w", filePath, err)
-		}
-		err = encoder.Close()
-		if err != nil {
-			return false, fmt.Errorf("failed to close YAML encoder for %s: %w", filePath, err)
-		}
-		updatedData := buffer.Bytes()
 
 		if u.Trim {
-			updatedData = bytes.TrimSpace(updatedData)
+			buffer = bytes.NewBuffer(bytes.TrimSpace(buffer.Bytes()))
 		}
 
-		if reflect.DeepEqual(data, updatedData) {
+		if reflect.DeepEqual(fileData, buffer.Bytes()) {
 			continue
 		}
 
-		err = ioutil.WriteFile(filePath, updatedData, fileInfo.Mode())
+		err = ioutil.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
 		if err != nil {
 			return false, fmt.Errorf("failed to write file %s: %w", filePath, err)
 		}
@@ -150,4 +129,61 @@ func (u *YamlUpdater) Message() (title, body string) {
 
 func (u *YamlUpdater) String() string {
 	return fmt.Sprintf("YAML[path=%s,file=%s,style=%s,create=%v,trim=%v,indent=%v]", u.Path, u.FilePath, u.Style, u.AutoCreate, u.Trim, u.Indent)
+}
+
+func (u *YamlUpdater) yqExpression(value string) (string, *yqlib.ExpressionNode, error) {
+	var (
+		parser        = yqlib.NewExpressionParser()
+		rawExpression string
+	)
+
+	if _, err := parser.ParseExpression(u.Path); err == nil {
+		// we have a valid yq v4 expression
+		rawExpression = u.Path
+	} else {
+		//most likely an old v3 path format, let's convert it to a valid v4 path
+		rawExpression = convertYqExpressionToV4(u.Path)
+	}
+
+	// add the assignment operator to set the new value
+	expression := fmt.Sprintf(`(%s) as $x | $x = %q`, rawExpression, value)
+
+	if u.AutoCreate {
+		// ensure the new path is created first (the `... as $x | $x = ...` doesn't create it)
+		expression = fmt.Sprintf(`%s = %q | %s`, rawExpression, value, expression)
+	}
+
+	if u.Style != "" {
+		// set the style if needed
+		expression = fmt.Sprintf(`%s | $x style=%q`, expression, u.Style)
+	}
+
+	expressionNode, err := parser.ParseExpression(expression)
+	return expression, expressionNode, err
+}
+
+// convertYqExpressionToV4 converts from the old yq v3 format to the new yq v4 format
+func convertYqExpressionToV4(v3Format string) string {
+	if !strings.ContainsAny(v3Format, "()=") {
+		// this is a simple path expression to traverse a hierarchy
+		expression := v3Format
+		if !strings.HasPrefix(expression, ".") {
+			// let's ensure it starts with a dot
+			expression = "." + expression
+		}
+		return expression
+	}
+
+	if strings.Contains(v3Format, "(") && strings.Contains(v3Format, ")") && strings.Contains(v3Format, "==") {
+		// this is a path selection in an array, such as 'array.(name==foo).field'
+		// let's rewrite it as '.array[] | select(.name == "foo") | .field'
+		return fmt.Sprintf(`.%s[] | select(.%s == %q) | %s`,
+			strings.TrimSuffix(strings.SplitN(v3Format, "(", 2)[0], "."),
+			strings.SplitN(strings.SplitN(v3Format, "(", 2)[1], "==", 2)[0],
+			strings.SplitN(strings.SplitN(v3Format, "==", 2)[1], ")", 2)[0],
+			strings.SplitN(v3Format, ")", 2)[1],
+		)
+	}
+
+	return ""
 }

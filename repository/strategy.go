@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v36/github"
 )
 
 type Strategy interface {

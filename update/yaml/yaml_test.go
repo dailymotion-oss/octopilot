@@ -164,6 +164,7 @@ array:
 				FilePath: "complex-values.yaml",
 				Path:     "array.(name==my entry).key",
 				Valuer:   value.StringValuer("new value"),
+				Indent:   2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -197,6 +198,7 @@ array:
 				FilePath: "multiple-values.yaml",
 				Path:     "array.(ref==abc*).key",
 				Valuer:   value.StringValuer("updated value"),
+				Indent:   2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -369,6 +371,93 @@ key: value
 					expectedFileContent := test.expectedFiles[actualRelFilePath]
 					assert.Equalf(t, expectedFileContent, string(actualFileContent), "testdata file %s doesn't match", actualFilePath)
 				}
+			}
+		})
+	}
+}
+
+func TestYqExpression(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name               string
+		updater            YamlUpdater
+		value              string
+		expectedExpression string
+		expectedErrorMsg   string
+	}{
+		{
+			name: "simple v4 path",
+			updater: YamlUpdater{
+				Path: ".version",
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.version) as $x | $x = "1.2.3"`,
+		},
+		{
+			name: "v4 path with custom style",
+			updater: YamlUpdater{
+				Path:  ".path.to.version",
+				Style: "double",
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.path.to.version) as $x | $x = "1.2.3" | $x style="double"`,
+		},
+		{
+			name: "v4 path with auto-create and custom style",
+			updater: YamlUpdater{
+				Path:       ".path.to.version",
+				Style:      "folded",
+				AutoCreate: true,
+			},
+			value:              "1.2.3",
+			expectedExpression: `.path.to.version = "1.2.3" | (.path.to.version) as $x | $x = "1.2.3" | $x style="folded"`,
+		},
+		{
+			name: "complex v4 path",
+			updater: YamlUpdater{
+				Path: `.releases[] | select(.chart == "repo/chart") | .version`,
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) as $x | $x = "1.2.3"`,
+		},
+		{
+			name: "simple v3 path",
+			updater: YamlUpdater{
+				Path: "version",
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.version) as $x | $x = "1.2.3"`,
+		},
+		{
+			name: "v3 path with custom style",
+			updater: YamlUpdater{
+				Path:  "path.to.version",
+				Style: "double",
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.path.to.version) as $x | $x = "1.2.3" | $x style="double"`,
+		},
+		{
+			name: "complex v3 path",
+			updater: YamlUpdater{
+				Path: `releases.(chart==repo/chart).version`,
+			},
+			value:              "1.2.3",
+			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) as $x | $x = "1.2.3"`,
+		},
+	}
+
+	for i := range tests {
+		test := tests[i]
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			expression, expressionNode, err := test.updater.yqExpression(test.value)
+			if len(test.expectedErrorMsg) > 0 {
+				require.EqualError(t, err, test.expectedErrorMsg)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedExpression, expression)
+				assert.NotNil(t, expressionNode)
 			}
 		})
 	}

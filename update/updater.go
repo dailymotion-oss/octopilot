@@ -13,6 +13,7 @@ import (
 	"github.com/dailymotion-oss/octopilot/update/sops"
 	"github.com/dailymotion-oss/octopilot/update/value"
 	"github.com/dailymotion-oss/octopilot/update/yaml"
+	"github.com/dailymotion-oss/octopilot/update/yq"
 )
 
 var (
@@ -45,7 +46,7 @@ func Parse(updates []string) ([]Updater, error) {
 		var paramsStr, valueStr string
 
 		switch updaterName {
-		case "exec":
+		case "exec", "yq":
 			if len(matches) < 3 {
 				return nil, fmt.Errorf("invalid syntax for %s: found %d matches instead of 3: %v", update, len(matches), matches)
 			}
@@ -81,6 +82,8 @@ func Parse(updates []string) ([]Updater, error) {
 			updater, err = helm.NewUpdater(params, valuer)
 		case "yaml":
 			updater, err = yaml.NewUpdater(params, valuer)
+		case "yq":
+			updater, err = yq.NewUpdater(params)
 		case "exec":
 			updater, err = exec.NewUpdater(params)
 		default:

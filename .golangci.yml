@@ -1,0 +1,4 @@
+# See https://golangci-lint.run/usage/configuration/#config-file
+
+run:
+  timeout: 3m

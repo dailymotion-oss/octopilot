@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v36/github"
 )
 
 func discoverRepositoriesFromQuery(ctx context.Context, query string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
