@@ -1,0 +1,4 @@
+# See https://docs.codecov.com/docs/codecovyml-reference
+
+# We don't want codecov to add a comment on the PR for every commit
+comment: false
