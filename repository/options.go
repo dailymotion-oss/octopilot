@@ -101,15 +101,14 @@ func (o *GitOptions) setDefaultValues(updaters []update.Updater, tplExecutorFunc
 	commitTitle, err := tplExecutorFunc(o.CommitTitle)
 	if err != nil {
 		return fmt.Errorf("failed to run template for git commit title %s: %w", o.CommitTitle, err)
-	} else {
-		o.CommitTitle = commitTitle
 	}
+	o.CommitTitle = commitTitle
+
 	commitBody, err := tplExecutorFunc(o.CommitBody)
 	if err != nil {
 		return fmt.Errorf("failed to run template for git commit body %s: %w", o.CommitBody, err)
-	} else {
-		o.CommitBody = commitBody
 	}
+	o.CommitBody = commitBody
 
 	return nil
 }
@@ -128,15 +127,14 @@ func (o *GitHubOptions) setDefaultValues(git GitOptions, tplExecutorFunc templat
 	prTitle, err := tplExecutorFunc(o.PullRequest.Title)
 	if err != nil {
 		return fmt.Errorf("failed to run template for pull reequest title %s: %w", o.PullRequest.Title, err)
-	} else {
-		o.PullRequest.Title = prTitle
 	}
+	o.PullRequest.Title = prTitle
+
 	prBody, err := tplExecutorFunc(o.PullRequest.Body)
 	if err != nil {
 		return fmt.Errorf("failed to run template for pull request body %s: %w", o.PullRequest.Body, err)
-	} else {
-		o.PullRequest.Body = prBody
 	}
+	o.PullRequest.Body = prBody
 
 	return nil
 }
