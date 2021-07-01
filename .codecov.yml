@@ -2,3 +2,18 @@
 
 # We don't want codecov to add a comment on the PR for every commit
 comment: false
+
+coverage:
+  # The value range where you want the value to be green
+  range: "50...100"
+
+  # see https://docs.codecov.com/docs/commit-status
+  status:
+    project:
+      default:
+        # allow the coverage to drop by 5%
+        threshold: 5%
+        # for the moment, let's keep it as informational only
+        informational: true
+    # and disable the patch check
+    patch: false
