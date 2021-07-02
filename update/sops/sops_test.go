@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/aes"
+	"go.mozilla.org/sops/v3/age"
 	"go.mozilla.org/sops/v3/cmd/sops/common"
 	"go.mozilla.org/sops/v3/cmd/sops/formats"
 	"go.mozilla.org/sops/v3/decrypt"
 	"go.mozilla.org/sops/v3/keys"
-	"go.mozilla.org/sops/v3/pgp"
 
 	"github.com/dailymotion-oss/octopilot/update/value"
 )
@@ -216,10 +216,17 @@ newtoken: new-token-value
 		},
 	}
 
-	// we use GPG to encrypt/descrypt - a master key has already been generated in the following directory
-	// see the testdata/README.md file for how to regenerate it if needed, and how to retrieve the fingerprint
-	os.Setenv("GNUPGHOME", "testdata/.gnupg")
-	masterKey := pgp.NewMasterKeyFromFingerprint("F7D394865A2FE709")
+	// we use https://age-encryption.org to encrypt/decrypt
+	// an age key for unit-tests purpose was created with the following command:
+	// $ age-keygen -o testdata/age.key
+	// if you need to regenerate it, you'll also need to update its public key here:
+	const (
+		ageKeyFile   = "testdata/age.key"
+		agePublicKey = "age16fvu9n7dkhdkrrrtfwctfzf94zvh58ars22k2fv9rmhkr9rkfszsyw8zzq"
+	)
+	os.Setenv("SOPS_AGE_KEY_FILE", ageKeyFile)
+	masterKey, err := age.MasterKeyFromRecipient(agePublicKey)
+	require.NoErrorf(t, err, "can't get age master key from pubkey %s", agePublicKey)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
