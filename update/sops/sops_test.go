@@ -95,7 +95,6 @@ func TestUpdate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name             string
-		skipped          bool
 		files            map[string]string
 		updater          *SopsUpdater
 		expected         bool
@@ -145,8 +144,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:    "add a new secret value",
-			skipped: true,
+			name: "add a new secret value",
 			files: map[string]string{
 				"new-secrets.yaml": `first-app:
     token: some-token
@@ -168,6 +166,54 @@ second-app:
 `,
 			},
 		},
+		{
+			name: "add a new deeply nested secret value",
+			files: map[string]string{
+				"new-secrets-deeply-nested.yaml": `first-app:
+    token: some-token
+`,
+			},
+			updater: &SopsUpdater{
+				FilePath: "new-secrets-deeply-nested.yaml",
+				Key:      "second-app.path.to.my.token",
+				Format:   formats.Yaml,
+				Store:    common.StoreForFormat(formats.Yaml),
+				Valuer:   value.StringValuer("new-token"),
+			},
+			expected: true,
+			expectedFiles: map[string]string{
+				"new-secrets-deeply-nested.yaml": `first-app:
+    token: some-token
+second-app:
+    path:
+        to:
+            my:
+                token: new-token
+`,
+			},
+		},
+		{
+			name: "add a new root secret value",
+			files: map[string]string{
+				"new-secrets-root.yaml": `first-app:
+    token: some-token
+`,
+			},
+			updater: &SopsUpdater{
+				FilePath: "new-secrets-root.yaml",
+				Key:      "newtoken",
+				Format:   formats.Yaml,
+				Store:    common.StoreForFormat(formats.Yaml),
+				Valuer:   value.StringValuer("new-token-value"),
+			},
+			expected: true,
+			expectedFiles: map[string]string{
+				"new-secrets-root.yaml": `first-app:
+    token: some-token
+newtoken: new-token-value
+`,
+			},
+		},
 	}
 
 	// we use GPG to encrypt/descrypt - a master key has already been generated in the following directory
@@ -177,10 +223,6 @@ second-app:
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if test.skipped {
-				t.Skip()
-			}
-
 			{
 				for filename, content := range test.files {
 					branches, err := test.updater.Store.LoadPlainFile([]byte(content))

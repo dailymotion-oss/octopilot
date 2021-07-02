@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"go.mozilla.org/sops/v3"
@@ -99,9 +100,17 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 			return false, fmt.Errorf("failed to get value: %w", err)
 		}
 		for i := range tree.Branches {
-			// FIXME if the path top-level element doesn't exist, it will return a new branch with only our path
-			// and so the existing other top-level elements will be lost
-			tree.Branches[i] = tree.Branches[i].Set(path, value)
+			newTree := tree.Branches[i].Set(path, value)
+			if previousTreeHasBeenErased(tree.Branches[i], newTree) {
+				// if the path top-level element doesn't exist, it will return a new tree with only our path
+				// the workaround is to add a single-level item first, and then the whole new branch
+				rootEntry := []interface{}{
+					path[0],
+				}
+				newTree = tree.Branches[i].Set(rootEntry, value)
+				newTree = newTree.Set(path, value)
+			}
+			tree.Branches[i] = newTree
 		}
 
 		// check if we updated something or not, before re-encrypting...
@@ -154,4 +163,24 @@ func convertKeyToPath(key string) []interface{} {
 		path = append(path, entry)
 	}
 	return path
+}
+
+func previousTreeHasBeenErased(previous, next sops.TreeBranch) bool {
+	if len(next) != 1 {
+		// when the previous tree is "erased", the new one will have a single entry
+		return false
+	}
+
+	if len(previous) != 1 {
+		// if the tree size has changed, the previous tree has been erased
+		return true
+	}
+
+	if reflect.DeepEqual(previous[0].Key, next[0].Key) {
+		// same size, same key -> it's a simple tree with 1 element which hasn't changed
+		return false
+	}
+
+	// otherwise, it's a 1 element tree which has changed
+	return true
 }
