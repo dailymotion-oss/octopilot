@@ -27,10 +27,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DM_BOT_TOKEN }}
 
+      - name: Generate Changelog
+        uses: docker://quay.io/git-chglog/git-chglog:0.14.2
+        with:
+          args: -o CHANGELOG.md $(git describe)
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2.6.1
         with:
           version: v0.171.0
-          args: release --rm-dist
+          args: release --rm-dist --release-notes CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
