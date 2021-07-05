@@ -15,6 +15,9 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
+      - id: tag
+        run: echo ::set-output name=TAG::${GITHUB_REF##*/}
+
       - name: Setup Go
         uses: actions/setup-go@v2.1.3
         with:
@@ -30,7 +33,7 @@ jobs:
       - name: Generate Changelog
         uses: docker://quay.io/git-chglog/git-chglog:0.14.2
         with:
-          args: -o CHANGELOG.md ${GITHUB_REF#refs/*/}
+          args: -o CHANGELOG.md ${{ steps.tag.outputs.TAG }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2.6.1
