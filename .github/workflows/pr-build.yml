@@ -5,7 +5,7 @@ name: pr-build
 on: [pull_request]
 
 jobs:
-  build:
+  app:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -22,3 +22,21 @@ jobs:
         with:
           version: v0.171.0
           args: release --snapshot --skip-publish --rm-dist
+
+  docs:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.84.0'
+          extended: true
+
+      - name: Build root docs with Hugo
+        run: hugo --minify --source docs/root
+      - name: Build current-version docs with Hugo
+        run: hugo --minify --source docs/current-version
