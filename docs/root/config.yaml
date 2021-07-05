@@ -1,0 +1,48 @@
+title: Octopilot
+theme: OneDly-Theme
+languageCode: en-us
+pygmentsCodeFences: true
+pygmentsCodeFencesGuessSyntax: true
+PygmentsStyle: monokailight
+enableGitInfo: true
+
+outputs:
+  home:
+  - HTML
+  page:
+  - HTML
+
+params:
+  description: Automate your Gitops workflow, by automatically creating/merging GitHub PRs.
+  author_url: https://github.com/dailymotion-oss
+  author_name: Dailymotion
+  project_url: https://github.com/dailymotion-oss/octopilot
+
+  mainSections:
+  - intro
+
+  socialShare: false
+  socialShareTwitter: false
+  socialShareGoogleplus: false
+  socialShareFacebook: false
+  socialShareReddit: false
+  socialShareLinkedin: false
+  socialShareStumbleupon: false
+  socialSharePinterest: false
+  socialShareEmail: false
+
+  # theme's color scheme
+  first_color: "#f8f8f8"
+  first_border_color: "#e7e7e7"
+  first_text_color: "#333"
+  second_color: "white"
+  second_text_color: "#333"
+  header_color: "#f8f8f8"
+  header_text_color: "rgb(51, 51, 51)"
+  header_link_color: "#777"
+  header_link_hover_color: "rgb(51, 51, 51)"
+
+social:
+  github: dailymotion-oss/octopilot
+  medium: dailymotion
+  twitter: dailymotionEng

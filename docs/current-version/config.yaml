@@ -1,0 +1,30 @@
+title: Octopilot
+theme: kraiklyn
+languageCode: en-us
+pygmentsCodeFences: true
+pygmentsCodeFencesGuessSyntax: true
+PygmentsStyle: monokailight
+enableGitInfo: true
+disableKinds:
+  - taxonomy
+  - term
+  - RSS
+  - sitemap
+  - robotsTXT
+  - "404"
+outputs:
+  home:
+    - HTML
+  page:
+    - HTML
+params:
+  sidebarColor: dailymotion
+  customCss:
+    - css/custom.css
+  octopilot:
+    version: v0.2.12
+menu:
+  shortcuts:
+    - name: Source Code
+      url: https://github.com/dailymotion-oss/octopilot
+      weight: 10

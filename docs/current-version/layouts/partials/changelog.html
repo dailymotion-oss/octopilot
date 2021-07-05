@@ -1,0 +1,12 @@
+{{ $release := getJSON (print "https://api.github.com/repos/dailymotion-oss/octopilot/releases/tags/" .Site.Params.Octopilot.Version) }}
+<section class="page changelog" id="changelog">
+    <h1>
+        <a href="{{ $release.html_url }}">
+            Documentation for Octopilot {{ $release.name }} - released on {{ dateFormat "Jan 2, 2006" $release.published_at }}
+        </a>
+    </h1>
+    <div class="content">
+        <p>This is the full documentation for <a href="{{ $release.html_url }}">Octopilot {{ $release.name }}</a>.</p>
+        {{ index (split $release.body "## Docker images") 0 | $.RenderString }}
+    </div>
+</section>

@@ -1,0 +1,20 @@
+<section id="versions" class="content-section-b">
+
+    <div class="container">
+        <div class="row">
+            <div>
+                <h2 class="section-heading">Documentation</h2>
+                <p>The full documentation for Octopilot is versionned - please select the version you want to use:</p>
+                <ul>
+                    {{ range (getJSON "https://api.github.com/repos/dailymotion-oss/octopilot/releases?per_page=10") }}
+                    <li>
+                        <span><a href="{{ .name }}/index.html">{{ .name }}</a></span>
+                        <span>released on {{ dateFormat "Jan 2, 2006" .published_at }}</span>
+                    </li>    
+                    {{ end }}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</section>

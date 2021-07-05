@@ -1,0 +1,11 @@
+{{ partial "head.html" . }}
+{{ partial "sidebar.html" . }}
+<div class="content">
+    {{ partial "changelog.html" . }}
+    {{ with .Sections }}
+        {{ range .ByWeight }}
+            {{ partial "section_list.html" . }}
+        {{ end }}
+    {{ end }}
+</div>
+{{ partial "tail.html" . }}

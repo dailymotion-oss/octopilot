@@ -1,0 +1,6 @@
+[submodule "docs/current-version/themes/kraiklyn"]
+	path = docs/current-version/themes/kraiklyn
+	url = https://github.com/jsnjack/kraiklyn.git
+[submodule "docs/root/themes/OneDly-Theme"]
+	path = docs/root/themes/OneDly-Theme
+	url = https://github.com/cdeck3r/OneDly-Theme

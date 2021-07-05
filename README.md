@@ -74,6 +74,26 @@ $ octopilot \
     --update "regex(file=helmfile.yaml,pattern='chart: example/my-chart\s+version: \"(.*)\"')=file(path=VERSION)"
 ```
 
+### YQ
+
+Uses an [yq](https://mikefarah.gitbook.io/yq) expression, and write the result either in-place (the default) or to a specific file. All the [yq operators](https://mikefarah.gitbook.io/yq/operators) are supported, so you can do very powerful things, such as manipulating YAML comments, use variables, output to json (note that it can also read json input), ...
+
+Equivalent of the previous example with the `yaml` updater:
+
+```
+$ export VERSION=$(cat VERSION) && octopilot \
+    --update `yq(file=helmfile.yaml,expression='(.releases[] | select(.chart == "example/my-chart") | .version ) = strenv(VERSION)')`
+```
+
+Or read the previous version, store it in a temporary file, and use it to write the commit message:
+
+```
+$ octopilot \
+    --update `yq(file=helmfile.yaml,expression='.releases[] | select(.name == strenv(RELEASE)) | .version',output=.git/previous-version.txt)` \
+    --update `yq(file=helmfile.yaml,expression='(.releases[] | select(.name == strenv(RELEASE)) | .version) = strenv(VERSION)')` \
+    --git-commit-title 'chore(deps): update {{ env "RELEASE" }} from {{ readFile ".git/previous-version.txt" | trim }} to {{ env "VERSION" }}'
+```
+
 ### Update a whole file
 
 To replace the whole content of a file:
