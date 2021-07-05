@@ -1,0 +1,232 @@
+<!-- Credits to https://github.com/jpescador/hugo-future-imperfect/blob/master/layouts/partials/social.html -->
+
+{{ with .Site.Social.github }}
+  <li><a href="//github.com/{{.}}" class="btn btn-default btn-lg" title="GitHub">
+  <i class="fa fa-github"></i>
+  </a></li>
+{{ end }}
+
+
+{{ with .Site.Social.gitlab }}
+  <li><a href="//gitlab.com/{{.}}" title="GitLab" class="btn btn-default btn-lg">
+  <i class="fa fa-gitlab"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.stackoverflow }}
+  <li><a href="//stackoverflow.com/users/{{.}}" title="Stack Overflow" class="btn btn-default btn-lg">
+  <i class="fa fa-stack-overflow"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.bitbucket }}
+  <li><a href="//bitbucket.com/{{.}}" title="Bitbucket" class="btn btn-default btn-lg">
+  <i class="fa fa-bitbucket"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.jsfiddle }}
+  <li><a href="//jsfiddle.com/{{.}}" title="JSFiddle" class="btn btn-default btn-lg">
+  <i class="fa fa-jsfiddle"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.codepen }}
+  <li><a href="//codepen.io/{{.}}" title="CodePen" class="btn btn-default btn-lg">
+  <i class="fa fa-codepen"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.deviantart }}
+  <li><a href="//{{.}}.deviantart.com/" title="DeviantArt" class="btn btn-default btn-lg">
+  <i class="fa fa-deviantart"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.flickr }}
+  <li><a href="//flickr.com/photos/{{.}}" title="Flickr" class="btn btn-default btn-lg">
+  <i class="fa fa-flickr"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.behance }}
+  <li><a href="//behance.net/{{.}}" title="Behance" class="btn btn-default btn-lg">
+  <i class="fa fa-behance"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.dribbble }}
+  <li><a href="//dribbble.com/{{.}}" title="Dribbble" class="btn btn-default btn-lg">
+  <i class="fa fa-dribbble"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.wordpress }}
+  <li><a href="//{{.}}.wordpress.com" title="WordPress" class="btn btn-default btn-lg">
+  <i class="fa fa-wordpress"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.medium}}
+  <li><a href="//medium.com/{{.}}" title="Medium" class="btn btn-default btn-lg">
+  <i class="fa fa-medium"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.linkedin }}
+  <li><a href="//linkedin.com/in/{{.}}" title="LinkedIn" class="btn btn-default btn-lg">
+  <i class="fa fa-linkedin"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.linkedin_company }}
+  <li><a href="//linkedin.com/company/{{.}}" title="LinkedIn Company" class="btn btn-default btn-lg">
+  <i class="fa fa-linkedin"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.foursquare }}
+  <li><a href="//foursquare.com/{{.}}" title="Foursquare" class="btn btn-default btn-lg">
+  <i class="fa fa-foursquare"></i>
+  </a></li>
+{{ end  }}
+
+{{ with .Site.Social.xing }}
+  <li><a href="//xing.com/profile/{{.}}" title="Xing" class="btn btn-default btn-lg">
+  <i class="fa fa-xing"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.slideshare }}
+  <li><a href="//slideshare.com/{{.}}" title="SlideShare" class="btn btn-default btn-lg">
+  <i class="fa fa-slideshare"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.facebook }}
+  <li><a href="//facebook.com/{{.}}" title="Facebook" class="btn btn-default btn-lg">
+  <i class="fa fa-facebook"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.googleplus }}
+  <li><a href="//plus.google.com/+{{.}}" title="Google+" class="btn btn-default btn-lg">
+  <i class="fa fa-google-plus"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.reddit }}
+  <li><a href="//reddit.com/user/{{.}}" title="Reddit" class="btn btn-default btn-lg">
+  <i class="fa fa-reddit"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.quora }}
+  <li><a href="//quora.com/profile/{{.}}" title="Quora" class="btn btn-default btn-lg">
+  <i class="fa fa-quora"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.youtube }}
+  <li><a href="//youtube.com/{{.}}" title="YouTube" class="btn btn-default btn-lg">
+  <i class="fa fa-youtube"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.vimeo }}
+  <li><a href="//vimeo.com/{{.}}" title="Vimeo" class="btn btn-default btn-lg">
+  <i class="fa fa-vimeo"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.whatsapp }}
+  <li><a href="//api.whatsapp.com/send?phone={{.}}" title="WhatsApp" class="btn btn-default btn-lg">
+  <i class="fa fa-whatsapp"></i>
+  </a></li>
+{{ end }}
+
+<!-- TODO: WeChat and QQ Check -->
+
+{{ with .Site.Social.wechat }}
+  <li><a href="weixin://contacts/profile/{{.}}" title="WeChat" class="btn btn-default btn-lg">
+  <i class="fa fa-weixin"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.qq }}
+  <li><a href="//wpa.qq.com/msgrd?v=3&amp;uin={{.}}&amp;site=qq&amp;menu=yes" title="QQ" class="btn btn-default btn-lg">
+  <i class="fa fa-qq"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.instagram }}
+  <li><a href="//instagram.com/{{.}}" title="Instagram" class="btn btn-default btn-lg">
+  <i class="fa fa-instagram"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.tumblr }}
+  <li><a href="//{{.}}.tumblr.com" title="Tumblr" class="btn btn-default btn-lg">
+  <i class="fa fa-tumblr"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.twitter }}
+  <li><a href="//twitter.com/{{.}}" title="Twitter" class="btn btn-default btn-lg">
+  <i class="fa fa-twitter"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.skype }}
+  <li><a href="skype:{{.}}?userinfo" title="Skype" class="btn btn-default btn-lg">
+  <i class="fa fa-skype"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.snapchat }}
+  <li><a href="//snapchat.com/add/{{.}}" title="snapchat" class="btn btn-default btn-lg">
+  <i class="fa fa-snapchat"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.pinterest }}
+  <li><a href="//pinterest.com/{{.}}" title="Pinterest" class="btn btn-default btn-lg">
+  <i class="fa fa-pinterest-p"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.telegram }}
+  <li><a href="//telegram.me/{{.}}" title="telegram" class="btn btn-default btn-lg">
+  <i class="fa fa-telegram"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.vine }}
+  <li><a href="//vine.co/{{.}}" title="Vine" class="btn btn-default btn-lg">
+  <i class="fa fa-vine"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.googlescholar }}
+<li><a href="//scholar.google.com/citations?user={{.}}" title="Google Scholar">  
+  <i class="ai ai-google-scholar"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.orcid }}
+<li><a href="//orcid.org/{{.}}" title="ORCID">  
+  <i class="ai ai-orcid"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.researchgate }}
+<li><a href="//researchgate.net/profile/{{.}}" title="Research Gate"> 
+  <i class="ai ai-researchgate"></i>
+  </a></li>
+{{ end }}
+
+{{ with .Site.Social.email }}
+  <li><a href="mailto:{{.}}" title="Email" class="btn btn-default btn-lg">
+  <i class="fa fa-envelope"></i>
+  </a></li>
+{{ end }}
