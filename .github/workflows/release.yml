@@ -40,7 +40,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: chrisdickinson/setup-yq@v1
+      - uses: chrisdickinson/setup-yq@v1.0.1
         with:
           yq-version: v4.9.6
       - name: update docs with the right version
