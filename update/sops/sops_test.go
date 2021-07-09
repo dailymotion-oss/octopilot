@@ -37,22 +37,6 @@ func TestNewUpdater(t *testing.T) {
 			expected: &SopsUpdater{
 				FilePath: "secrets.yaml",
 				Key:      "path.to.key",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
-			},
-		},
-		{
-			name: "custom format",
-			params: map[string]string{
-				"file":   "file.json.secrets",
-				"key":    "path.to.key",
-				"format": "json",
-			},
-			expected: &SopsUpdater{
-				FilePath: "file.json.secrets",
-				Key:      "path.to.key",
-				Format:   formats.Json,
-				Store:    common.StoreForFormat(formats.Json),
 			},
 		},
 		{
@@ -111,8 +95,6 @@ func TestUpdate(t *testing.T) {
 			updater: &SopsUpdater{
 				FilePath: "existing-secrets.yaml",
 				Key:      "app.token",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
 				Valuer:   value.StringValuer("new-token"),
 			},
 			expected: true,
@@ -132,8 +114,6 @@ func TestUpdate(t *testing.T) {
 			updater: &SopsUpdater{
 				FilePath: "no-changes-secrets.yaml",
 				Key:      "app.token",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
 				Valuer:   value.StringValuer("good-token"),
 			},
 			expected: false,
@@ -153,8 +133,6 @@ func TestUpdate(t *testing.T) {
 			updater: &SopsUpdater{
 				FilePath: "new-secrets.yaml",
 				Key:      "second-app.token",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
 				Valuer:   value.StringValuer("new-token"),
 			},
 			expected: true,
@@ -176,8 +154,6 @@ second-app:
 			updater: &SopsUpdater{
 				FilePath: "new-secrets-deeply-nested.yaml",
 				Key:      "second-app.path.to.my.token",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
 				Valuer:   value.StringValuer("new-token"),
 			},
 			expected: true,
@@ -202,8 +178,6 @@ second-app:
 			updater: &SopsUpdater{
 				FilePath: "new-secrets-root.yaml",
 				Key:      "newtoken",
-				Format:   formats.Yaml,
-				Store:    common.StoreForFormat(formats.Yaml),
 				Valuer:   value.StringValuer("new-token-value"),
 			},
 			expected: true,
@@ -230,9 +204,12 @@ newtoken: new-token-value
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			// setup
 			{
 				for filename, content := range test.files {
-					branches, err := test.updater.Store.LoadPlainFile([]byte(content))
+					format := formats.FormatForPath(filename)
+					store := common.StoreForFormat(format)
+					branches, err := store.LoadPlainFile([]byte(content))
 					require.NoErrorf(t, err, "can't parse data for file %s", filename)
 					tree := sops.Tree{
 						FilePath: filename,
@@ -253,7 +230,7 @@ newtoken: new-token-value
 						Tree:    &tree,
 					})
 					require.NoErrorf(t, err, "failed to encrypt file %s", filename)
-					encryptedData, err := test.updater.Store.EmitEncryptedFile(tree)
+					encryptedData, err := store.EmitEncryptedFile(tree)
 					require.NoErrorf(t, err, "failed to generate encrypted file %s", filename)
 					err = ioutil.WriteFile(filepath.Join("testdata", filename), encryptedData, 0644)
 					require.NoErrorf(t, err, "failed to write encrypted data to file %s", filename)
@@ -270,7 +247,7 @@ newtoken: new-token-value
 
 				actualEncryptedData, err := ioutil.ReadFile(filepath.Join("testdata", test.updater.FilePath))
 				require.NoError(t, err, "can't read actual encrypted file")
-				actualCleartextData, err := decrypt.DataWithFormat(actualEncryptedData, test.updater.Format)
+				actualCleartextData, err := decrypt.DataWithFormat(actualEncryptedData, formats.FormatForPath(test.updater.FilePath))
 				require.NoError(t, err, "can't decrypt actual encrypted content")
 				expectedFileContent := test.expectedFiles[test.updater.FilePath]
 				assert.Equal(t, expectedFileContent, string(actualCleartextData))

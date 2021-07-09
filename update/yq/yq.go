@@ -134,7 +134,7 @@ func (u *YQUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 			err = ioutil.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
 		}
 		if err != nil {
-			return false, fmt.Errorf("failed to write yq result to the ouput: %w", err)
+			return false, fmt.Errorf("failed to write yq result to the output: %w", err)
 		}
 
 		updated = true

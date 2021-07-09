@@ -57,10 +57,10 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	return updater, nil
 }
 
-func (r *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
-	if r.Timeout > 0 {
+func (u *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
+	if u.Timeout > 0 {
 		var cancelFunc context.CancelFunc
-		ctx, cancelFunc = context.WithTimeout(ctx, r.Timeout)
+		ctx, cancelFunc = context.WithTimeout(ctx, u.Timeout)
 		defer cancelFunc()
 	}
 
@@ -68,44 +68,44 @@ func (r *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		stdout bytes.Buffer
 		stderr bytes.Buffer
 	)
-	cmd := exec.CommandContext(ctx, r.Command, r.Args...)
+	cmd := exec.CommandContext(ctx, u.Command, u.Args...)
 	cmd.Dir = repoPath
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
-		return false, fmt.Errorf("failed to run cmd '%s' with args %v - got stdout [%s] and stderr [%s]: %w", r.Command, r.Args, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err)
+		return false, fmt.Errorf("failed to run cmd '%s' with args %v - got stdout [%s] and stderr [%s]: %w", u.Command, u.Args, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err)
 	}
 
-	if len(r.Stdout) > 0 {
-		if err = r.writeCmdOutputToFile(stdout, repoPath, r.Stdout); err != nil {
-			return false, fmt.Errorf("failed to write stdout of cmd '%s' to %s: %w", r.Command, r.Stdout, err)
+	if len(u.Stdout) > 0 {
+		if err = u.writeCmdOutputToFile(stdout, repoPath, u.Stdout); err != nil {
+			return false, fmt.Errorf("failed to write stdout of cmd '%s' to %s: %w", u.Command, u.Stdout, err)
 		}
 	}
-	if len(r.Stderr) > 0 {
-		if err = r.writeCmdOutputToFile(stderr, repoPath, r.Stderr); err != nil {
-			return false, fmt.Errorf("failed to write stderr of cmd '%s' to %s: %w", r.Command, r.Stderr, err)
+	if len(u.Stderr) > 0 {
+		if err = u.writeCmdOutputToFile(stderr, repoPath, u.Stderr); err != nil {
+			return false, fmt.Errorf("failed to write stderr of cmd '%s' to %s: %w", u.Command, u.Stderr, err)
 		}
 	}
 
 	return true, nil
 }
 
-func (r *ExecUpdater) Message() (title, body string) {
-	title = fmt.Sprintf("Run %s", r.Command)
-	body = fmt.Sprintf("Running command `%s`", r.Command)
-	if len(r.Args) > 0 {
-		body = fmt.Sprintf("%s with args %v", body, r.Args)
+func (u *ExecUpdater) Message() (title, body string) {
+	title = fmt.Sprintf("Run %s", u.Command)
+	body = fmt.Sprintf("Running command `%s`", u.Command)
+	if len(u.Args) > 0 {
+		body = fmt.Sprintf("%s with args %v", body, u.Args)
 	}
 	return title, body
 }
 
-func (r *ExecUpdater) String() string {
-	return fmt.Sprintf("Exec[cmd=%s,args=%v]", r.Command, r.Args)
+func (u *ExecUpdater) String() string {
+	return fmt.Sprintf("Exec[cmd=%s,args=%v]", u.Command, u.Args)
 }
 
-func (r *ExecUpdater) writeCmdOutputToFile(output bytes.Buffer, repoPath, filePath string) error {
+func (u *ExecUpdater) writeCmdOutputToFile(output bytes.Buffer, repoPath, filePath string) error {
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(repoPath, filePath)
 	}
@@ -117,7 +117,7 @@ func (r *ExecUpdater) writeCmdOutputToFile(output bytes.Buffer, repoPath, filePa
 
 	err = ioutil.WriteFile(filePath, output.Bytes(), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write output of cmd '%s' to %s: %w", r.Command, filePath, err)
+		return fmt.Errorf("failed to write output of cmd '%s' to %s: %w", u.Command, filePath, err)
 	}
 
 	return nil

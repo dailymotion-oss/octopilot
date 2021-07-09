@@ -2,7 +2,7 @@
 
 This is the "root" documentation project for octopilot, it contains:
 - a high-level overview of what is octopilot
-- links to the detailled per-version documentation
+- links to the detailed per-version documentation
 
 It's a static website build with [Hugo](https://gohugo.io/).
 - the content is written in markdown format, in the [content](./content/) directory

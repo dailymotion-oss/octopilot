@@ -14,8 +14,8 @@ Here is an example of using Octopilot to update multiple repositories, using mul
 
 ```
 $ octopilot \
-    --repo "my-org/some-repo(merge=true)" \
-    --repo "my-org/another-repo(draft=true)" \
+    --repo "my-org/some-repo" \
+    --repo "my-org/another-repo(merge=true)" \
     --repo "discover-from(env=PROMOTE_TO_REPOSITORIES)" \
     --repo "discover-from(query=org:my-org topic:my-topic)" \
     --update "yaml(file=config.yaml,path='version')=file(path=VERSION)" \
