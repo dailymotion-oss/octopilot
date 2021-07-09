@@ -6,3 +6,5 @@ This is the full documentation for octopilot. It's a static website build with [
 - to render the website:
   - install [Hugo](https://gohugo.io/) - see the [.github/workflows/release.yml](../../.github/workflows/release.yml) file for the version of Hugo to use
   - run `hugo server` in this directory, and open <http://localhost:1313/>
+
+The Hugo theme is based on the [whisper theme](https://github.com/zerostaticthemes/hugo-whisper-theme).
