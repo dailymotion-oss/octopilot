@@ -14,8 +14,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mozilla.org/sops/v3/cmd/sops/common"
-	"go.mozilla.org/sops/v3/cmd/sops/formats"
 )
 
 func TestParse(t *testing.T) {
@@ -123,9 +121,7 @@ func TestParse(t *testing.T) {
 				},
 				&sops.SopsUpdater{
 					FilePath: "certificates/secrets.yaml",
-					Format:   formats.Yaml,
 					Key:      "certificates.b64encKey",
-					Store:    common.StoreForFormat(formats.Yaml),
 					Valuer:   value.StringValuer("e30k"),
 				},
 			},

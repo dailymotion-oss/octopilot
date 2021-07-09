@@ -21,9 +21,7 @@ import (
 
 type SopsUpdater struct {
 	FilePath string
-	Format   formats.Format
 	Key      string
-	Store    sops.Store
 	Valuer   value.Valuer
 }
 
@@ -40,8 +38,6 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*SopsUpdater, er
 		return nil, errors.New("missing key parameter")
 	}
 
-	updater.Format = formats.FormatForPathOrString(updater.FilePath, params["format"])
-	updater.Store = common.StoreForFormat(updater.Format)
 	updater.Valuer = valuer
 
 	return updater, nil
@@ -52,6 +48,11 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 		cipher = aes.NewCipher()
 		svcs   = []keyservice.KeyServiceClient{keyservice.NewLocalClient()}
 	)
+
+	value, err := u.Valuer.Value(ctx, repoPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to get value: %w", err)
+	}
 
 	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
 	if err != nil {
@@ -70,9 +71,14 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
 		}
 
+		var (
+			format = formats.FormatForPath(filePath)
+			store  = common.StoreForFormat(format)
+		)
+
 		tree, err := common.LoadEncryptedFileWithBugFixes(common.GenericDecryptOpts{
 			Cipher:      cipher,
-			InputStore:  u.Store,
+			InputStore:  store,
 			InputPath:   filePath,
 			KeyServices: svcs,
 		})
@@ -89,18 +95,16 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 			return false, fmt.Errorf("failed to decrypt tree for %s: %w", filePath, err)
 		}
 
-		originalData, err := u.Store.EmitPlainFile(tree.Branches)
+		originalData, err := store.EmitPlainFile(tree.Branches)
 		if err != nil {
 			return false, fmt.Errorf("failed to emit original tree for %s: %w", filePath, err)
 		}
 
 		path := convertKeyToPath(u.Key)
-		value, err := u.Valuer.Value(ctx, repoPath)
-		if err != nil {
-			return false, fmt.Errorf("failed to get value: %w", err)
-		}
 		for i := range tree.Branches {
 			newTree := tree.Branches[i].Set(path, value)
+			// fix for https://github.com/mozilla/sops/issues/407
+			// to be removed once https://github.com/mozilla/sops/pull/899 gets merged & released
 			if previousTreeHasBeenErased(tree.Branches[i], newTree) {
 				// if the path top-level element doesn't exist, it will return a new tree with only our path
 				// the workaround is to add a single-level item first, and then the whole new branch
@@ -114,7 +118,7 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 		}
 
 		// check if we updated something or not, before re-encrypting...
-		updatedData, err := u.Store.EmitPlainFile(tree.Branches)
+		updatedData, err := store.EmitPlainFile(tree.Branches)
 		if err != nil {
 			return false, fmt.Errorf("failed to emit updated tree for %s: %w", filePath, err)
 		}
@@ -131,7 +135,7 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 			return false, fmt.Errorf("failed to encrypt tree for %s: %w", filePath, err)
 		}
 
-		encryptedFile, err := u.Store.EmitEncryptedFile(*tree)
+		encryptedFile, err := store.EmitEncryptedFile(*tree)
 		if err != nil {
 			return false, fmt.Errorf("failed to generate re-encrypted file %s: %w", filePath, err)
 		}
