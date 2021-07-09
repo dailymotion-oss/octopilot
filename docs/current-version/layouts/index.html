@@ -1,6 +1,12 @@
-{{ partial "head.html" . }}
-{{ partial "sidebar.html" . }}
-<div class="content">
+{{ define "header_css" }}{{ end }}
+{{ define "body_classes" }}page-default-single{{ end }}
+{{ define "header_classes" }}{{ end }}
+
+{{ define "main" }}
+{{ $release := getJSON (print "https://api.github.com/repos/dailymotion-oss/octopilot/releases/tags/" .Site.Params.Octopilot.Version) }}
+<h1 class="title">Documentation for Octopilot {{ $release.name }}</h1>
+<h2> Released on {{ dateFormat "Jan 2, 2006" $release.published_at }}</h2>
+<div class="content {{if .Site.Params.enable_anchor_link}}{{ "anchor-link-enabled" }}{{ end }}">
     {{ partial "changelog.html" . }}
     {{ with .Sections }}
         {{ range .ByWeight }}
@@ -8,4 +14,5 @@
         {{ end }}
     {{ end }}
 </div>
-{{ partial "tail.html" . }}
+</div>
+{{ end }}

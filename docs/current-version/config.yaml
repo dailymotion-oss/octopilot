@@ -1,8 +1,8 @@
 title: Octopilot
-theme: kraiklyn
 languageCode: en-us
 pygmentsCodeFences: true
 pygmentsCodeFencesGuessSyntax: true
+pygmentsUseClasses: true
 PygmentsStyle: monokailight
 enableGitInfo: true
 disableKinds:
@@ -18,11 +18,18 @@ outputs:
   page:
     - HTML
 params:
-  sidebarColor: dailymotion
-  customCss:
-    - css/custom.css
   octopilot:
-    version: v0.2.12
+    version: v0.2.16
+  homepage_meta_tags:
+    meta_description: Automate your Gitops workflow, by automatically creating/merging GitHub Pull Requests
+    meta_og_title: Octopilot
+    meta_og_type: website
+    meta_og_url: https://dailymotion-oss.github.io/octopilot
+    meta_og_image:
+    meta_og_description: Automate your Gitops workflow, by automatically creating/merging GitHub Pull Requests
+    meta_twitter_card: summary
+    meta_twitter_site: "@dailymotionEng"
+    meta_twitter_creator: "@dailymotionEng"
 menu:
   shortcuts:
     - name: Source Code

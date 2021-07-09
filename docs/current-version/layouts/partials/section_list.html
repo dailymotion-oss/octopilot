@@ -1,0 +1,15 @@
+{{ if .Pages }}
+    {{ partial "section.html" . }}
+    {{ if .Sections }}
+        {{ range .Sections.ByWeight }}
+            {{ partial "section_list.html" . }}
+        {{ end }}
+    {{ else }}
+            {{ range .Pages.ByWeight }}
+                {{ partial "section.html" . }}
+            {{ end }}
+    {{ end }}
+{{ else }}
+    {{ partial "section.html" . }}
+{{ end }}
+
