@@ -50,7 +50,7 @@ func init() {
 	pflag.StringVar(&options.GitHub.PrivateKeyPath, "github-privatekey-path", os.Getenv("GITHUB_PRIVATEKEY_PATH"), "For the `app` GitHub auth method, contains the GitHubApp Private key file path `/some/key.pem` (used if the github-privatekey is empty). Default to the GITHUB_PRIVATEKEY_PATH env var.")
 
 	// pull-request flags
-	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "The title of the Pull Request to create. Detault to the commit title.")
+	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "The title of the Pull Request to create. Default to the commit title.")
 	pflag.StringVar(&options.GitHub.PullRequest.TitleUpdateOperation, "pr-title-update-operation", "", `The type of operation when updating the PR's title: "ignore" (keep old value), "replace", "prepend" or "append". Default is: "ignore" for "append" strategy, "replace" for "reset" strategy, and not applicable for "recreate" strategy.`)
 	pflag.StringVar(&options.GitHub.PullRequest.Body, "pr-body", "", "The body of the Pull Request to create. Default to the commit body and the commit footer.")
 	pflag.StringVar(&options.GitHub.PullRequest.BodyUpdateOperation, "pr-body-update-operation", "", `The type of operation when updating the PR's body: "ignore" (keep old value), "replace", "prepend" or "append". Default is: "ignore" for "append" strategy, "replace" for "reset" strategy, and not applicable for "recreate" strategy.`)
@@ -80,7 +80,7 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CommitFooter, "git-commit-footer", defaultCommitFooter(), "Footer of the git commit.")
 	pflag.StringVar(&options.UpdateOptions.Git.BranchPrefix, "git-branch-prefix", "octopilot-", "Prefix of the new branch to create.")
 
-	pflag.StringVar(&options.Strategy, "strategy", "reset", `Strategy to use when creating the Pull Requests: either "reset" (reset any existing PR from the current base branch), "append" (append new commit to any existing PR) or "recreate" (always create a new PR).`)
+	pflag.StringVar(&options.Strategy, "strategy", "reset", `Strategy to use when creating/updating the Pull Requests: either "reset" (reset any existing PR from the current base branch), "append" (append new commit to any existing PR) or "recreate" (always create a new PR).`)
 	pflag.BoolVar(&options.KeepFiles, "keep-files", false, "Keep the cloned repositories on disk. If false, the files will be deleted at the end of the process.")
 	pflag.BoolVarP(&options.DryRun, "dry-run", "n", false, `Don't perform any operation on the remote git repository: all operations will be done in the local cloned repository. You should also set the "--keep-files" flag to keep the files and inspect the changes in the local repository.`)
 	pflag.StringVar(&options.logLevel, "log-level", "info", "Log level. Supported values: trace, debug, info, warning, error, fatal, panic.")
