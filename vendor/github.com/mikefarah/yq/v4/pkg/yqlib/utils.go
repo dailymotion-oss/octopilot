@@ -9,11 +9,37 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-func readStream(filename string) (io.Reader, error) {
+func readStream(filename string) (io.Reader, bool, error) {
+
 	if filename == "-" {
-		return bufio.NewReader(os.Stdin), nil
+		reader := bufio.NewReader(os.Stdin)
+
+		seperatorBytes, err := reader.Peek(3)
+
+		if err == io.EOF {
+			// EOF are handled else where..
+			return reader, false, nil
+		}
+
+		return reader, string(seperatorBytes) == "---", err
 	} else {
-		return os.Open(filename) // nolint gosec
+		// ignore CWE-22 gosec issue - that's more targetted for http based apps that run in a public directory,
+		// and ensuring that it's not possible to give a path to a file outside thar directory.
+		reader, err := os.Open(filename) // #nosec
+		if err != nil {
+			return nil, false, err
+		}
+		seperatorBytes := make([]byte, 3)
+		_, err = reader.Read(seperatorBytes)
+		if err == io.EOF {
+			// EOF are handled else where..
+			return reader, false, nil
+		} else if err != nil {
+			return nil, false, err
+		}
+		_, err = reader.Seek(0, 0)
+
+		return reader, string(seperatorBytes) == "---", err
 	}
 }
 

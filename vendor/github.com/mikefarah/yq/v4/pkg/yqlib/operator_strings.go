@@ -74,6 +74,232 @@ func substituteStringOperator(d *dataTreeNavigator, context Context, expressionN
 
 }
 
+func addMatch(original []*yaml.Node, match string, offset int, name string) []*yaml.Node {
+
+	newContent := append(original,
+		createScalarNode("string", "string"))
+
+	if offset < 0 {
+		// offset of -1 means there was no match, force a null value like jq
+		newContent = append(newContent,
+			createScalarNode(nil, "null"),
+		)
+	} else {
+		newContent = append(newContent,
+			createScalarNode(match, match),
+		)
+	}
+
+	newContent = append(newContent,
+		createScalarNode("offset", "offset"),
+		createScalarNode(offset, fmt.Sprintf("%v", offset)),
+		createScalarNode("length", "length"),
+		createScalarNode(len(match), fmt.Sprintf("%v", len(match))))
+
+	if name != "" {
+		newContent = append(newContent,
+			createScalarNode("name", "name"),
+			createScalarNode(name, name),
+		)
+	}
+	return newContent
+}
+
+type matchPreferences struct {
+	Global bool
+}
+
+func getMatches(matchPrefs matchPreferences, regEx *regexp.Regexp, value string) ([][]string, [][]int) {
+	var allMatches [][]string
+	var allIndices [][]int
+
+	if matchPrefs.Global {
+		allMatches = regEx.FindAllStringSubmatch(value, -1)
+		allIndices = regEx.FindAllStringSubmatchIndex(value, -1)
+	} else {
+		allMatches = [][]string{regEx.FindStringSubmatch(value)}
+		allIndices = [][]int{regEx.FindStringSubmatchIndex(value)}
+	}
+
+	log.Debug("allMatches, %v", allMatches)
+	return allMatches, allIndices
+}
+
+func match(matchPrefs matchPreferences, regEx *regexp.Regexp, candidate *CandidateNode, value string, results *list.List) {
+	subNames := regEx.SubexpNames()
+	allMatches, allIndices := getMatches(matchPrefs, regEx, value)
+
+	// if all matches just has an empty array in it,
+	// then nothing matched
+	if len(allMatches) > 0 && len(allMatches[0]) == 0 {
+		return
+	}
+
+	for i, matches := range allMatches {
+		capturesNode := &yaml.Node{Kind: yaml.SequenceNode}
+		match, submatches := matches[0], matches[1:]
+		for j, submatch := range submatches {
+			captureNode := &yaml.Node{Kind: yaml.MappingNode}
+			captureNode.Content = addMatch(capturesNode.Content, submatch, allIndices[i][2+j*2], subNames[j+1])
+			capturesNode.Content = append(capturesNode.Content, captureNode)
+		}
+
+		node := &yaml.Node{Kind: yaml.MappingNode}
+		node.Content = addMatch(node.Content, match, allIndices[i][0], "")
+		node.Content = append(node.Content,
+			createScalarNode("captures", "captures"),
+			capturesNode,
+		)
+		results.PushBack(candidate.CreateChild(nil, node))
+
+	}
+
+}
+
+func capture(matchPrefs matchPreferences, regEx *regexp.Regexp, candidate *CandidateNode, value string, results *list.List) {
+	subNames := regEx.SubexpNames()
+	allMatches, allIndices := getMatches(matchPrefs, regEx, value)
+
+	// if all matches just has an empty array in it,
+	// then nothing matched
+	if len(allMatches) > 0 && len(allMatches[0]) == 0 {
+		return
+	}
+
+	for i, matches := range allMatches {
+		capturesNode := &yaml.Node{Kind: yaml.MappingNode}
+
+		_, submatches := matches[0], matches[1:]
+		for j, submatch := range submatches {
+			capturesNode.Content = append(capturesNode.Content,
+				createScalarNode(subNames[j+1], subNames[j+1]))
+
+			offset := allIndices[i][2+j*2]
+			// offset of -1 means there was no match, force a null value like jq
+			if offset < 0 {
+				capturesNode.Content = append(capturesNode.Content,
+					createScalarNode(nil, "null"),
+				)
+			} else {
+				capturesNode.Content = append(capturesNode.Content,
+					createScalarNode(submatch, submatch),
+				)
+			}
+		}
+
+		results.PushBack(candidate.CreateChild(nil, capturesNode))
+
+	}
+
+}
+
+func extractMatchArguments(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (*regexp.Regexp, matchPreferences, error) {
+	regExExpNode := expressionNode.Rhs
+
+	matchPrefs := matchPreferences{}
+
+	// we got given parameters e.g. match(exp; params)
+	if expressionNode.Rhs.Operation.OperationType == blockOpType {
+		block := expressionNode.Rhs
+		regExExpNode = block.Lhs
+		replacementNodes, err := d.GetMatchingNodes(context, block.Rhs)
+		if err != nil {
+			return nil, matchPrefs, err
+		}
+		paramText := ""
+		if replacementNodes.MatchingNodes.Front() != nil {
+			paramText = replacementNodes.MatchingNodes.Front().Value.(*CandidateNode).Node.Value
+		}
+		if strings.Contains(paramText, "g") {
+			paramText = strings.ReplaceAll(paramText, "g", "")
+			matchPrefs.Global = true
+		}
+		if strings.Contains(paramText, "i") {
+			return nil, matchPrefs, fmt.Errorf(`'i' is not a valid option for match. To ignore case, use an expression like match("(?i)cat")`)
+		}
+		if len(paramText) > 0 {
+			return nil, matchPrefs, fmt.Errorf(`Unrecognised match params '%v', please see docs at https://mikefarah.gitbook.io/yq/operators/string-operators`, paramText)
+		}
+	}
+
+	regExNodes, err := d.GetMatchingNodes(context.ReadOnlyClone(), regExExpNode)
+	if err != nil {
+		return nil, matchPrefs, err
+	}
+	log.Debug(NodesToString(regExNodes.MatchingNodes))
+	regExStr := ""
+	if regExNodes.MatchingNodes.Front() != nil {
+		regExStr = regExNodes.MatchingNodes.Front().Value.(*CandidateNode).Node.Value
+	}
+	log.Debug("regEx %v", regExStr)
+	regEx, err := regexp.Compile(regExStr)
+	return regEx, matchPrefs, err
+}
+
+func matchOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	regEx, matchPrefs, err := extractMatchArguments(d, context, expressionNode)
+	if err != nil {
+		return Context{}, err
+	}
+
+	var results = list.New()
+
+	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
+		node := unwrapDoc(candidate.Node)
+		if node.Tag != "!!str" {
+			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
+		}
+
+		match(matchPrefs, regEx, candidate, node.Value, results)
+	}
+
+	return context.ChildContext(results), nil
+}
+
+func captureOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	regEx, matchPrefs, err := extractMatchArguments(d, context, expressionNode)
+	if err != nil {
+		return Context{}, err
+	}
+
+	var results = list.New()
+
+	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
+		node := unwrapDoc(candidate.Node)
+		if node.Tag != "!!str" {
+			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
+		}
+		capture(matchPrefs, regEx, candidate, node.Value, results)
+
+	}
+
+	return context.ChildContext(results), nil
+}
+
+func testOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	regEx, _, err := extractMatchArguments(d, context, expressionNode)
+	if err != nil {
+		return Context{}, err
+	}
+
+	var results = list.New()
+
+	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
+		node := unwrapDoc(candidate.Node)
+		if node.Tag != "!!str" {
+			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
+		}
+		matches := regEx.FindStringSubmatch(node.Value)
+		results.PushBack(createBooleanCandidate(candidate, len(matches) > 0))
+
+	}
+
+	return context.ChildContext(results), nil
+}
+
 func joinStringOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 	log.Debugf("-- joinStringOperator")
 	joinStr := ""

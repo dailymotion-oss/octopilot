@@ -83,6 +83,9 @@ var explodeOpType = &operationType{Type: "EXPLODE", NumArgs: 1, Precedence: 50, 
 var sortKeysOpType = &operationType{Type: "SORT_KEYS", NumArgs: 1, Precedence: 50, Handler: sortKeysOperator}
 var joinStringOpType = &operationType{Type: "JOIN", NumArgs: 1, Precedence: 50, Handler: joinStringOperator}
 var subStringOpType = &operationType{Type: "SUBSTR", NumArgs: 1, Precedence: 50, Handler: substituteStringOperator}
+var matchOpType = &operationType{Type: "MATCH", NumArgs: 1, Precedence: 50, Handler: matchOperator}
+var captureOpType = &operationType{Type: "CAPTURE", NumArgs: 1, Precedence: 50, Handler: captureOperator}
+var testOpType = &operationType{Type: "TEST", NumArgs: 1, Precedence: 50, Handler: testOperator}
 var splitStringOpType = &operationType{Type: "SPLIT", NumArgs: 1, Precedence: 50, Handler: splitStringOperator}
 
 var keysOpType = &operationType{Type: "KEYS", NumArgs: 0, Precedence: 50, Handler: keysOperator}
@@ -114,8 +117,8 @@ type Operation struct {
 	UpdateAssign  bool // used for assign ops, when true it means we evaluate the rhs given the lhs
 }
 
-func createValueOperation(value interface{}, stringValue string) *Operation {
-	var node yaml.Node = yaml.Node{Kind: yaml.ScalarNode}
+func createScalarNode(value interface{}, stringValue string) *yaml.Node {
+	var node = &yaml.Node{Kind: yaml.ScalarNode}
 	node.Value = stringValue
 
 	switch value.(type) {
@@ -130,12 +133,17 @@ func createValueOperation(value interface{}, stringValue string) *Operation {
 	case nil:
 		node.Tag = "!!null"
 	}
+	return node
+}
+
+func createValueOperation(value interface{}, stringValue string) *Operation {
+	var node *yaml.Node = createScalarNode(value, stringValue)
 
 	return &Operation{
 		OperationType: valueOpType,
 		Value:         value,
 		StringValue:   stringValue,
-		CandidateNode: &CandidateNode{Node: &node},
+		CandidateNode: &CandidateNode{Node: node},
 	}
 }
 
@@ -179,7 +187,10 @@ func NodeToString(node *CandidateNode) string {
 	if errorEncoding != nil {
 		log.Error("Error debugging node, %v", errorEncoding.Error())
 	}
-	encoder.Close()
+	errorClosingEncoder := encoder.Close()
+	if errorClosingEncoder != nil {
+		log.Error("Error closing encoder: ", errorClosingEncoder.Error())
+	}
 	tag := value.Tag
 	if value.Kind == yaml.DocumentNode {
 		tag = "doc"
