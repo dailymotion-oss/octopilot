@@ -45,7 +45,7 @@ $ octopilot \
     --strategy "append"
 ```
 
-As you can see, we're making the same set of changes to 2 different repositories, with different configuration:
+As you can see, we're making the same set of changes to 2 different repositories, with different configurations:
 - the PR on the `staging-env` repository will be automatically merged - and thus our release deployed
 - the PR on the `prod-env` repository will be created as "draft", and won't be automatically merged - thus requiring a human intervention to merge it
 
@@ -62,7 +62,7 @@ releases:
 This is a very simplified configuration file for [helmfile](https://github.com/roboll/helmfile), an application used to describe [Helm](http://helm.sh/) releases. You can use whatever you want, it's just to base our example on a real-life use-case.
 
 So we're running the [YQ updater](#yq) twice:
-- the first time, with the `.releases[] | select(.name == strenv(APP_NAME)) | .version` expression, to extract the current version for our application named `my-app`. And we're sending the output to the `.git/previous-version.txt` file - which will contain just `1.0.0`. We're doing that to store the "previous" version before changing it with out new version. You'll notice that the output file is located in the `.git` directory, this is to avoid committing it by default.
+- the first time, with the `.releases[] | select(.name == strenv(APP_NAME)) | .version` expression, to extract the current version for our application named `my-app`. And we're sending the output to the `.git/previous-version.txt` file - which will contain just `1.0.0`. We're doing that to store the "previous" version before changing it without new version. You'll notice that the output file is located in the `.git` directory, this is to avoid committing it by default.
 - the second time, we're replacing the version with the new one - stored in the `VERSION` environment variable - with the following expression: `(.releases[] | select(.name == strenv(APP_NAME)) | .version) = strenv(VERSION)`.
 
 Now, we have:
@@ -77,7 +77,7 @@ We'll also use a custom prefix for the branch name, to make it easier to find wh
 
 Next, the Pull Request. We'll use the `append` strategy, which means that if we need to promote a release in prod, and the previous one hasn't been merged/deployed yet, we'll just append a new commit on the existing branch/PR. So that your production PR for your application will stay the same, accumulating releases until it is merged. We're using a specific label for our Pull Request: `update-${APP_NAME}` - to make sure we'll find any existing PR for our application, and that each application will get its own PR.
 
-Same as for the commit, we'll use the [templating feature](#templating) to write nice title and description for our Pull Request - just that this time we won't need to convert from markdown to raw text. And we'll use specific "update operations":
+Same as for the commit, we'll use the [templating feature](#templating) to write a nice title and description for our Pull Request - just that this time we won't need to convert from markdown to raw text. And we'll use specific "update operations":
 - we'll always replace the PR title, because we want a short title, with only the app name and the latest release's version - using the `--pr-title-update-operation "replace"` flag
 - we'll "prepend" the new PR body, before the existing one, using the `--pr-body-update-operation "prepend"` flag. So that the release notes for the latest release will be first - just as when you read a changelog. And of course we don't want to remove the previous release notes.
 
@@ -96,10 +96,10 @@ This is a screenshot of a Pull Request on the staging environment git repository
 
 This is a screenshot of a Pull Request on the production environment git repository:
 - the PR has been created to promote `v3.14.1` of the application
-- later, `v3.15.0` as been released - and promoted. Thus adding a new commit to the PR
+- later, `v3.15.0` has been released - and promoted. Thus adding a new commit to the PR
 - and then, `some-user` merged the Pull Request, to deploy in prod
 
-You'll notice that we have 2 release notes in the PR: 1 for each release. So you can see the full changelog for every releases that will be deployed when you'll merge this PR.
+You'll notice that we have 2 release notes in the PR: 1 for each release. So you can see the full changelog for every release that will be deployed when you'll merge this PR.
 
 ![](screenshot-app-promotion-pr-multi-commits.png)
 
@@ -111,5 +111,5 @@ In this screenshot you can see the 2 commits:
 
 As you can see, it's easy to adapt this example for your own use-case. For example, you might want:
 - to create PRs on a different set of [repositories](#repos): QA, staging and production
-- to update different kind of files, using different [updaters](#updaters)
+- to update different kinds of files, using different [updaters](#updaters)
 - to customize the [commit](#commit) or the [Pull Request](#pull-request)

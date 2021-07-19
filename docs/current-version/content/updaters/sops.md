@@ -26,7 +26,7 @@ Octopilot will decrypt the `secrets.yaml` file, set the value of the `app.tls.ba
 
 The syntax is: `sops(params)=value` - you can read more about the value in the ["value" section](#value).
 
-It support the following parameters:
+It supports the following parameters:
 
 - `file` (string): mandatory path to the sops-encrypted file to update. Can be a file pattern - such as `config/secrets.*`. If it's a relative path, it will be relative to the root of the cloned git repository.
 - `key` (string): mandatory key to update in the file(s).

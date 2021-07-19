@@ -38,7 +38,7 @@ Example: `{{ githubRelease "owner/repo/v1.2.3" }}` to print the release notes fo
 
 ### expandGithubLinks
 
-The `expandGithubLinks` function will transform GitHub short links - such as #123 - to absolute URLs. It is mostly useful when combined with the `githubRelease` function, to ensure that the links in the release notes are always absolute.
+The `expandGithubLinks` function will transform GitHub short links - such as #123 - to absolute URLs. It is most useful when combined with the `githubRelease` function, to ensure that the links in the release notes are always absolute.
 
 Definition: `expandGithubLinks(fullRepositoryName string, markdownInput string) string`. The `fullRepositoryName` parameter is the full name of the repository, such as `owner/repo`. It is used to build the absolute URLs.
 
@@ -46,7 +46,7 @@ Example: `{{ githubRelease (print "owner/repo/" (env "VERSION")) | expandGithubL
 
 ### extractMarkdownURLs
 
-The `extractMarkdownURLs` function will transform markdown links to plain URLs. It is mostly useful when combined with the `githubRelease` function, to ensure that the links in the release notes are always plain URLs - when you want to print plain text, and not markdown, such as in a commit message.
+The `extractMarkdownURLs` function will transform markdown links to plain URLs. It is most useful when combined with the `githubRelease` function, to ensure that the links in the release notes are always plain URLs - when you want to print plain text, and not markdown, such as in a commit message.
 
 Definition: `extractMarkdownURLs(markdownInput string) string`.
 
@@ -54,7 +54,7 @@ Example: `{{ githubRelease (print "owner/repo/" (env "VERSION")) | expandGithubL
 
 ### md2txt
 
-The `md2txt` function will strip all the markdown syntax from a string. It is mostly useful when combined with the `githubRelease` function, to ensure that the release notes are always plain text, and not markdown. Use it for your commit messages.
+The `md2txt` function will strip all the markdown syntax from a string. It is most useful when combined with the `githubRelease` function, to ensure that the release notes are always plain text, and not markdown. Use it for your commit messages.
 
 Definition: `md2txt(markdownInput string) string`.
 

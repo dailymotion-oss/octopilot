@@ -8,4 +8,5 @@ If you want to see what you can do with Octopilot for real, here is a set of rea
 
 - [Promoting a new release](#use-case-app-promotion)
 - [Updating certificates](#use-case-update-certs)
+- [Updating Go dependencies](#use-case-go-deps)
 - [Previsualizing changes](#use-case-preview)

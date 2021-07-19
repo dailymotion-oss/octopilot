@@ -23,7 +23,7 @@ Octopilot will replace the first line with `version: "1.2.3"` if the `$VERSION` 
 
 The syntax is: `regex(params)=value` - you can read more about the value in the ["value" section](#value).
 
-It support the following parameters:
+It supports the following parameters:
 
 - `file` (string): mandatory path to the file to update. Can be a file pattern - such as `files/**/*.txt`. If it's a relative path, it will be relative to the root of the cloned git repository.
 - `pattern` (string): mandatory regex pattern to find and replace something in the file(s). The pattern must be in the [Golang syntax](https://golang.org/pkg/regexp/syntax/). If this pattern includes a capturing group, then it will be replaced by the provided value.
