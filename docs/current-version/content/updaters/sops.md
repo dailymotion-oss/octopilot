@@ -35,3 +35,5 @@ Note that depending on the sops backend you use (KMS, age, vault, ...) you might
 - for GCP KMS, the `GOOGLE_APPLICATION_CREDENTIALS` env var
 - for [age](https://age-encryption.org/), the `SOPS_AGE_KEY_FILE` env var
 - ...
+
+See the ["updating certificates" use-case](#use-case-update-certs) for a real-life example of what you can do with this updater.

@@ -34,3 +34,5 @@ It support the following parameters:
 - `style` (string): an optional style to apply to the new value: `double` (add double quotes), `single` (add single quotes), `literal`, `folded` or `flow` - see [yq style reference](https://mikefarah.gitbook.io/yq/operators/style).
 
 Note that Octopilot will keep the comments in the YAML files - because we're using the great [go-yaml v3 lib](https://github.com/go-yaml/yaml/tree/v3). [Just that it might rewrite a bit your indentation](https://mikefarah.gitbook.io/yq/usage/output-format#indent).
+
+See the ["updating certificates" use-case](#use-case-update-certs) for a real-life example of what you can do with this updater.

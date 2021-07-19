@@ -81,7 +81,7 @@ func (o *GitOptions) setDefaultValues(updaters []update.Updater, tplExecutorFunc
 		}
 	}
 	if len(o.CommitTitle) == 0 {
-		o.CommitTitle = "OctoPilot update"
+		o.CommitTitle = "Octopilot update"
 	}
 	if len(o.CommitBody) == 0 {
 		body := new(strings.Builder)

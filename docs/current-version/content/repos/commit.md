@@ -67,3 +67,5 @@ It's using the [templating](#templating) feature to retrieve the GitHub Release 
 ## Git push
 
 - `git-branch-prefix` (string): when pushing the changes to the "origin" git repository, a new branch with a random name will be created. You can control the prefix of this random name, which default to `octopilot-`.
+
+Note that Octopilot requires permissions to push on the GitHub repositories to update. For the moment, it doesn't support forking the repository, and creating the Pull Request from the fork.
