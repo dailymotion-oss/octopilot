@@ -45,7 +45,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/nwaples/rardecode v1.0.0 // indirect
-	github.com/otiai10/copy v1.0.2
+	github.com/otiai10/copy v1.6.0
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/rs/xid v1.3.0
 	github.com/sergi/go-diff v1.2.0 // indirect
