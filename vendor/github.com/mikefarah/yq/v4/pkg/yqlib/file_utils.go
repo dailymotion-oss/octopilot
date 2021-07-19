@@ -2,6 +2,7 @@ package yqlib
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 )
 
@@ -23,9 +24,20 @@ func safelyRenameFile(from string, to string) {
 	}
 }
 
+func tryRemoveFile(filename string) {
+	log.Debug("Removing temp file: %v", filename)
+	removeErr := os.Remove(filename)
+	if removeErr != nil {
+		log.Errorf("Failed to remove temp file: %v", filename)
+	}
+}
+
 // thanks https://stackoverflow.com/questions/21060945/simple-way-to-copy-a-file-in-golang
 func copyFileContents(src, dst string) (err error) {
-	in, err := os.Open(src) // nolint gosec
+	// ignore CWE-22 gosec issue - that's more targetted for http based apps that run in a public directory,
+	// and ensuring that it's not possible to give a path to a file outside thar directory.
+
+	in, err := os.Open(src) // #nosec
 	if err != nil {
 		return err
 	}
@@ -41,10 +53,36 @@ func copyFileContents(src, dst string) (err error) {
 	return out.Sync()
 }
 
+func SafelyCloseReader(reader io.Reader) {
+	switch reader := reader.(type) {
+	case *os.File:
+		safelyCloseFile(reader)
+	}
+}
+
 func safelyCloseFile(file *os.File) {
 	err := file.Close()
 	if err != nil {
 		log.Error("Error closing file!")
 		log.Error(err.Error())
 	}
+}
+
+func createTempFile() (*os.File, error) {
+	_, err := os.Stat(os.TempDir())
+	if os.IsNotExist(err) {
+		err = os.Mkdir(os.TempDir(), 0700)
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	file, err := ioutil.TempFile("", "temp")
+	if err != nil {
+		return nil, err
+	}
+
+	return file, err
 }

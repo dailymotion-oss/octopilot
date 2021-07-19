@@ -2,6 +2,7 @@ package yqlib
 
 import (
 	"container/list"
+	"os"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -48,13 +49,19 @@ func (e *allAtOnceEvaluator) EvaluateCandidateNodes(expression string, inputCand
 
 func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer) error {
 	fileIndex := 0
+	firstFileLeadingSeperator := false
 
 	var allDocuments *list.List = list.New()
 	for _, filename := range filenames {
-		reader, err := readStream(filename)
+		reader, leadingSeperator, err := readStream(filename)
 		if err != nil {
 			return err
 		}
+
+		if fileIndex == 0 && leadingSeperator {
+			firstFileLeadingSeperator = leadingSeperator
+		}
+
 		fileDocuments, err := readDocuments(reader, filename, fileIndex)
 		if err != nil {
 			return err
@@ -62,9 +69,33 @@ func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string
 		allDocuments.PushBackList(fileDocuments)
 		fileIndex = fileIndex + 1
 	}
+
+	if allDocuments.Len() == 0 {
+		candidateNode := &CandidateNode{
+			Document:  0,
+			Filename:  "",
+			Node:      &yaml.Node{Tag: "!!null", Kind: yaml.ScalarNode},
+			FileIndex: 0,
+		}
+		allDocuments.PushBack(candidateNode)
+
+		if len(filenames) > 0 {
+			reader, _, err := readStream(filenames[0])
+			if err != nil {
+				return err
+			}
+			switch reader := reader.(type) {
+			case *os.File:
+				defer safelyCloseFile(reader)
+			}
+			printer.SetPreamble(reader)
+		}
+	}
+
 	matches, err := e.EvaluateCandidateNodes(expression, allDocuments)
 	if err != nil {
 		return err
 	}
+	printer.SetPrintLeadingSeperator(firstFileLeadingSeperator)
 	return printer.PrintResults(matches)
 }
