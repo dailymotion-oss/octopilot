@@ -1,4 +1,4 @@
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates
 
 version: 2
 updates:
@@ -6,9 +6,6 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    # disabled until dependabot supports vendoring
-    # https://github.com/dependabot/dependabot-core/issues/670
-    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
