@@ -1,10 +1,10 @@
-# Octo Pilot
+# Octopilot
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/dailymotion-oss/octopilot)](https://goreportcard.com/report/github.com/dailymotion-oss/octopilot)
 [![Release Status](https://github.com/dailymotion-oss/octopilot/workflows/release/badge.svg)](https://github.com/dailymotion-oss/octopilot/actions?query=workflow%3Arelease)
 [![Latest Release](https://img.shields.io/github/v/release/dailymotion-oss/octopilot)](https://github.com/dailymotion-oss/octopilot/releases)
 
-**OctoPilot** is a tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
+**Octopilot** is a tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
 
 It supports updating:
 - [sops](https://github.com/mozilla/sops) files
@@ -60,7 +60,7 @@ $ octopilot \
 
 ### Update a specific value in a YAML file
 
-For example to update the version of an app in a YAML file with a format that is not natively supported by OctoPilot, you can use the YAML updater:
+For example to update the version of an app in a YAML file with a format that is not natively supported by Octopilot, you can use the YAML updater:
 
 ```
 $ octopilot \
@@ -105,7 +105,7 @@ $ octopilot \
 
 ### Generic update by running a command
 
-You can also run any command(s), and OctoPilot will just add/commit everything, and create/update the pull request. For example to automatically update all your Go dependencies to the latest patch version:
+You can also run any command(s), and Octopilot will just add/commit everything, and create/update the pull request. For example to automatically update all your Go dependencies to the latest patch version:
 
 ```
 $ octopilot \
