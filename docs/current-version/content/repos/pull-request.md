@@ -19,9 +19,9 @@ You can control which strategy to use using the `--strategy` CLI flag.
 
 This is the default strategy. With this strategy, Octopilot will reset any existing Pull Request from the base branch.
 
-In details, it will:
+In detail, it will:
 - clone the git repository
-- find a "matching" Pull Request - based on the pre-configured labels. If there is a matching Pull Request, it will use the PR's branch. Otherwise it will just create a new branch
+- find a "matching" Pull Request - based on the pre-configured labels. If there is a matching Pull Request, it will use the PR's branch. Otherwise, it will just create a new branch
 - reset the branch to the base branch - usually `main` or `master`
 - run the [updaters](#updaters)
 - [commit](#commit) the changes and (force) push the commit
@@ -37,7 +37,7 @@ Note that you can control how the existing Pull Request will be updated. For bot
 
 With this strategy, Octopilot will append new commits to any existing Pull Request.
 
-In details, it will:
+In detail, it will:
 - clone the git repository
 - find a "matching" Pull Request - based on the pre-configured labels. If there is a matching Pull Request, it will switch to the PR's branch. Otherwise it will just create a new branch from the base branch, and switch to it.
 - run the [updaters](#updaters)
@@ -54,7 +54,7 @@ Note that you can control how the existing Pull Request will be updated. For bot
 
 With this strategy, Octopilot will always create a new Pull Request.
 
-In details, it will:
+In detail, it will:
 - clone the git repository
 - create a new branch from the base branch, and switch to it
 - run the [updaters](#updaters)

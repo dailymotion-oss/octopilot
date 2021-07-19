@@ -6,21 +6,22 @@ weight: 60
 
 The **exec** updater can execute any command you want, so you can change files in the cloned git repository with any tool you have available.
 
-For example to update all your Go dependencies to the latest patch version:
+For example to update all your Go dependencies to the latest version:
 
 ```
 $ octopilot \
-    --update "exec(cmd=go,args=get -u=patch)" \
+    --update "exec(cmd=go,args=get -d -t -u)" \
     --update "exec(cmd=go,args=mod tidy)" \
     --update "exec(cmd=go,args=mod vendor)" \
+    --git-stage-pattern "vendor" \
     ...
 ```
 
-This will execute 3 commands, that will update the `go.mod` & `go.sum` files, and the `vendor` dir. Octopilot will then add/commit all the changes.
+This will execute 3 commands, that will update the `go.mod` & `go.sum` files, and the `vendor` dir. Octopilot will then add/commit all the changes, including the new files in the `vendor` directory.
 
 The syntax is: `exec(params)`.
 
-It support the following parameters:
+It supports the following parameters:
 
 - `cmd` (string): mandatory command to execute.
 - `args` (string): optional arguments for the command. The arguments are space-separated. If you have a space in an argument, you can quote it, such as: `-c 'some arg' -x another`.
@@ -35,3 +36,5 @@ A few things you can do with the regex updater:
     $ octopilot \
         --update "exec(cmd=sh,args=-c 'cat files/*.txt',stdout=output.txt)"
     ```
+
+See the ["updating go dependencies" use-case](#use-case-go-deps) for a real-life example of what you can do with this updater.

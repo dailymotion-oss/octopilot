@@ -4,13 +4,13 @@ anchor: "use-case-update-certs"
 weight: 20
 ---
 
-One of the question you will have to answer when doing gitops is: "where do I stop?". What do you store in your environment git repository? For example, should you store your certificates there too, or do you consider them "outside" of the gitops-scope, and so managed by something else, such as [cert-manager](https://cert-manager.io/)?
+One of the questions you will have to answer when doing gitops is: "where do I stop?". What do you store in your environment git repository? For example, should you store your certificates there too, or do you consider them "outside" of the gitops-scope, and so managed by something else, such as [cert-manager](https://cert-manager.io/)?
 
 Let's say we want to manage them with our gitops process. It means that we'll need to:
-- store them in a git repository. It's not a problem for the certificate itself, but we'll need to ensure that the private key won't be stored in clear text.
+- store them in a git repository. It's not a problem for the certificate itself, but we'll need to ensure that the private key won't be stored in cleartext.
 - update the git repository every time a new certificate is issued - ideally by automatically creating a Pull Request.
 
-In a Kubernetes environment where you have multiple clusters - for example in different regions of the world, different environments, etc - we can setup and use [cert-manager](https://cert-manager.io/) to manage the certificates from a "central" cluster. No need to setup cert-manager in all your clusters. And we'll use Octopilot to "propagate" the certificates too all the clusters, through a gitops workflow, by storing and updating the certificates in one or more git repositories.
+In a Kubernetes environment where you have multiple clusters - for example in different regions of the world, different environments, etc - we can setup and use [cert-manager](https://cert-manager.io/) to manage the certificates from a "central" cluster. No need to setup cert-manager in all your clusters. And we'll use Octopilot to "propagate" the certificates to all the clusters, through a gitops workflow, by storing and updating the certificates in one or more git repositories.
 
 You can setup a nightly CronJob, a scheduled pipeline, or anything else you prefer to regularly call Octopilot, to make sure that all the certificates stored in the git repositories are up-to-date - or to create Pull Requests to update them.
 

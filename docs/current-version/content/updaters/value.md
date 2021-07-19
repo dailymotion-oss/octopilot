@@ -52,6 +52,6 @@ It will read the `VERSION` file located at the root of the cloned git repository
 
 The syntax is: `file(params)`.
 
-It support the following parameters:
+It supports the following parameters:
 
 - `path` (string): mandatory path to the file to read. If it's a relative path, it will be relative to the root of the cloned git repository.

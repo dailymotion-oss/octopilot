@@ -24,7 +24,7 @@ Octopilot will set the value of the `app.version` key to the content of the `VER
 
 The syntax is: `yaml(params)=value` - you can read more about the value in the ["value" section](#value).
 
-It support the following parameters:
+It supports the following parameters:
 
 - `file` (string): mandatory path to the YAML file to update. Can be a file pattern - such as `config/*.yaml`. If it's a relative path, it will be relative to the root of the cloned git repository.
 - `path` (string): mandatory path to the key to update in the YAML file(s). We support [yq v3 path expressions](https://mikefarah.gitbook.io/yq/v/v3.x/usage/path-expressions) or [yq v4 syntax](https://mikefarah.gitbook.io/yq/operators/traverse-read).

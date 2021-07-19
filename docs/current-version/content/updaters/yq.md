@@ -14,7 +14,7 @@ $ octopilot \
     ...
 ```
 
-It support the following parameters:
+It supports the following parameters:
 
 - `file` (string): mandatory path to the YAML (or JSON) file to update. Can be a file pattern - such as `config/*.yaml`. If it's a relative path, it will be relative to the root of the cloned git repository.
 - `expression` (string): mandatory [yq v4 expression](https://mikefarah.gitbook.io/yq/commands/evaluate) that will be evaluated against each file.
