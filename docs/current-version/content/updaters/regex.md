@@ -6,7 +6,7 @@ weight: 50
 
 The **regex** updater can be used to update any kind of text file using a regular expression - with the [Golang syntax](https://golang.org/pkg/regexp/syntax/), such as:
 
-```
+```bash
 $ octopilot \
     --update "regex(file=some-file.txt,pattern='version: \"(.*)\"')=${VERSION}" \
     ...
@@ -31,7 +31,7 @@ It supports the following parameters:
 A few things you can do with the regex updater:
 
 - replace the whole content of a file
-    ```
+    ```bash
     $ octopilot \
         --update "regex(file=my-file,pattern='(?ms)(.*)')=new content" 
     ```

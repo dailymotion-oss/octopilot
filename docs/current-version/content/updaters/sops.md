@@ -8,7 +8,7 @@ The **sops** updater can manipulate files encrypted with [mozilla's sops](https:
 
 For example if you want to store your TLS certificate as a base64 encoded string in a sops-encrypted file:
 
-```
+```bash
 $ octopilot \
     --update `sops(file=secrets.yaml,key=app.tls.base64encodedCertificateKey)=$(kubectl -n cert-manager get secrets tls-myapp -o template='{{index .data "tls.key"}}')` \
     ...
@@ -16,7 +16,7 @@ $ octopilot \
 
 Given the following (decrypted) `secrets.yaml` file:
 
-```
+```yaml
 app:
   tls:
     base64encodedCertificateKey: LS0tLS1CRUdJTiBSU0EgU...

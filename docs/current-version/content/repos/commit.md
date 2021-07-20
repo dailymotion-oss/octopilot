@@ -21,7 +21,7 @@ By default, all files changed by the [updaters](#updaters) will be added to the 
 
 For example, to make sure you will only commit the changes to the `helmfile.yaml` file:
 
-```
+```bash
 $ octopilot \
     --git-stage-all-changed=false \
     --git-stage-pattern=helmfile.yaml \
@@ -42,7 +42,7 @@ Although there are good default values, you can configure how Octopilot will cre
 
 The commit message is composed of the commit title, body and optional footer:
 
-```
+```go-text-template
 ${git-commit-title}
 
 ${git-commit-body}
@@ -53,7 +53,7 @@ ${git-commit-footer}
 
 For example, to update the version of an application named `my-app`, and write a nice commit message:
 
-```
+```bash
 $ octopilot \
     --repo "my-org/my-gitops-repo" \
     --update "yaml(file=my-app/config.yaml,path='version')=${VERSION}" \

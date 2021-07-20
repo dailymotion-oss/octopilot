@@ -14,7 +14,7 @@ The core feature of Octopilot is to update git repositories, and to do it you ca
 
 Each updater can be used once or more, such as:
 
-```
+```bash
 $ octopilot \
     --update "yaml(file=config.yaml,path='version')=file(path=VERSION)" \
     --update "regex(file=some-file.txt,pattern='version: \"(.*)\"')=${VERSION}" \

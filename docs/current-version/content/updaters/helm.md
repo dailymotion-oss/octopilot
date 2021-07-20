@@ -10,7 +10,7 @@ The Helm updater is made to easily update the dependencies of one or more [Helm]
 
 If you run the following command:
 
-```
+```bash
 $ octopilot \
     --update "helm(dependency=chart-name)=1.2.3" \
     ...

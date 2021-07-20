@@ -14,7 +14,7 @@ It can retrieve the list of repositories to update from:
 
 At runtime, Octopilot will read the list of repositories defined in one or more environment variables, such as:
 
-```
+```bash
 $ export PROMOTE_TO_REPOSITORIES="my-github-org/my-first-repo my-github-org/my-second-repo(draft=true,merge=false)"
 $ export ANOTHER_SET_OF_REPOSITORIES="some-org/some-repo;another-org/another-repo(draft=false)"
 $ octopilot \
@@ -36,7 +36,7 @@ Note that each repository listed in an environment variable supports all the par
 
 A more powerful feature is the ability to load a list of repositories from a [GitHub Search Query](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-for-repositories), such as:
 
-```
+```bash
 $ octopilot \
     --repo "discover-from(query=org:my-github-org topic:some-topic)"
 ```

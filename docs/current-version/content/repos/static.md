@@ -6,7 +6,7 @@ weight: 10
 
 It is the easiest: just specify the repositories on the CLI using the `--repo` flag, such as:
 
-```
+```bash
 $ octopilot \
     --repo "my-github-org/my-first-repo" \
     --repo "my-github-org/my-second-repo(merge=true)" \
