@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"container/list"
 	"io"
+	"strings"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -11,10 +12,6 @@ import (
 type Printer interface {
 	PrintResults(matchingNodes *list.List) error
 	PrintedAnything() bool
-	SetPrintLeadingSeperator(bool)
-
-	SetPreamble(reader io.Reader)
-
 	//e.g. when given a front-matter doc, like jekyll
 	SetAppendix(reader io.Reader)
 }
@@ -31,7 +28,6 @@ type resultsPrinter struct {
 	previousFileIndex  int
 	printedMatches     bool
 	treeNavigator      DataTreeNavigator
-	preambleReader     io.Reader
 	appendixReader     io.Reader
 }
 
@@ -46,17 +42,6 @@ func NewPrinter(writer io.Writer, outputToJSON bool, unwrapScalar bool, colorsEn
 		firstTimePrinting:  true,
 		treeNavigator:      NewDataTreeNavigator(),
 	}
-}
-
-func (p *resultsPrinter) SetPrintLeadingSeperator(printLeadingSeperator bool) {
-	if printLeadingSeperator {
-		p.firstTimePrinting = false
-		p.previousFileIndex = -1
-	}
-}
-
-func (p *resultsPrinter) SetPreamble(reader io.Reader) {
-	p.preambleReader = reader
 }
 
 func (p *resultsPrinter) SetAppendix(reader io.Reader) {
@@ -110,14 +95,6 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 	bufferedWriter := bufio.NewWriter(p.writer)
 	defer p.safelyFlush(bufferedWriter)
 
-	if p.preambleReader != nil && !p.outputToJSON {
-		log.Debug("Piping preamble reader...")
-		_, err := io.Copy(bufferedWriter, p.preambleReader)
-		if err != nil {
-			return err
-		}
-	}
-
 	if matchingNodes.Len() == 0 {
 		log.Debug("no matching results, nothing to print")
 		return nil
@@ -132,13 +109,55 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 	for el := matchingNodes.Front(); el != nil; el = el.Next() {
 		mappedDoc := el.Value.(*CandidateNode)
 		log.Debug("-- print sep logic: p.firstTimePrinting: %v, previousDocIndex: %v, mappedDoc.Document: %v, printDocSeparators: %v", p.firstTimePrinting, p.previousDocIndex, mappedDoc.Document, p.printDocSeparators)
-		if (p.previousDocIndex != mappedDoc.Document || p.previousFileIndex != mappedDoc.FileIndex) && p.printDocSeparators {
+
+		commentStartsWithSeparator := strings.Contains(mappedDoc.Node.HeadComment, "$yqLeadingContent$\n$yqDocSeperator$")
+
+		if (p.previousDocIndex != mappedDoc.Document || p.previousFileIndex != mappedDoc.FileIndex) && p.printDocSeparators && !commentStartsWithSeparator {
 			log.Debug("-- writing doc sep")
 			if err := p.writeString(bufferedWriter, "---\n"); err != nil {
 				return err
 			}
 		}
 
+		if strings.Contains(mappedDoc.Node.HeadComment, "$yqLeadingContent$") {
+			log.Debug("headcommentwas %v", mappedDoc.Node.HeadComment)
+			log.Debug("finished headcomment")
+			reader := bufio.NewReader(strings.NewReader(mappedDoc.Node.HeadComment))
+			mappedDoc.Node.HeadComment = ""
+
+			for {
+
+				readline, errReading := reader.ReadString('\n')
+				if errReading != nil && errReading != io.EOF {
+					return errReading
+				}
+				if strings.Contains(readline, "$yqLeadingContent$") {
+					// skip this
+
+				} else if strings.Contains(readline, "$yqDocSeperator$") {
+					if p.printDocSeparators {
+						if err := p.writeString(bufferedWriter, "---\n"); err != nil {
+							return err
+						}
+					}
+				} else if !p.outputToJSON {
+					if err := p.writeString(bufferedWriter, readline); err != nil {
+						return err
+					}
+				}
+
+				if errReading == io.EOF {
+					if readline != "" {
+						// the last comment we read didn't have a new line, put one in
+						if err := p.writeString(bufferedWriter, "\n"); err != nil {
+							return err
+						}
+					}
+					break
+				}
+			}
+
+		}
 		if err := p.printNode(mappedDoc.Node, bufferedWriter); err != nil {
 			return err
 		}
