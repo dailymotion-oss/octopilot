@@ -2,14 +2,13 @@ package yqlib
 
 import (
 	"container/list"
-	"os"
 
 	yaml "gopkg.in/yaml.v3"
 )
 
 // A yaml expression evaluator that runs the expression once against all files/nodes in memory.
 type Evaluator interface {
-	EvaluateFiles(expression string, filenames []string, printer Printer) error
+	EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error
 
 	// EvaluateNodes takes an expression and one or more yaml nodes, returning a list of matching candidate nodes
 	EvaluateNodes(expression string, nodes ...*yaml.Node) (*list.List, error)
@@ -47,19 +46,19 @@ func (e *allAtOnceEvaluator) EvaluateCandidateNodes(expression string, inputCand
 	return context.MatchingNodes, nil
 }
 
-func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer) error {
+func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error {
 	fileIndex := 0
-	firstFileLeadingSeperator := false
+	firstFileLeadingContent := ""
 
 	var allDocuments *list.List = list.New()
 	for _, filename := range filenames {
-		reader, leadingSeperator, err := readStream(filename)
+		reader, leadingContent, err := readStream(filename, leadingContentPreProcessing)
 		if err != nil {
 			return err
 		}
 
-		if fileIndex == 0 && leadingSeperator {
-			firstFileLeadingSeperator = leadingSeperator
+		if fileIndex == 0 {
+			firstFileLeadingContent = leadingContent
 		}
 
 		fileDocuments, err := readDocuments(reader, filename, fileIndex)
@@ -74,28 +73,17 @@ func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string
 		candidateNode := &CandidateNode{
 			Document:  0,
 			Filename:  "",
-			Node:      &yaml.Node{Tag: "!!null", Kind: yaml.ScalarNode},
+			Node:      &yaml.Node{Kind: yaml.DocumentNode, HeadComment: firstFileLeadingContent, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
 			FileIndex: 0,
 		}
 		allDocuments.PushBack(candidateNode)
-
-		if len(filenames) > 0 {
-			reader, _, err := readStream(filenames[0])
-			if err != nil {
-				return err
-			}
-			switch reader := reader.(type) {
-			case *os.File:
-				defer safelyCloseFile(reader)
-			}
-			printer.SetPreamble(reader)
-		}
+	} else {
+		allDocuments.Front().Value.(*CandidateNode).Node.HeadComment = firstFileLeadingContent
 	}
 
 	matches, err := e.EvaluateCandidateNodes(expression, allDocuments)
 	if err != nil {
 		return err
 	}
-	printer.SetPrintLeadingSeperator(firstFileLeadingSeperator)
 	return printer.PrintResults(matches)
 }

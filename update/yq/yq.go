@@ -114,7 +114,7 @@ func (u *YQUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 
 		buffer := new(bytes.Buffer)
 		printer := yqlib.NewPrinter(buffer, u.OutputToJSON, u.UnwrapScalar, false, u.Indent, true)
-		_, err = streamEvaluator.Evaluate(relFilePath, bytes.NewReader(fileData), expressionNode, printer)
+		_, err = streamEvaluator.Evaluate(relFilePath, bytes.NewReader(fileData), expressionNode, printer, "")
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", u.Expression, filePath, err)
 		}
