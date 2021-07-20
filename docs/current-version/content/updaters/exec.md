@@ -8,7 +8,7 @@ The **exec** updater can execute any command you want, so you can change files i
 
 For example to update all your Go dependencies to the latest version:
 
-```
+```bash
 $ octopilot \
     --update "exec(cmd=go,args=get -d -t -u)" \
     --update "exec(cmd=go,args=mod tidy)" \
@@ -32,7 +32,7 @@ It supports the following parameters:
 A few things you can do with the regex updater:
 
 - use a bash command to enable shell expansion (disabled by default when invoking commands through Octopilot)
-    ```
+    ```bash
     $ octopilot \
         --update "exec(cmd=sh,args=-c 'cat files/*.txt',stdout=output.txt)"
     ```

@@ -13,7 +13,7 @@ There is an easy way to do that. You'll need to:
 
 For example, if you run:
 
-```
+```bash
 $ export GITHUB_TOKEN=<your_github_token>
 $ octopilot \
     --repo "dailymotion-oss/octopilot" \
@@ -25,7 +25,7 @@ $ octopilot \
 
 Then you should see something like:
 
-```
+```log
 DEBU[0000] Updaters ready                                updaters="[YQ[file=.goreleaser.yml,expression=(.dockers[] | select(.dockerfile == \"Dockerfile.goreleaser\") | .dockerfile) = \"a.new.Dockerfile\",output=,indent=2] YAML[path=run.timeout,file=.golangci.yml,style=,create=false,trim=false,indent=2] Regex[pattern=(?ms)(.*),file=README.md]]"
 DEBU[0000] Repositories ready                            repositories="[{dailymotion-oss octopilot map[]}]"
 DEBU[0000] Using 'reset' strategy                        repository=dailymotion-oss/octopilot
@@ -49,14 +49,14 @@ The 2 interesting lines are:
 
 If you go to the directory identified by the `local-path` value, you can inspect the git repository - for example:
 
-```
+```bash
 $ cd /var/folders/v0/fx5l3skn17785d8f4l883m6w0000gp/T/octopilot092369223/dailymotion-oss/octopilot
 $ git show d263de874faf26a6ccc8bb2325bc4eb47e0a7029
 ```
 
 and you should see:
 
-```
+```diff
 commit d263de874faf26a6ccc8bb2325bc4eb47e0a7029 (HEAD -> octopilot-c3qif432dnc2961tuuh0)
 Author: author <author@example.com>
 Date:   Mon Jul 19 09:19:46 2021 +0200

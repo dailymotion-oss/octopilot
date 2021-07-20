@@ -20,7 +20,7 @@ In fact, we won't call Octopilot directly, we'll call a script that will perform
 - optionally, we can extract some data from the certificates, such as the DNS names, validity dates, and so on - to generate nice commit messages and Pull requests. Use the `openssl` tool to extract the `startdate` and `enddate` fields for example.
 - and then we can execute Octopilot with something like the following:
 
-```
+```bash
 $ octopilot \
     --repo "owner/prod-env" \
     --update "yaml(file=${APP_NAME}-values.yaml,path=tls.certificate)=file(path=tls.crt.base64)" \

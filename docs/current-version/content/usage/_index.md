@@ -14,7 +14,7 @@ You will need a GitHub token or app to authenticate with GitHub. See the [GitHub
 
 Here is an example of using Octopilot to update multiple repositories, using multiple updaters:
 
-```
+```bash
 $ octopilot \
     --github-token "my-github-token" \
     --repo "my-org/some-repo" \

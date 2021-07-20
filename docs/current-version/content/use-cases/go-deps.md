@@ -21,7 +21,7 @@ One use-case we have is to update the [Go](https://golang.org/) dependencies, by
 
 For example you can do it on octopilot's own repository, by running:
 
-```
+```bash
 $ export GITHUB_TOKEN=<your_github_token>
 $ octopilot \
     --repo "dailymotion-oss/octopilot" \

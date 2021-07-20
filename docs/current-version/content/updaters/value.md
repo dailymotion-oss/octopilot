@@ -14,7 +14,7 @@ This value can be either:
 
 This is the easiest way to set a value: just use a raw value, such as:
 
-```
+```bash
 $ octopilot \
     --update "yaml(file=config.yaml,path='version')=v1.2.3" \
     ...
@@ -22,7 +22,7 @@ $ octopilot \
 
 Note that you can also use an environment variable:
 
-```
+```bash
 $ export VERSION=v1.2.3
 $ octopilot \
     --update "yaml(file=config.yaml,path='version')=${VERSION}" \
@@ -31,7 +31,7 @@ $ octopilot \
 
 or any command you want:
 
-```
+```bash
 $ echo v1.2.3 > /tmp/VERSION
 $ octopilot \
     --update "yaml(file=config.yaml,path='version')=$(cat /tmp/VERSION)" \
@@ -42,7 +42,7 @@ $ octopilot \
 
 If you want to use the content of a file, you can use the **file** valuer:
 
-```
+```bash
 $ octopilot \
     --update "yaml(file=config.yaml,path='version')=file(path=VERSION)" \
     ...

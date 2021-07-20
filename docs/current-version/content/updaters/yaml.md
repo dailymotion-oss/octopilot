@@ -6,7 +6,7 @@ weight: 10
 
 The YAML updater is great when you want to quickly set a value for a specific path in one or more files. Such as if you want to update a version used in a YAML file:
 
-```
+```bash
 $ octopilot \
     --update "yaml(file=config.yaml,path='app.version')=file(path=VERSION)" \
     ...
@@ -14,7 +14,7 @@ $ octopilot \
 
 Given the following `config.yaml` file:
 
-```
+```yaml
 app:
   name: foo
   version: 1.0.0

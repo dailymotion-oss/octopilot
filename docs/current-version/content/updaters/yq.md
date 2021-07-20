@@ -8,7 +8,7 @@ The YQ updater is based on the excellent [yq](https://github.com/mikefarah/yq) a
 
 The syntax is: `yq(params)`, such as:
 
-```
+```bash
 $ octopilot \
     --update "yq(file=config.yaml,expression='.path.to.version = strenv(VERSION)')" \
     ...

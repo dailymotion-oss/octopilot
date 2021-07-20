@@ -24,7 +24,7 @@ Oh, and we'd like to get nice commit messages and Pull Request title/description
 
 Here is an example of an Octopilot invocation you can use to achieve our goal - we'll go over it in details later:
 
-```
+```bash
 $ export GITHUB_TOKEN=<your_github_token>
 $ export ORG_NAME=my-org
 $ export APP_NAME=my-app
@@ -51,7 +51,7 @@ As you can see, we're making the same set of changes to 2 different repositories
 
 We're running the [YQ updater](#yq) twice, on the same `helmfile.yaml` file, which would look like the following:
 
-```
+```yaml
 releases:
   - name: my-app
     version: 1.0.0

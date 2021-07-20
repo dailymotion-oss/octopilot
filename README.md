@@ -3,113 +3,64 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/dailymotion-oss/octopilot)](https://goreportcard.com/report/github.com/dailymotion-oss/octopilot)
 [![Release Status](https://github.com/dailymotion-oss/octopilot/workflows/release/badge.svg)](https://github.com/dailymotion-oss/octopilot/actions?query=workflow%3Arelease)
 [![Latest Release](https://img.shields.io/github/v/release/dailymotion-oss/octopilot)](https://github.com/dailymotion-oss/octopilot/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dailymotion-oss/octopilot.svg)](https://pkg.go.dev/github.com/dailymotion-oss/octopilot)
 
-**Octopilot** is a tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
+**Octopilot** is a CLI tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
 
-It supports updating:
-- [sops](https://github.com/mozilla/sops) files
-- [Helm](https://helm.sh/) dependencies versions
-- YAML files
-- Generic updates based on regular expressions
-- Running any tool you like
+If you are doing Gitops with GitHub-hosted repositories, **Octopilot** is your *swiss army knife* to propagate changes in your infrastructure.
 
-It can update a single repository or multiple at the same time, with different strategies:
-- always create a new pull request each time it will run
-- re-use existing pull requests based on labels, by adding commits to the existing branch
-- re-use existing pull requests based on labels, but re-creating the branch from the master branch
+**Octopilot** was initially developed at [Dailymotion](https://www.dailymotion.com/), and is a core component of our Gitops workflow.
 
-It can update repositories based on specific branch instead of the HEAD one's if mentionned
-- The option `--repo "xxx/yyy(branch=xyz)"` will update the repo `xxx/yyy` based on the `xyz` branch if it exists
-- The option `--repo "xxx/yyy"` will update the repo xxx/yyy based on the `HEAD` branch as usual
+---
 
-It can exec command and expand files on the arguments, only if using `sh -c` with `sh` as cmd and args starting by `-c` and using after backquotes
-- It is possible because of the lib https://github.com/cosiner/argv
-- It doesn't manage pipe on the args
+## Features
 
-It is somewhat based on [updatebot](https://github.com/jenkins-x/updatebot), but written in [Go](https://golang.org/), and with more features:
-- supports running multiple "updaters" in the same execution - for example create a PR with both a sops change and a regex change
-- run any tool to update a repo
-- update YAML files without loosing comments
-- more configurable github strategies
-- no external dependencies - for example on the `git` command. Everything is bundled in the binary.
-- and maintained ;-)
+- written in Go, and has **0 dependencies** - not even `git`
+- native support for manipulating **YAML or JSON files** - which are commonly used in the Gitops world to describe resources
+- native support for manipulating **files encrypted with [sops](https://github.com/mozilla/sops)** - because who wants to store non-encrypted sensitive data in git?
+- supports **regex-based updates to any kind of files** - for these times when you need raw power 
+- supports **executing any command/tool** - because you don't want to be limited by what we support
+- supports **multiple strategies to create/update the PRs**
+- supports **automatic merge of the PRs** - once the pre-configured CI checks are green
+- can update **one or more GitHub repositories** from a single execution - including dynamically defined repositories, using a **GitHub search query**
+- can execute **one or more update rules** in a single execution
 
-## Use cases
+---
 
-### Update certificates
+## Documentation
 
-If you store your certificates in git, with the certificate itself in clear text in a YAML file (base64-encoded), and the secret key in a sops-encrypted file, you can update both with the following command:
+- [User documentation](https://dailymotion-oss.github.io/octopilot/)
+- [Contributing guide](CONTRIBUTING.md)
+  - [Architecture](ARCHITECTURE.md)
 
-```
+---
+
+## Example
+
+Updating multiple repositories, and executing multiple update rules at once:
+
+```bash
 $ octopilot \
-    --update "sops(file=certificates/secrets.yaml,key=certificates.myapp.b64encKey)=$(kubectl -n cert-manager get secrets tls-myapp -o jsonpath=\"{.data.tls\\\.key}\")" \
-    --update "regex(file=certificates/values.yaml,pattern='myapp:\s+b64encCertificate: (.*)')=$(kubectl -n cert-manager get secrets tls-myapp -o jsonpath=\"{.data.tls\\\.crt}\"))" \
-    --repo "myorg/my-gitops-env"
+    --github-token "my-github-token" \
+    --repo "my-org/some-repo" \
+    --repo "my-org/another-repo(merge=true)" \
+    --repo "discover-from(env=PROMOTE_TO_REPOSITORIES)" \
+    --repo "discover-from(query=org:my-org topic:my-topic)" \
+    --update "yaml(file=config.yaml,path='version')=file(path=VERSION)" \
+    --update "yq(file=helmfile.yaml,expression='(.releases[] | select(.chart == \"repo/my-chart\") | .version ) = strenv(VERSION)')" \
+    --update "sops(file=secrets.yaml,key=path.to.base64encodedCertificateKey)=$(kubectl -n cert-manager get secrets tls-myapp -o template='{{index .data \"tls.key\"}}')" \
+    --pr-title "Updating some files" \
+    ...
 ```
 
-### Update Helm dependencies
+## Screenshots
 
-If you release a new version of your app, you can update all the apps that depends on you:
+### Pull Request to promote a new release of an application
 
-```
-$ octopilot \
-    --update "helm(dependency=my-app)=file(path=VERSION)" \
-    --repo "myorg/some-app" \
-    --repo "myorg/another-app"
-```
+Including the release notes in the Pull Request description
 
-### Update a specific value in a YAML file
+![](docs/current-version/static/screenshot-app-promotion-pr-single-commit.png)
 
-For example to update the version of an app in a YAML file with a format that is not natively supported by Octopilot, you can use the YAML updater:
+### Pull Request to update the certificates
 
-```
-$ octopilot \
-    --update "yaml(file=helmfile.yaml,path='releases.(chart==example/my-chart).version')=file(path=VERSION)"
-```
-
-An alternative is to use the regex updater:
-
-```
-$ octopilot \
-    --update "regex(file=helmfile.yaml,pattern='chart: example/my-chart\s+version: \"(.*)\"')=file(path=VERSION)"
-```
-
-### YQ
-
-Uses an [yq](https://mikefarah.gitbook.io/yq) expression, and write the result either in-place (the default) or to a specific file. All the [yq operators](https://mikefarah.gitbook.io/yq/operators) are supported, so you can do very powerful things, such as manipulating YAML comments, use variables, output to json (note that it can also read json input), ...
-
-Equivalent of the previous example with the `yaml` updater:
-
-```
-$ export VERSION=$(cat VERSION) && octopilot \
-    --update `yq(file=helmfile.yaml,expression='(.releases[] | select(.chart == "example/my-chart") | .version ) = strenv(VERSION)')`
-```
-
-Or read the previous version, store it in a temporary file, and use it to write the commit message:
-
-```
-$ octopilot \
-    --update `yq(file=helmfile.yaml,expression='.releases[] | select(.name == strenv(RELEASE)) | .version',output=.git/previous-version.txt)` \
-    --update `yq(file=helmfile.yaml,expression='(.releases[] | select(.name == strenv(RELEASE)) | .version) = strenv(VERSION)')` \
-    --git-commit-title 'chore(deps): update {{ env "RELEASE" }} from {{ readFile ".git/previous-version.txt" | trim }} to {{ env "VERSION" }}'
-```
-
-### Update a whole file
-
-To replace the whole content of a file:
-
-```
-$ octopilot \
-    --update "regex(file=README.md,pattern='(?ms)(.*)')=new content" 
-```
-
-### Generic update by running a command
-
-You can also run any command(s), and Octopilot will just add/commit everything, and create/update the pull request. For example to automatically update all your Go dependencies to the latest patch version:
-
-```
-$ octopilot \
-    --update "exec(cmd='go get -u=patch')" \
-    --update "exec(cmd='go mod tidy')" \
-    --update "exec(cmd='go mod vendor')"
-```
+![](docs/current-version/static/screenshot-cert-pr.png)

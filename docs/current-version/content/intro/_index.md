@@ -6,6 +6,10 @@ weight: 10
 
 **Octopilot** is a CLI tool designed to help you automate your Gitops workflow, by automatically creating and merging GitHub Pull Requests to update specific content in Git repositories.
 
+If you are doing Gitops with GitHub-hosted repositories, **Octopilot** is your *swiss army knife* to propagate changes in your infrastructure.
+
+**Octopilot** was initially developed at [Dailymotion](https://www.dailymotion.com/), and is a core component of our Gitops workflow.
+
 It works by:
 - cloning one or more [repositories](#repos), defined either:
   - [statically](#static)
