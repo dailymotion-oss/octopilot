@@ -8,6 +8,16 @@ First, if you're not sure of how to proceed, or need some help, you should start
 
 If you're new to [GitHub](https://github.com/) and/or open-source, you should read GitHub's guide on [forking a repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo).
 
+Note that we're using [Git submodules](https://git-scm.com/docs/git-submodule) to include a theme for [Hugo](https://gohugo.io/), so if you want to work on the docs - or at least render them locally - you'll need to either:
+- clone the repository with the `--recursive` flag, such as:
+  ```bash
+  $ git clone --recursive https://github.com/dailymotion-oss/octopilot.git # or your fork
+  ```
+- or if you have already cloned the repository without the `--recursive` flag, you can run:
+  ```bash
+  $ git submodule update --init --recursive
+  ```
+
 ### Tooling
 
 The best place to find the exact versions of the tools - [Go](https://golang.org/), [Hugo](https://gohugo.io/), ... - used is the `.github/workflows` directory.
