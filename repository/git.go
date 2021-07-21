@@ -60,7 +60,7 @@ type switchBranchOptions struct {
 	CreateBranch bool
 }
 
-func switchBranch(ctx context.Context, gitRepo *git.Repository, opts switchBranchOptions) error {
+func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchOptions) error {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return fmt.Errorf("failed to open worktree: %w", err)
@@ -101,7 +101,7 @@ func switchBranch(ctx context.Context, gitRepo *git.Repository, opts switchBranc
 	return nil
 }
 
-func commitChanges(ctx context.Context, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
+func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)

@@ -24,12 +24,18 @@ var (
 	updaterWithValueRegexp = regexp.MustCompile(`^(?P<name>[a-z]+)\((?P<params>.+)\)=(?P<value>.+)$`)
 )
 
+// Updater updates a git repository
 type Updater interface {
+	// Update updates the repository cloned at the given path, and returns true if changes have been made
 	Update(ctx context.Context, repoPath string) (bool, error)
+	// Message returns the default title and body that should be used in the commits / pull requests
 	Message() (title, body string)
+	// String returns a string representation of the updater
 	String() string
 }
 
+// Parse parses a set of updates defined as string - from the CLI for example - and returns properly formatted Updaters.
+// expected syntax is documented in the user documentation: docs/current-version/content/updaters/
 func Parse(updates []string) ([]Updater, error) {
 	var updaters []Updater
 

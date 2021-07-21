@@ -14,7 +14,7 @@ import (
 func TestFindGitDirectory(t *testing.T) {
 	baseDir, err := os.Getwd()
 	require.NoError(t, err, "failed to get the current working directory")
-	defer os.Chdir(baseDir) // nolint: errcheck
+	defer os.Chdir(baseDir) // nolint: errcheck // don't care in the tests...
 
 	// copy the "git" dir to ".git", because otherwise it's a pain to commit a .git dir ;-)
 	err = copy.Copy(
@@ -61,7 +61,7 @@ func TestFindGitDirectory(t *testing.T) {
 func TestCurrentRepositoryURL(t *testing.T) {
 	baseDir, err := os.Getwd()
 	require.NoError(t, err, "failed to get the current working directory")
-	defer os.Chdir(baseDir) // nolint: errcheck
+	defer os.Chdir(baseDir) // nolint: errcheck // don't care in the tests...
 
 	gitDir := filepath.Join(baseDir, "testdata", "dir-with-git-config")
 	err = os.Chdir(gitDir)

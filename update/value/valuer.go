@@ -13,10 +13,13 @@ var (
 	valueRegexp = regexp.MustCompile(`(?P<name>[a-z]+)\((?P<params>.+)\)`)
 )
 
+// Valuer is the interface for retrieving a value to replace while updating files.
 type Valuer interface {
+	// Value returns the value to replace while updating files in the given repository.
 	Value(ctx context.Context, repoPath string) (string, error)
 }
 
+// ParseValuer parses the valuer defined as string - from the CLI for example - and returns a properly formatted valuer.
 func ParseValuer(valueStr string) (Valuer, error) {
 	matches := valueRegexp.FindStringSubmatch(valueStr)
 	if len(matches) == 0 {

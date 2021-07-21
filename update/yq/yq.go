@@ -1,3 +1,4 @@
+// Package yq provides an updater that uses the yq lib to manipulate YAML (or JSON) files.
 package yq
 
 import (
@@ -20,6 +21,7 @@ func init() {
 	gologging.SetLevel(gologging.CRITICAL, "yq-lib")
 }
 
+// YQUpdater is an updater that uses the yq lib to manipulate YAML (or JSON) files.
 type YQUpdater struct {
 	FilePath     string
 	Expression   string
@@ -30,6 +32,7 @@ type YQUpdater struct {
 	UnwrapScalar bool
 }
 
+// NewUpdater builds a new YQ updater from the given parameters
 func NewUpdater(params map[string]string) (*YQUpdater, error) {
 	updater := &YQUpdater{}
 
@@ -60,7 +63,8 @@ func NewUpdater(params map[string]string) (*YQUpdater, error) {
 	return updater, nil
 }
 
-func (u *YQUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
+// Update updates the repository cloned at the given path, and returns true if changes have been made
+func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 	expressionNode, err := yqlib.NewExpressionParser().ParseExpression(u.Expression)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse yq expression %s: %w", u.Expression, err)
@@ -143,12 +147,14 @@ func (u *YQUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	return updated, nil
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u *YQUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Update %s", u.FilePath)
 	body = fmt.Sprintf("Updating file(s) `%s` using yq expression `%s`", u.FilePath, u.Expression)
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u *YQUpdater) String() string {
 	return fmt.Sprintf("YQ[file=%s,expression=%s,output=%s,indent=%v]", u.FilePath, u.Expression, u.Output, u.Indent)
 }

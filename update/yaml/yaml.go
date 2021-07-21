@@ -1,3 +1,4 @@
+// Package yaml provides an updater that uses the yq lib to update YAML files.
 package yaml
 
 import (
@@ -22,6 +23,7 @@ func init() {
 	gologging.SetLevel(gologging.CRITICAL, "yq-lib")
 }
 
+// YamlUpdater is an updater that uses the yq lib to update YAML files.
 type YamlUpdater struct {
 	FilePath   string
 	Path       string
@@ -32,6 +34,7 @@ type YamlUpdater struct {
 	Valuer     value.Valuer
 }
 
+// NewUpdater builds a new YAML updater from the given parameters and valuer
 func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, error) {
 	updater := &YamlUpdater{}
 
@@ -59,6 +62,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*YamlUpdater, er
 	return updater, nil
 }
 
+// Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	value, err := u.Valuer.Value(ctx, repoPath)
 	if err != nil {
@@ -121,12 +125,14 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 	return updated, nil
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u *YamlUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Update %s", u.FilePath)
 	body = fmt.Sprintf("Updating path `%s` in file(s) `%s`", u.Path, u.FilePath)
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u *YamlUpdater) String() string {
 	return fmt.Sprintf("YAML[path=%s,file=%s,style=%s,create=%v,trim=%v,indent=%v]", u.Path, u.FilePath, u.Style, u.AutoCreate, u.Trim, u.Indent)
 }

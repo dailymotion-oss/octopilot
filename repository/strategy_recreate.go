@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RecreateStrategy is a strategy implementation that always creates a new Pull Request - even if an existing one for the same labels already exists.
 type RecreateStrategy struct {
 	Repository Repository
 	RepoPath   string
@@ -16,6 +17,7 @@ type RecreateStrategy struct {
 	Options    UpdateOptions
 }
 
+// Run executes the strategy, and returns true if the repo was updated, and the created PR.
 func (s *RecreateStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
 	if err != nil {

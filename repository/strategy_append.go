@@ -9,6 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// AppendStrategy is a strategy implementation that appends new commits to any existing Pull Request.
+// So it will try to find a matching PR first, and use it (its branch). Then it will commit on this branch, and update the existing PR - or create a new one if there is no matching PR.
 type AppendStrategy struct {
 	Repository Repository
 	RepoPath   string
@@ -16,6 +18,7 @@ type AppendStrategy struct {
 	Options    UpdateOptions
 }
 
+// Run executes the strategy, and returns true if the repo was updated, and the created/updated PR.
 func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
 	if err != nil {

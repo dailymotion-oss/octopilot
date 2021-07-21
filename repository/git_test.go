@@ -27,6 +27,8 @@ func TestSwitchBranch(t *testing.T) {
 				CreateBranch: true,
 			},
 			validateFunc: func(t *testing.T, repo *git.Repository) {
+				t.Helper()
+
 				head, err := repo.Head()
 				require.NoError(t, err)
 				assert.Equal(t, "refs/heads/new-branch", head.Name().String())
@@ -46,6 +48,8 @@ func TestSwitchBranch(t *testing.T) {
 				BranchName: "update",
 			},
 			validateFunc: func(t *testing.T, repo *git.Repository) {
+				t.Helper()
+
 				head, err := repo.Head()
 				require.NoError(t, err)
 				assert.Equal(t, "refs/heads/update", head.Name().String())

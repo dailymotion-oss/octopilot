@@ -82,7 +82,7 @@ func getConfigValue(configFilePath string, key string) string {
 	if err != nil {
 		return ""
 	}
-	defer file.Close() // nolint: errcheck
+	defer file.Close()
 
 	cfg := configformat.New()
 	if err = configformat.NewDecoder(file).Decode(cfg); err != nil {

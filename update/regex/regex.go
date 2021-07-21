@@ -1,3 +1,4 @@
+// Package regex provides an updater that uses a regex to update files.
 package regex
 
 import (
@@ -13,6 +14,7 @@ import (
 	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
+// RegexUpdater is an updater that uses a regex to update files.
 type RegexUpdater struct {
 	FilePath string
 	Pattern  string
@@ -20,6 +22,7 @@ type RegexUpdater struct {
 	Valuer   value.Valuer
 }
 
+// NewUpdater builds a new regex updater from the given parameters and valuer
 func NewUpdater(params map[string]string, valuer value.Valuer) (*RegexUpdater, error) {
 	updater := &RegexUpdater{}
 
@@ -47,6 +50,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*RegexUpdater, e
 	return updater, nil
 }
 
+// Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u RegexUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	value, err := u.Valuer.Value(ctx, repoPath)
 	if err != nil {
@@ -111,12 +115,14 @@ func (u RegexUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 	return updated, nil
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u RegexUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Update %s", u.FilePath)
 	body = fmt.Sprintf("Updating file(s) `%s` using pattern `%s`", u.FilePath, u.Pattern)
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u RegexUpdater) String() string {
 	return fmt.Sprintf("Regex[pattern=%s,file=%s]", u.Pattern, u.FilePath)
 }
