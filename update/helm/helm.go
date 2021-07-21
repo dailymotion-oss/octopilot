@@ -1,3 +1,4 @@
+// Package helm provides an updater that updates Helm charts dependencies.
 package helm
 
 import (
@@ -13,12 +14,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// HelmUpdater is an updater that updates Helm charts dependencies.
 type HelmUpdater struct {
 	Dependency string
 	Indent     int
 	Valuer     value.Valuer
 }
 
+// NewUpdater builds a new Helm updater from the given parameters and valuer
 func NewUpdater(params map[string]string, valuer value.Valuer) (*HelmUpdater, error) {
 	updater := &HelmUpdater{}
 
@@ -37,6 +40,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*HelmUpdater, er
 	return updater, nil
 }
 
+// Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u *HelmUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	charts, err := extractHelmChartsDirectories(repoPath)
 	if err != nil {
@@ -174,12 +178,14 @@ func (u *HelmUpdater) updateChartDependencyNode(node *yaml.Node, version string)
 	return false
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u *HelmUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Update %s", u.Dependency)
 	body = fmt.Sprintf("Updating dependency `%s`", u.Dependency)
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u *HelmUpdater) String() string {
 	return fmt.Sprintf("Helm[dependency=%s]", u.Dependency)
 }

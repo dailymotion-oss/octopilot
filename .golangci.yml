@@ -2,3 +2,77 @@
 
 run:
   timeout: 3m
+
+linters:
+  enable:
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - godox
+    - goimports
+    - misspell
+    - nilerr
+    - nolintlint
+    - revive
+    - stylecheck
+    - thelper
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+
+linters-settings:
+  gosimple:
+    go: "1.16"
+    checks: ["all"]
+  staticcheck:
+    go: "1.16"
+    checks: ["all"]
+  stylecheck:
+    go: "1.16"
+    checks: ["all"]
+  unused:
+    go: "1.16"
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+  nolintlint:
+    require-specific: true
+    require-explanation: true
+  revive:
+    enable-all-rules: true
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+      - name: confusing-naming
+      - name: get-return
+      - name: modifies-parameter
+      - name: confusing-results
+      - name: modifies-value-receiver
+      - name: atomic
+      - name: empty-lines
+      - name: duplicated-imports
+      - name: identical-branches
+      - name: defer

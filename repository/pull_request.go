@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -303,7 +304,7 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 		return fmt.Errorf("failed to merge Pull Request %s: %w", prURL, err)
 	}
 	if !res.GetMerged() {
-		return fmt.Errorf("Pull Request %s was not merged: %s", prURL, res.GetMessage())
+		return fmt.Errorf("pull request %s was not merged: %s", prURL, res.GetMessage())
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -348,7 +349,7 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 
 		if pr.Mergeable != nil {
 			if !pr.GetMergeable() {
-				return fmt.Errorf("Pull Request %s is not mergeable: %s", pr.GetHTMLURL(), pr.GetMergeableState())
+				return fmt.Errorf("pull request %s is not mergeable: %s", pr.GetHTMLURL(), pr.GetMergeableState())
 			}
 			logrus.WithFields(logrus.Fields{
 				"repository":   r.FullName(),
@@ -405,7 +406,7 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 			}
 			switch status.GetState() {
 			case "error", "failure":
-				return fmt.Errorf("Pull Request %s can't be merged: status %s is in %s state: %s", pr.GetHTMLURL(), status.GetContext(), status.GetState(), status.GetDescription())
+				return fmt.Errorf("pull request %s can't be merged: status %s is in %s state: %s", pr.GetHTMLURL(), status.GetContext(), status.GetState(), status.GetDescription())
 			case "pending":
 				pendingStatuses = append(pendingStatuses, status.GetContext())
 			case "success":
@@ -439,15 +440,6 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 	return nil
 }
 
-func errIsStatusNotFound(err error) bool {
-	detailedErr, ok := err.(*github.ErrorResponse)
-	if !ok {
-		return false
-	}
-
-	return detailedErr.Response.StatusCode == http.StatusNotFound
-}
-
 func prHasLabels(pr *github.PullRequest, labels []string) bool {
 	matchingLabels := 0
 	for _, requiredLabel := range labels {
@@ -461,14 +453,22 @@ func prHasLabels(pr *github.PullRequest, labels []string) bool {
 	return matchingLabels == len(labels)
 }
 
+func errIsStatusNotFound(err error) bool {
+	var githubErr *github.ErrorResponse
+	if !errors.As(err, &githubErr) {
+		return false
+	}
+
+	return githubErr.Response.StatusCode == http.StatusNotFound
+}
+
 // shouldRetryMerge returns true if we should retry the merge operation at a later time
 // see https://github.com/jenkins-x/lighthouse/blob/v0.0.922/pkg/keeper/keeper.go#L1110 for more context
 func shouldRetryMerge(resp *github.Response, err error) bool {
-	switch githubErr := err.(type) {
-	case *github.ErrorResponse:
-		if resp.StatusCode == 405 && githubErr.Message == "Base branch was modified. Review and try the merge again." {
-			return true
-		}
+	var githubErr *github.ErrorResponse
+	if !errors.As(err, &githubErr) {
+		return false
 	}
-	return false
+
+	return resp.StatusCode == 405 && githubErr.Message == "Base branch was modified. Review and try the merge again."
 }

@@ -1,3 +1,4 @@
+// Package repository contains everything related to working with git repositories hosted on GitHub: cloning, commits, creating branches, pushing, creating/updating/merging pull requests, and so on.
 package repository
 
 import (
@@ -22,12 +23,15 @@ var (
 	repoWithNameRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9_\-]+)(?:\((?P<params>.+)\))?$`)
 )
 
+// Repository is a representation of a GitHub repository.
 type Repository struct {
 	Owner  string
 	Name   string
 	Params map[string]string
 }
 
+// Parse parses a set of repositories defined as string - from the CLI for example - and returns properly formatted Repositories
+// expected syntax is documented in the user documentation: docs/current-version/content/repos/{static,dynamic}.md
 func Parse(ctx context.Context, repos []string, githubOpts GitHubOptions) ([]Repository, error) {
 	var repositories []Repository
 	for _, repo := range repos {
@@ -72,6 +76,8 @@ func discoverRepositoriesFrom(ctx context.Context, params map[string]string, git
 	return nil, fmt.Errorf("can't discover repositories from params %v: missing either query or env param", params)
 }
 
+// Update is the entrypoint to update a repository with a set of updaters.
+// It returns a boolean indicating whether the repository was updated or not.
 func (r Repository) Update(ctx context.Context, updaters []update.Updater, options UpdateOptions) (bool, error) {
 	r.adjustOptionsFromParams(&options)
 
@@ -200,6 +206,7 @@ func (r Repository) adjustOptionsFromParams(options *UpdateOptions) {
 	}
 }
 
+// FullName returns the repository full name.
 func (r Repository) FullName() string {
 	return fmt.Sprintf("%s/%s", r.Owner, r.Name)
 }

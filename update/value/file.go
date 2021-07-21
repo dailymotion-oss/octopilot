@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 )
 
+// FileValuer is a valuer that returns the content of a specific file.
 type FileValuer struct {
 	Path string
 }
@@ -23,7 +24,8 @@ func newFileValuer(params map[string]string) (*FileValuer, error) {
 	return valuer, nil
 }
 
-func (v FileValuer) Value(ctx context.Context, repoPath string) (string, error) {
+// Value returns the value to replace while updating files in the given repository.
+func (v FileValuer) Value(_ context.Context, repoPath string) (string, error) {
 	filePath := v.Path
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(repoPath, v.Path)

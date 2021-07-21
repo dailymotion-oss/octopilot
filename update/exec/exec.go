@@ -1,3 +1,4 @@
+// Package exec provides an updater that executes an external command to update the repository.
 package exec
 
 import (
@@ -15,6 +16,7 @@ import (
 	"github.com/cosiner/argv"
 )
 
+// ExecUpdater is an updater that executes an external command to update the repository.
 type ExecUpdater struct {
 	Command string
 	Args    []string
@@ -23,6 +25,7 @@ type ExecUpdater struct {
 	Timeout time.Duration
 }
 
+// NewUpdater builds a new exec updater from the given parameters
 func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	updater := &ExecUpdater{}
 
@@ -57,6 +60,7 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	return updater, nil
 }
 
+// Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	if u.Timeout > 0 {
 		var cancelFunc context.CancelFunc
@@ -92,6 +96,7 @@ func (u *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 	return true, nil
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u *ExecUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Run %s", u.Command)
 	body = fmt.Sprintf("Running command `%s`", u.Command)
@@ -101,6 +106,7 @@ func (u *ExecUpdater) Message() (title, body string) {
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u *ExecUpdater) String() string {
 	return fmt.Sprintf("Exec[cmd=%s,args=%v]", u.Command, u.Args)
 }

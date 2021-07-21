@@ -17,5 +17,4 @@ func TestStringValuerValue(t *testing.T) {
 	actual, err := valuer.Value(context.Background(), ".")
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
-
 }

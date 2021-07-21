@@ -31,6 +31,10 @@ The updaters, which change content in the git repositories, are defined in the `
 
 Note that an updater's `Update` function may be called by multiple goroutines at the same time - from multiple repositories - so it must be "thread-safe".
 
+If you want to add an updater, you'll need to:
+- add a new package in the `update` directory
+- update the `updater/updater.go` file to register your new package/updater
+
 ## Internal packages
 
 There are a few small internal packages, in the `internal` directory - using the Go convention that makes these packages private by default:

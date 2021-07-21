@@ -9,6 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ResetStrategy is a strategy implementation that resets any existing Pull Request from the base branch.
+// So it will try to find a matching PR first, and use it (its branch) - but it will "reset" the branch from the base branch. And it will update the existing PR - or create a new one.
 type ResetStrategy struct {
 	Repository Repository
 	RepoPath   string
@@ -16,6 +18,7 @@ type ResetStrategy struct {
 	Options    UpdateOptions
 }
 
+// Run executes the strategy, and returns true if the repo was updated, and the created/updated PR.
 func (s *ResetStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
 	if err != nil {

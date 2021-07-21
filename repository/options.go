@@ -8,6 +8,7 @@ import (
 	"github.com/dailymotion-oss/octopilot/update"
 )
 
+// definition of the different kind of Pull Request update operations
 const (
 	IgnoreUpdateOperation  = "ignore"
 	ReplaceUpdateOperation = "replace"
@@ -15,6 +16,7 @@ const (
 	AppendUpdateOperation  = "append"
 )
 
+// UpdateOptions is the options entrypoint for a git repo update
 type UpdateOptions struct {
 	DryRun    bool
 	KeepFiles bool
@@ -23,6 +25,7 @@ type UpdateOptions struct {
 	Strategy  string
 }
 
+// GitOptions holds all the options required to perform git operations: clone, commit, ...
 type GitOptions struct {
 	CloneDir        string
 	StagePatterns   []string
@@ -37,6 +40,7 @@ type GitOptions struct {
 	BranchPrefix    string
 }
 
+// GitHubOptions holds all the options required to perform github operations: auth, PRs, ...
 type GitHubOptions struct {
 	AuthMethod     string
 	Token          string
@@ -47,6 +51,7 @@ type GitHubOptions struct {
 	PullRequest    PullRequestOptions
 }
 
+// PullRequestOptions holds all the options required to perform github PR operations: title/body, merge, ...
 type PullRequestOptions struct {
 	Labels               []string
 	BaseBranch           string
@@ -59,6 +64,7 @@ type PullRequestOptions struct {
 	Merge                PullRequestMergeOptions
 }
 
+// PullRequestMergeOptions holds all the options required to merge github PRs
 type PullRequestMergeOptions struct {
 	Enabled       bool
 	Method        string

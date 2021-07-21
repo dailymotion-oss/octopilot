@@ -1,3 +1,4 @@
+// Package sops provides an updater that uses the sops lib to update sops-encrypted files.
 package sops
 
 import (
@@ -19,12 +20,14 @@ import (
 	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
+// SopsUpdater is an updater that uses the sops lib to update sops-encrypted files.
 type SopsUpdater struct {
 	FilePath string
 	Key      string
 	Valuer   value.Valuer
 }
 
+// NewUpdater builds a new SOPS updater from the given parameters and valuer
 func NewUpdater(params map[string]string, valuer value.Valuer) (*SopsUpdater, error) {
 	updater := &SopsUpdater{}
 
@@ -43,6 +46,7 @@ func NewUpdater(params map[string]string, valuer value.Valuer) (*SopsUpdater, er
 	return updater, nil
 }
 
+// Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) {
 	var (
 		cipher = aes.NewCipher()
@@ -151,12 +155,14 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 	return updated, nil
 }
 
+// Message returns the default title and body that should be used in the commits / pull requests
 func (u SopsUpdater) Message() (title, body string) {
 	title = fmt.Sprintf("Update %s %s", u.FilePath, u.Key)
 	body = fmt.Sprintf("Updating sops-encrypted file `%s` key `%s`", u.FilePath, u.Key)
 	return title, body
 }
 
+// String returns a string representation of the updater
 func (u SopsUpdater) String() string {
 	return fmt.Sprintf("Sops[key=%s,file=%s]", u.Key, u.FilePath)
 }
