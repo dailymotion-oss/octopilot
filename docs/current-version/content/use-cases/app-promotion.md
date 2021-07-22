@@ -1,5 +1,5 @@
 ---
-title: "Promoting a new release"
+title: "Promoting a new application release"
 anchor: "use-case-app-promotion"
 weight: 10
 ---
@@ -106,6 +106,14 @@ You'll notice that we have 2 release notes in the PR: 1 for each release. So you
 In this screenshot you can see the 2 commits:
 
 ![](screenshot-app-promotion-pr-multi-commits-commits.png)
+
+### Feedback
+
+The benefit of adding the application's release notes in the promotion pull request body, is that not only will you know exactly what you'll deploy, but you'll also get links between the application pull request and the promotion pull requests. So that if you go back to the application's PR, you'll see something like:
+
+![](screenshot-app-promotion-pr-feedback.png)
+
+You can see at the bottom the links to our 2 promotion pull requests, with their statuses - both have been merged already in this case.
 
 ## Going further
 

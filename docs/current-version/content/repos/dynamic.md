@@ -49,3 +49,5 @@ It supports the following parameters:
 - `merge` (boolean): if `true`, then the PRs created on the repositories from this query will be automatically merged - see the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge` flag for the repositories retrieved from this query.
 - `draft` (boolean): if `true`, then the PRs will be created as [draft PRs](https://github.blog/2019-02-14-introducing-draft-pull-requests/) on GitHub. You will need to manually mark them as "ready for review" before being able to merge them. It overrides the value of the `--pr-draft` flag for the repositories retrieved from this query.
 - `branch` (string): the name of the base branch to use when cloning the repositories. Default to the `HEAD` branch - which means the default branch configured in GitHub: usually `main` or `master`.
+
+See the ["promoting a new library release" use-case](#use-case-lib-promotion) for a real-life example of what you can do with this feature.

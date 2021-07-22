@@ -26,3 +26,5 @@ It supports the following parameters:
 - `indent` (int): optional number of spaces used for indentation when writing the YAML file(s) after update. Default to `2`.
 
 Note that Octopilot will keep the comments in the YAML files - because we're using the great [go-yaml v3 lib](https://github.com/go-yaml/yaml/tree/v3). [Just that it might rewrite a bit your indentation](https://mikefarah.gitbook.io/yq/usage/output-format#indent).
+
+See the ["promoting a new library release" use-case](#use-case-lib-promotion) for a real-life example of what you can do with this updater.

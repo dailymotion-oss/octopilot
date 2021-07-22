@@ -26,4 +26,4 @@ It supports the following parameters:
 
 Note that Octopilot will keep the comments in the YAML files - because we're using the great [go-yaml v3 lib](https://github.com/go-yaml/yaml/tree/v3). [Just that it might rewrite a bit your indentation](https://mikefarah.gitbook.io/yq/usage/output-format#indent).
 
-See the ["promoting a new release" use-case](#use-case-app-promotion) for a real-life example of what you can do with this updater.
+See the ["promoting a new application release" use-case](#use-case-app-promotion) for a real-life example of what you can do with this updater.

@@ -19,7 +19,7 @@ outputs:
     - HTML
 params:
   octopilot:
-    version: v0.2.16
+    version: v1.0.0
   homepage_meta_tags:
     meta_description: Automate your Gitops workflow, by automatically creating/merging GitHub Pull Requests
     meta_og_title: Octopilot
