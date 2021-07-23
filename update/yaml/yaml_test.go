@@ -117,7 +117,8 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "update simple value in a single file",
 			files: map[string]string{
-				"basic-values.yaml": `
+				"basic-values.yaml": `# top level comment
+
 # a simple key
 key: value
 # an object
@@ -136,7 +137,9 @@ object:
 			},
 			expected: true,
 			expectedFiles: map[string]string{
-				"basic-values.yaml": `# a simple key
+				"basic-values.yaml": `# top level comment
+
+# a simple key
 key: value
 # an object
 object:
@@ -231,7 +234,8 @@ key: value
 			},
 			expected: true,
 			expectedFiles: map[string]string{
-				"custom-style.yaml": `# a simple key
+				"custom-style.yaml": `
+# a simple key
 key: "updated-value"
 `,
 			},
@@ -239,8 +243,7 @@ key: "updated-value"
 		{
 			name: "update with folded style",
 			files: map[string]string{
-				"folded-style.yaml": `
-# a simple key
+				"folded-style.yaml": `# a simple key
 key: value
 `,
 			},
@@ -281,8 +284,7 @@ key: updated-value`,
 		{
 			name: "create missing key/value in a single file",
 			files: map[string]string{
-				"missing-key-values.yaml": `
-# a simple key
+				"missing-key-values.yaml": `# a simple key
 key: value
 `,
 			},
