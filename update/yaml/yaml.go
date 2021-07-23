@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dailymotion-oss/octopilot/internal/yaml"
 	"github.com/dailymotion-oss/octopilot/update/value"
 
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
@@ -99,9 +100,14 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
 
+		reader, leadingContent, err := yaml.ExtractLeadingContentForYQ(bytes.NewReader(fileData))
+		if err != nil {
+			return false, fmt.Errorf("failed to extract leading content from file %s: %w", relFilePath, err)
+		}
+
 		buffer := new(bytes.Buffer)
 		printer := yqlib.NewPrinter(buffer, false, false, false, u.Indent, true)
-		_, err = streamEvaluator.Evaluate(relFilePath, bytes.NewReader(fileData), expressionNode, printer, "")
+		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", expression, filePath, err)
 		}

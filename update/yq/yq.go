@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dailymotion-oss/octopilot/internal/yaml"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	gologging "gopkg.in/op/go-logging.v1"
 )
@@ -116,9 +117,14 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
 
+		reader, leadingContent, err := yaml.ExtractLeadingContentForYQ(bytes.NewReader(fileData))
+		if err != nil {
+			return false, fmt.Errorf("failed to extract leading content from file %s: %w", relFilePath, err)
+		}
+
 		buffer := new(bytes.Buffer)
 		printer := yqlib.NewPrinter(buffer, u.OutputToJSON, u.UnwrapScalar, false, u.Indent, true)
-		_, err = streamEvaluator.Evaluate(relFilePath, bytes.NewReader(fileData), expressionNode, printer, "")
+		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", u.Expression, filePath, err)
 		}

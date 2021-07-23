@@ -120,7 +120,8 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "update simple value in a single file",
 			files: map[string]string{
-				"basic-values.yaml": `
+				"basic-values.yaml": `# top level comment
+
 # a simple key
 key: value
 # an object
@@ -138,7 +139,9 @@ object:
 			},
 			expected: true,
 			expectedFiles: map[string]string{
-				"basic-values.yaml": `# a simple key
+				"basic-values.yaml": `# top level comment
+
+# a simple key
 key: value
 # an object
 object:
@@ -152,8 +155,7 @@ object:
 		{
 			name: "extract a sub object from a single file to a new file",
 			files: map[string]string{
-				"extract-source.yaml": `
-# a simple key
+				"extract-source.yaml": `# a simple key
 key: value
 # an object
 object:
@@ -246,8 +248,7 @@ array:
 		{
 			name: "update with folded style",
 			files: map[string]string{
-				"folded-style.yaml": `
-# a simple key
+				"folded-style.yaml": `# a simple key
 key: value
 anotherkey: another-value
 `,
@@ -298,7 +299,8 @@ key: value
 			},
 			expected: true,
 			expectedFiles: map[string]string{
-				"missing-key-values.yaml": `# a simple key
+				"missing-key-values.yaml": `
+# a simple key
 key: value
 object:
     mykey: new-value
