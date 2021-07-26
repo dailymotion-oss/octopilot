@@ -38,7 +38,9 @@ A more powerful feature is the ability to load a list of repositories from a [Gi
 
 ```bash
 $ octopilot \
-    --repo "discover-from(query=org:my-github-org topic:some-topic)"
+    --repo "discover-from(query=org:my-github-org topic:some-topic)" \
+    --repo "discover-from(query=org:my-github-org in:readme some-specific-content-in-the-readme,draft=true)" \
+    --repo "discover-from(query=org:my-github-org language:java is:private mirror:false archived:false,merge=true)"
 ```
 
 At runtime, Octopilot will use the GitHub API to retrieve the list of repositories matching a given query. This is useful when you have a common library used/imported by many repositories, and you want to create a PR to update the version when there is a new release of your lib. Instead of hardcoding the list of "dependant" repositories in your library repository, you can use a GitHub Search Query to find all repositories with a specific topic, or specific content in the description of the repo, or specific content in the README.md file of the repo, and so on. So "dependant" repositories can easily opt-in to get automatic PRs just by adding a topic for example.

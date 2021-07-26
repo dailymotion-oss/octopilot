@@ -10,7 +10,7 @@ It is the easiest: just specify the repositories on the CLI using the `--repo` f
 $ octopilot \
     --repo "my-github-org/my-first-repo" \
     --repo "my-github-org/my-second-repo(merge=true)" \
-    --repo "my-github-org/my-third-repo(draft=true,merge=false)"
+    --repo "my-github-org/my-third-repo(draft=true,merge=false,branch=dev)"
 ```
 
 You can add as much repositories as you want, each with different configuration.

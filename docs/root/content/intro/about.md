@@ -8,7 +8,7 @@ weight: 10
 
 If you are doing Gitops with GitHub-hosted repositories, **Octopilot** is your *swiss army knife* to propagate changes in your infrastructure.
 
-**Octopilot** was initially developed at [Dailymotion](https://www.dailymotion.com/), and is a core component of our Gitops workflow.
+**Octopilot** was initially developed at [Dailymotion](https://www.dailymotion.com/), and is a core component of our Gitops workflow - you can read our blog post [Introducing Octopilot: a CLI to automate the creation of GitHub pull requests in your gitops workflow](https://vbehar.medium.com/introducing-octopilot-a-cli-to-automate-the-creation-of-github-pull-request-in-your-gitops-e49b9eb0177a).
 
 ### Features
 

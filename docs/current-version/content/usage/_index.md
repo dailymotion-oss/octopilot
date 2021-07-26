@@ -27,3 +27,11 @@ $ octopilot \
     --pr-title "Updating some files" \
     ...
 ```
+
+## Continuous Delivery Pipelines
+
+Octopilot has been designed to be used in a Continuous Delivery pipeline: no dependencies, no configuration file, only 1 command to update multiple repositories...
+
+You can use it with [Jenkins](https://www.jenkins.io/), [Jenkins X](https://jenkins-x.io/), [Tekton](https://tekton.dev/), [GitHub Actions](https://github.com/features/actions), ...
+
+At Dailymotion, we're using it through [Jenkins X](https://jenkins-x.io/)/[Tekton](https://tekton.dev/) pipelines, and also a few [Jenkins](https://www.jenkins.io/) pipelines.
