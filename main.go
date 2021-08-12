@@ -30,7 +30,8 @@ var options struct {
 	updates []string
 	repos   []string
 	repository.UpdateOptions
-	logLevel string
+	logLevel    string
+	failOnError bool
 }
 
 func init() {
@@ -85,6 +86,7 @@ func init() {
 	pflag.BoolVarP(&options.DryRun, "dry-run", "n", false, `Don't perform any operation on the remote git repository: all operations will be done in the local cloned repository. You should also set the "--keep-files" flag to keep the files and inspect the changes in the local repository.`)
 	pflag.StringVar(&options.logLevel, "log-level", "info", "Log level. Supported values: trace, debug, info, warning, error, fatal, panic.")
 
+	pflag.BoolVar(&options.failOnError, "fail-on-error", false, "Exit with error code 1 if any repository update fails.")
 	pflag.BoolP("help", "h", false, "Display this help message.")
 	pflag.Bool("version", false, "Display the version and exit.")
 
@@ -125,6 +127,7 @@ func main() {
 
 	logrus.WithField("repositories-count", len(repositories)).Trace("Starting updates")
 	var wg sync.WaitGroup
+	errors := make(chan error, len(repositories))
 	for _, repo := range repositories {
 		wg.Add(1)
 		go func(repo repository.Repository) {
@@ -136,6 +139,7 @@ func main() {
 					WithError(err).
 					WithField("repository", repo.FullName()).
 					Error("Repository update failed")
+				errors <- err
 				return
 			}
 			if !updated {
@@ -146,7 +150,12 @@ func main() {
 		}(repo)
 	}
 	wg.Wait()
+	close(errors)
 	logrus.WithField("repositories-count", len(repositories)).Info("Updates finished")
+
+	if options.failOnError && len(errors) > 0 {
+		logrus.Fatal("Some repository updates failed")
+	}
 }
 
 func checkMandatoryFlags() {
