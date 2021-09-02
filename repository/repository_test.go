@@ -43,6 +43,17 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name:  "single repository with dot inside",
+			repos: []string{"dailymotion-oss/octopilot.test"},
+			expected: []Repository{
+				{
+					Owner:  "dailymotion-oss",
+					Name:   "octopilot.test",
+					Params: map[string]string{},
+				},
+			},
+		},
+		{
 			name:  "multiple repositories without parameters",
 			repos: []string{"dailymotion-oss/octopilot", "some-owner/MyGreatRepo"},
 			expected: []Repository{
@@ -65,6 +76,19 @@ func TestParse(t *testing.T) {
 				{
 					Owner: "dailymotion-oss",
 					Name:  "octopilot",
+					Params: map[string]string{
+						"draft": "true",
+					},
+				},
+			},
+		},
+		{
+			name:  "single repository with dot inside and a single parameter",
+			repos: []string{"dailymotion-oss/octopilot.test(draft=true)"},
+			expected: []Repository{
+				{
+					Owner: "dailymotion-oss",
+					Name:  "octopilot.test",
 					Params: map[string]string{
 						"draft": "true",
 					},

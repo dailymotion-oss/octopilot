@@ -17,7 +17,7 @@ import (
 
 var (
 	// type(params)
-	repoRegexp = regexp.MustCompile(`^(?P<type>[A-Za-z0-9_\-/]+)(?:\((?P<params>.+)\))?$`)
+	repoRegexp = regexp.MustCompile(`^(?P<type>[A-Za-z0-9._\-/]+)(?:\((?P<params>.+)\))?$`)
 
 	// owner/name(params)
 	repoWithNameRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9._\-]+)(?:\((?P<params>.+)\))?$`)
