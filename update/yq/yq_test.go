@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,7 @@ func TestNewUpdater(t *testing.T) {
 				Indent:       4,
 				Trim:         true,
 				UnwrapScalar: false,
-				OutputToJSON: true,
+				OutputFormat: yqlib.JsonOutputFormat,
 			},
 		},
 		{
@@ -52,7 +53,7 @@ func TestNewUpdater(t *testing.T) {
 				Indent:       2,
 				Trim:         false,
 				UnwrapScalar: true,
-				OutputToJSON: false,
+				OutputFormat: yqlib.YamlOutputFormat,
 			},
 		},
 		{
@@ -85,7 +86,7 @@ func TestNewUpdater(t *testing.T) {
 				Expression:   "something",
 				Trim:         false,
 				UnwrapScalar: true,
-				OutputToJSON: false,
+				OutputFormat: yqlib.YamlOutputFormat,
 				Indent:       2,
 			},
 		},
@@ -133,9 +134,10 @@ object:
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "basic-values.yaml",
-				Expression: `.object.mykey = "updated-value"`,
-				Indent:     2,
+				FilePath:     "basic-values.yaml",
+				Expression:   `.object.mykey = "updated-value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
+				Indent:       2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -166,9 +168,10 @@ object:
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "extract-source.yaml",
-				Expression: `.object`,
-				Output:     "extract-output.yaml",
+				FilePath:     "extract-source.yaml",
+				Expression:   `.object`,
+				Output:       "extract-output.yaml",
+				OutputFormat: yqlib.YamlOutputFormat,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -193,9 +196,10 @@ array:
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "complex-values.yaml",
-				Expression: `(.array[] | select(.name == "my entry") | .key) = "new value"`,
-				Indent:     2,
+				FilePath:     "complex-values.yaml",
+				Expression:   `(.array[] | select(.name == "my entry") | .key) = "new value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
+				Indent:       2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -226,9 +230,10 @@ array:
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "multiple-values.yaml",
-				Expression: `(.array[] | select(.ref == "abc*") | .key) = "updated value"`,
-				Indent:     2,
+				FilePath:     "multiple-values.yaml",
+				Expression:   `(.array[] | select(.ref == "abc*") | .key) = "updated value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
+				Indent:       2,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -254,8 +259,9 @@ anotherkey: another-value
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "folded-style.yaml",
-				Expression: `.key = "updated-value" | .key style="folded"`,
+				FilePath:     "folded-style.yaml",
+				Expression:   `.key = "updated-value" | .key style="folded"`,
+				OutputFormat: yqlib.YamlOutputFormat,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -275,9 +281,10 @@ key: value
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "trim.yaml",
-				Expression: `.key = "updated-value"`,
-				Trim:       true,
+				FilePath:     "trim.yaml",
+				Expression:   `.key = "updated-value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
+				Trim:         true,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -294,8 +301,9 @@ key: value
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "missing-key-values.yaml",
-				Expression: `.object.mykey = "new-value"`,
+				FilePath:     "missing-key-values.yaml",
+				Expression:   `.object.mykey = "new-value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
 			},
 			expected: true,
 			expectedFiles: map[string]string{
@@ -318,6 +326,7 @@ object:
 			updater: &YQUpdater{
 				FilePath:     "unwrap-scalar.yaml",
 				Expression:   `.object.key`,
+				OutputFormat: yqlib.YamlOutputFormat,
 				UnwrapScalar: true,
 			},
 			expected: true,
@@ -337,6 +346,7 @@ object:
 			updater: &YQUpdater{
 				FilePath:     "no-unwrap-scalar.yaml",
 				Expression:   `.object.key`,
+				OutputFormat: yqlib.YamlOutputFormat,
 				UnwrapScalar: false,
 			},
 			expected: true,
@@ -357,7 +367,7 @@ object:
 				FilePath:     "output-to-json.yaml",
 				Expression:   `.`,
 				Output:       "output-to-json.json",
-				OutputToJSON: true,
+				OutputFormat: yqlib.JsonOutputFormat,
 				Indent:       2,
 			},
 			expected: true,
@@ -378,8 +388,9 @@ key: value
 `,
 			},
 			updater: &YQUpdater{
-				FilePath:   "no-changes.yaml",
-				Expression: `.key = "value"`,
+				FilePath:     "no-changes.yaml",
+				Expression:   `.key = "value"`,
+				OutputFormat: yqlib.YamlOutputFormat,
 			},
 			expected: false,
 			expectedFiles: map[string]string{
