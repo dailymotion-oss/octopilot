@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"container/list"
 	"fmt"
+	"strconv"
+	"strings"
 
 	logging "gopkg.in/op/go-logging.v1"
 	yaml "gopkg.in/yaml.v3"
@@ -117,6 +119,17 @@ type Operation struct {
 	UpdateAssign  bool // used for assign ops, when true it means we evaluate the rhs given the lhs
 }
 
+// yaml numbers can be hex encoded...
+func parseInt(numberString string) (string, int64, error) {
+	if strings.HasPrefix(numberString, "0x") ||
+		strings.HasPrefix(numberString, "0X") {
+		num, err := strconv.ParseInt(numberString[2:], 16, 64) // nolint
+		return "0x%X", num, err
+	}
+	num, err := strconv.ParseInt(numberString, 10, 64) // nolint
+	return "%v", num, err
+}
+
 func createScalarNode(value interface{}, stringValue string) *yaml.Node {
 	var node = &yaml.Node{Kind: yaml.ScalarNode}
 	node.Value = stringValue
@@ -166,7 +179,7 @@ func NodesToString(collection *list.List) string {
 		return ""
 	}
 
-	result := ""
+	result := fmt.Sprintf("%v results\n", collection.Len())
 	for el := collection.Front(); el != nil; el = el.Next() {
 		result = result + "\n" + NodeToString(el.Value.(*CandidateNode))
 	}
