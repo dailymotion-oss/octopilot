@@ -27,7 +27,7 @@ type YQUpdater struct {
 	FilePath     string
 	Expression   string
 	Output       string
-	OutputToJSON bool
+	OutputFormat yqlib.PrinterOutputFormat
 	Indent       int
 	Trim         bool
 	UnwrapScalar bool
@@ -57,8 +57,13 @@ func NewUpdater(params map[string]string) (*YQUpdater, error) {
 		// let's unwrap scalar by default, same as yq
 		updater.UnwrapScalar = true
 	}
+
+	updater.OutputFormat = yqlib.YamlOutputFormat
+	if outputToJSON, _ := strconv.ParseBool(params["json"]); outputToJSON {
+		updater.OutputFormat = yqlib.JsonOutputFormat
+	}
+
 	updater.Trim, _ = strconv.ParseBool(params["trim"])
-	updater.OutputToJSON, _ = strconv.ParseBool(params["json"])
 	updater.Output = params["output"]
 
 	return updater, nil
@@ -123,7 +128,7 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 		}
 
 		buffer := new(bytes.Buffer)
-		printer := yqlib.NewPrinter(buffer, u.OutputToJSON, u.UnwrapScalar, false, u.Indent, true)
+		printer := yqlib.NewPrinter(buffer, u.OutputFormat, u.UnwrapScalar, false, u.Indent, true)
 		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", u.Expression, filePath, err)

@@ -106,7 +106,7 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		}
 
 		buffer := new(bytes.Buffer)
-		printer := yqlib.NewPrinter(buffer, false, false, false, u.Indent, true)
+		printer := yqlib.NewPrinter(buffer, yqlib.YamlOutputFormat, false, false, u.Indent, true)
 		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", expression, filePath, err)

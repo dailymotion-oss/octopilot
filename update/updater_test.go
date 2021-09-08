@@ -12,6 +12,7 @@ import (
 	"github.com/dailymotion-oss/octopilot/update/yaml"
 	"github.com/dailymotion-oss/octopilot/update/yq"
 
+	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -84,7 +85,7 @@ func TestParse(t *testing.T) {
 					FilePath:     "values.yaml",
 					Expression:   `.path.to.subkey = "value"`,
 					Output:       "",
-					OutputToJSON: false,
+					OutputFormat: yqlib.YamlOutputFormat,
 					Trim:         false,
 					UnwrapScalar: true,
 					Indent:       2,
