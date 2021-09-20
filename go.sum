@@ -510,8 +510,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/mholt/archiver v3.1.1+incompatible h1:1dCVxuqs0dJseYEhi5pl7MYPH9zDa1wBi7mF09cbNkU=
 github.com/mholt/archiver v3.1.1+incompatible/go.mod h1:Dh2dOXnSdiLxRiPoVfIr/fI1TwETms9B8CTWfeh7ROU=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
-github.com/mikefarah/yq/v4 v4.12.2 h1:wPnrZy8ckkA+57L0WqREfhAhXCza2GssQs8Os5Nlyuk=
-github.com/mikefarah/yq/v4 v4.12.2/go.mod h1:FlRIK5gLdat4/1VKmvngK5srO8VFVD0cTOGWksNPkwY=
+github.com/mikefarah/yq/v4 v4.13.2 h1:PjnAhqsCkW+jSX1mbZtlkK0nTNMYDnLf8OklzWLiFuI=
+github.com/mikefarah/yq/v4 v4.13.2/go.mod h1:FlRIK5gLdat4/1VKmvngK5srO8VFVD0cTOGWksNPkwY=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
 github.com/mitchellh/copystructure v1.0.0/go.mod h1:SNtv71yrdKgLRyLFxmLdkAbkKEFWgYaq1OVrnRcwhnw=
 github.com/mitchellh/copystructure v1.2.0 h1:vpKXTN4ewci03Vljg/q9QvCGUDttBOGBIa15WveJJGw=
