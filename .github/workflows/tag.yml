@@ -19,7 +19,7 @@ jobs:
       - uses: fregante/setup-git-user@v1
 
       - name: tag
-        uses: jenkins-x-plugins/jx-release-version@v2.4.13
+        uses: jenkins-x-plugins/jx-release-version@v2.5.0
         with:
           tag: true
           github-token: ${{ secrets.DM_BOT_TOKEN }}
