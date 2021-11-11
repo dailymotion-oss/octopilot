@@ -39,7 +39,7 @@ require (
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/mikefarah/yq/v4 v4.12.2
+	github.com/mikefarah/yq/v4 v4.14.1
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -61,7 +61,6 @@ require (
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6 // indirect
 	google.golang.org/api v0.49.0 // indirect
