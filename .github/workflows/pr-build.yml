@@ -18,7 +18,7 @@ jobs:
           go-version: '1.16'
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2.7.0
+        uses: goreleaser/goreleaser-action@v2.8.0
         with:
           version: v0.171.0
           args: release --snapshot --skip-publish --rm-dist
