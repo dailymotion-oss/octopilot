@@ -1,6 +1,7 @@
 package yqlib
 
 import (
+	"container/list"
 	"fmt"
 
 	"github.com/jinzhu/copier"
@@ -8,10 +9,13 @@ import (
 )
 
 type CandidateNode struct {
-	Node      *yaml.Node     // the actual node
-	Parent    *CandidateNode // parent node
-	Path      []interface{}  /// the path we took to get to this node
-	Document  uint           // the document index of this node
+	Node   *yaml.Node     // the actual node
+	Parent *CandidateNode // parent node
+
+	LeadingContent string
+
+	Path      []interface{} /// the path we took to get to this node
+	Document  uint          // the document index of this node
 	Filename  string
 	FileIndex int
 	// when performing op against all nodes given, this will treat all the nodes as one
@@ -26,6 +30,12 @@ func (n *CandidateNode) GetKey() string {
 		keyPrefix = "key-"
 	}
 	return fmt.Sprintf("%v%v - %v", keyPrefix, n.Document, n.Path)
+}
+
+func (n *CandidateNode) AsList() *list.List {
+	elMap := list.New()
+	elMap.PushBack(n)
+	return elMap
 }
 
 func (n *CandidateNode) CreateChild(path interface{}, node *yaml.Node) *CandidateNode {
