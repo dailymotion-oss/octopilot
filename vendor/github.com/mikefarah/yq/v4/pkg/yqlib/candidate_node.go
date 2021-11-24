@@ -1,6 +1,7 @@
 package yqlib
 
 import (
+	"container/list"
 	"fmt"
 
 	"github.com/jinzhu/copier"
@@ -8,10 +9,14 @@ import (
 )
 
 type CandidateNode struct {
-	Node      *yaml.Node     // the actual node
-	Parent    *CandidateNode // parent node
-	Path      []interface{}  /// the path we took to get to this node
-	Document  uint           // the document index of this node
+	Node   *yaml.Node     // the actual node
+	Parent *CandidateNode // parent node
+	Key    *yaml.Node     // node key, if this is a value from a map (or index in an array)
+
+	LeadingContent string
+
+	Path      []interface{} /// the path we took to get to this node
+	Document  uint          // the document index of this node
 	Filename  string
 	FileIndex int
 	// when performing op against all nodes given, this will treat all the nodes as one
@@ -28,11 +33,47 @@ func (n *CandidateNode) GetKey() string {
 	return fmt.Sprintf("%v%v - %v", keyPrefix, n.Document, n.Path)
 }
 
-func (n *CandidateNode) CreateChild(path interface{}, node *yaml.Node) *CandidateNode {
+func (n *CandidateNode) AsList() *list.List {
+	elMap := list.New()
+	elMap.PushBack(n)
+	return elMap
+}
+
+func (n *CandidateNode) CreateChildInMap(key *yaml.Node, node *yaml.Node) *CandidateNode {
+	var value interface{} = nil
+	if key != nil {
+		value = key.Value
+	}
 	return &CandidateNode{
 		Node:      node,
-		Path:      n.createChildPath(path),
+		Path:      n.createChildPath(value),
 		Parent:    n,
+		Key:       key,
+		Document:  n.Document,
+		Filename:  n.Filename,
+		FileIndex: n.FileIndex,
+	}
+}
+
+func (n *CandidateNode) CreateChildInArray(index int, node *yaml.Node) *CandidateNode {
+	return &CandidateNode{
+		Node:      node,
+		Path:      n.createChildPath(index),
+		Parent:    n,
+		Key:       &yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%v", index), Tag: "!!int"},
+		Document:  n.Document,
+		Filename:  n.Filename,
+		FileIndex: n.FileIndex,
+	}
+}
+
+func (n *CandidateNode) CreateReplacement(node *yaml.Node) *CandidateNode {
+	return &CandidateNode{
+		Node:      node,
+		Path:      n.createChildPath(nil),
+		Parent:    n.Parent,
+		Key:       n.Key,
+		IsMapKey:  n.IsMapKey,
 		Document:  n.Document,
 		Filename:  n.Filename,
 		FileIndex: n.FileIndex,

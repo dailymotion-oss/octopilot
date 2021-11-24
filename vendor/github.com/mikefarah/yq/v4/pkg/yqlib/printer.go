@@ -5,7 +5,7 @@ import (
 	"container/list"
 	"fmt"
 	"io"
-	"strings"
+	"regexp"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -44,7 +44,7 @@ type resultsPrinter struct {
 	colorsEnabled      bool
 	indent             int
 	printDocSeparators bool
-	writer             io.Writer
+	printerWriter      PrinterWriter
 	firstTimePrinting  bool
 	previousDocIndex   uint
 	previousFileIndex  int
@@ -53,9 +53,13 @@ type resultsPrinter struct {
 	appendixReader     io.Reader
 }
 
-func NewPrinter(writer io.Writer, outputFormat PrinterOutputFormat, unwrapScalar bool, colorsEnabled bool, indent int, printDocSeparators bool) Printer {
+func NewPrinterWithSingleWriter(writer io.Writer, outputFormat PrinterOutputFormat, unwrapScalar bool, colorsEnabled bool, indent int, printDocSeparators bool) Printer {
+	return NewPrinter(NewSinglePrinterWriter(writer), outputFormat, unwrapScalar, colorsEnabled, indent, printDocSeparators)
+}
+
+func NewPrinter(printerWriter PrinterWriter, outputFormat PrinterOutputFormat, unwrapScalar bool, colorsEnabled bool, indent int, printDocSeparators bool) Printer {
 	return &resultsPrinter{
-		writer:             writer,
+		printerWriter:      printerWriter,
 		outputFormat:       outputFormat,
 		unwrapScalar:       unwrapScalar,
 		colorsEnabled:      colorsEnabled,
@@ -80,7 +84,7 @@ func (p *resultsPrinter) printNode(node *yaml.Node, writer io.Writer) error {
 
 	var encoder Encoder
 	if node.Kind == yaml.ScalarNode && p.unwrapScalar && p.outputFormat == YamlOutputFormat {
-		return p.writeString(writer, node.Value+"\n")
+		return writeString(writer, node.Value+"\n")
 	}
 
 	if p.outputFormat == JsonOutputFormat {
@@ -93,20 +97,14 @@ func (p *resultsPrinter) printNode(node *yaml.Node, writer io.Writer) error {
 	return encoder.Encode(node)
 }
 
-func (p *resultsPrinter) writeString(writer io.Writer, txt string) error {
-	_, errorWriting := writer.Write([]byte(txt))
-	return errorWriting
-}
-
-func (p *resultsPrinter) safelyFlush(writer *bufio.Writer) {
-	if err := writer.Flush(); err != nil {
-		log.Error("Error flushing writer!")
-		log.Error(err.Error())
-	}
-}
-
 func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 	log.Debug("PrintResults for %v matches", matchingNodes.Len())
+
+	if matchingNodes.Len() == 0 {
+		log.Debug("no matching results, nothing to print")
+		return nil
+	}
+
 	if p.outputFormat != YamlOutputFormat {
 		explodeOp := Operation{OperationType: explodeOpType}
 		explodeNode := ExpressionNode{Operation: &explodeOp}
@@ -117,13 +115,6 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 		matchingNodes = context.MatchingNodes
 	}
 
-	bufferedWriter := bufio.NewWriter(p.writer)
-	defer p.safelyFlush(bufferedWriter)
-
-	if matchingNodes.Len() == 0 {
-		log.Debug("no matching results, nothing to print")
-		return nil
-	}
 	if p.firstTimePrinting {
 		node := matchingNodes.Front().Value.(*CandidateNode)
 		p.previousDocIndex = node.Document
@@ -132,70 +123,52 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 	}
 
 	for el := matchingNodes.Front(); el != nil; el = el.Next() {
+
 		mappedDoc := el.Value.(*CandidateNode)
 		log.Debug("-- print sep logic: p.firstTimePrinting: %v, previousDocIndex: %v, mappedDoc.Document: %v, printDocSeparators: %v", p.firstTimePrinting, p.previousDocIndex, mappedDoc.Document, p.printDocSeparators)
 
-		commentStartsWithSeparator := strings.Contains(mappedDoc.Node.HeadComment, "$yqLeadingContent$\n$yqDocSeperator$")
+		writer, errorWriting := p.printerWriter.GetWriter(mappedDoc)
+		if errorWriting != nil {
+			return errorWriting
+		}
+
+		commentsStartWithSepExp := regexp.MustCompile(`^\$yqDocSeperator\$`)
+		commentStartsWithSeparator := commentsStartWithSepExp.MatchString(mappedDoc.LeadingContent)
 
 		if (p.previousDocIndex != mappedDoc.Document || p.previousFileIndex != mappedDoc.FileIndex) && p.printDocSeparators && !commentStartsWithSeparator {
 			log.Debug("-- writing doc sep")
-			if err := p.writeString(bufferedWriter, "---\n"); err != nil {
+			if err := writeString(writer, "---\n"); err != nil {
 				return err
 			}
 		}
 
-		if strings.Contains(mappedDoc.Node.HeadComment, "$yqLeadingContent$") {
-			log.Debug("headcommentwas %v", mappedDoc.Node.HeadComment)
-			log.Debug("finished headcomment")
-			reader := bufio.NewReader(strings.NewReader(mappedDoc.Node.HeadComment))
-			mappedDoc.Node.HeadComment = ""
-
-			for {
-
-				readline, errReading := reader.ReadString('\n')
-				if errReading != nil && errReading != io.EOF {
-					return errReading
-				}
-				if strings.Contains(readline, "$yqLeadingContent$") {
-					// skip this
-
-				} else if strings.Contains(readline, "$yqDocSeperator$") {
-					if p.printDocSeparators {
-						if err := p.writeString(bufferedWriter, "---\n"); err != nil {
-							return err
-						}
-					}
-				} else if p.outputFormat == YamlOutputFormat {
-					if err := p.writeString(bufferedWriter, readline); err != nil {
-						return err
-					}
-				}
-
-				if errReading == io.EOF {
-					if readline != "" {
-						// the last comment we read didn't have a new line, put one in
-						if err := p.writeString(bufferedWriter, "\n"); err != nil {
-							return err
-						}
-					}
-					break
-				}
-			}
-
+		if err := processLeadingContent(mappedDoc, writer, p.printDocSeparators, p.outputFormat); err != nil {
+			return err
 		}
 
-		if err := p.printNode(mappedDoc.Node, bufferedWriter); err != nil {
+		if err := p.printNode(mappedDoc.Node, writer); err != nil {
 			return err
 		}
 
 		p.previousDocIndex = mappedDoc.Document
+		if err := writer.Flush(); err != nil {
+			return err
+		}
 	}
 
 	if p.appendixReader != nil && p.outputFormat == YamlOutputFormat {
+		writer, err := p.printerWriter.GetWriter(nil)
+		if err != nil {
+			return err
+		}
+
 		log.Debug("Piping appendix reader...")
 		betterReader := bufio.NewReader(p.appendixReader)
-		_, err := io.Copy(bufferedWriter, betterReader)
+		_, err = io.Copy(writer, betterReader)
 		if err != nil {
+			return err
+		}
+		if err := writer.Flush(); err != nil {
 			return err
 		}
 	}
