@@ -1,11 +1,11 @@
 package yqlib
 
 import (
+	"container/list"
 	"fmt"
 	"strconv"
 
-	"container/list"
-
+	"github.com/jinzhu/copier"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -20,44 +20,42 @@ func multiplyOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	return crossFunction(d, context, expressionNode, multiply(expressionNode.Operation.Preferences.(multiplyPreferences)), false)
 }
 
-func getNewBlankNode(lhs *yaml.Node, rhs *yaml.Node) *yaml.Node {
-
-	blankNode := &yaml.Node{}
-
-	if lhs.HeadComment != "" {
-		blankNode.HeadComment = lhs.HeadComment
-	} else if rhs.HeadComment != "" {
-		blankNode.HeadComment = rhs.HeadComment
+func getComments(lhs *CandidateNode, rhs *CandidateNode) (leadingContent string, headComment string, footComment string) {
+	leadingContent = rhs.LeadingContent
+	headComment = rhs.Node.HeadComment
+	footComment = rhs.Node.FootComment
+	if lhs.Node.HeadComment != "" || lhs.LeadingContent != "" {
+		headComment = lhs.Node.HeadComment
+		leadingContent = lhs.LeadingContent
 	}
 
-	if lhs.FootComment != "" {
-		blankNode.FootComment = lhs.FootComment
-	} else if rhs.FootComment != "" {
-		blankNode.FootComment = rhs.FootComment
+	if lhs.Node.FootComment != "" {
+		footComment = lhs.Node.FootComment
 	}
-
-	return blankNode
+	return leadingContent, headComment, footComment
 }
 
 func multiply(preferences multiplyPreferences) func(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
 	return func(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
 		// need to do this before unWrapping the potential document node
-		newBlankNode := getNewBlankNode(lhs.Node, rhs.Node)
+		leadingContent, headComment, footComment := getComments(lhs, rhs)
 		lhs.Node = unwrapDoc(lhs.Node)
 		rhs.Node = unwrapDoc(rhs.Node)
-		log.Debugf("Multipling LHS: %v", lhs.Node.Tag)
+		log.Debugf("Multiplying LHS: %v", lhs.Node.Tag)
 		log.Debugf("-          RHS: %v", rhs.Node.Tag)
 
 		if lhs.Node.Kind == yaml.MappingNode && rhs.Node.Kind == yaml.MappingNode ||
 			(lhs.Node.Kind == yaml.SequenceNode && rhs.Node.Kind == yaml.SequenceNode) {
-
-			var newBlank = lhs.CreateChild(nil, newBlankNode)
-			log.Debugf("merge - merge lhs into blank")
-			var newThing, err = mergeObjects(d, context.WritableClone(), newBlank, lhs, multiplyPreferences{})
+			var newBlank = CandidateNode{}
+			err := copier.CopyWithOption(&newBlank, lhs, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 			if err != nil {
 				return nil, err
 			}
-			return mergeObjects(d, context.WritableClone(), newThing, rhs, preferences)
+			newBlank.LeadingContent = leadingContent
+			newBlank.Node.HeadComment = headComment
+			newBlank.Node.FootComment = footComment
+
+			return mergeObjects(d, context.WritableClone(), &newBlank, rhs, preferences)
 		} else if lhs.Node.Tag == "!!int" && rhs.Node.Tag == "!!int" {
 			return multiplyIntegers(lhs, rhs)
 		} else if (lhs.Node.Tag == "!!int" || lhs.Node.Tag == "!!float") && (rhs.Node.Tag == "!!int" || rhs.Node.Tag == "!!float") {
@@ -68,7 +66,7 @@ func multiply(preferences multiplyPreferences) func(d *dataTreeNavigator, contex
 }
 
 func multiplyFloats(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
-	target := lhs.CreateChild(nil, &yaml.Node{})
+	target := lhs.CreateReplacement(&yaml.Node{})
 	target.Node.Kind = yaml.ScalarNode
 	target.Node.Style = lhs.Node.Style
 	target.Node.Tag = "!!float"
@@ -86,7 +84,7 @@ func multiplyFloats(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, err
 }
 
 func multiplyIntegers(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
-	target := lhs.CreateChild(nil, &yaml.Node{})
+	target := lhs.CreateReplacement(&yaml.Node{})
 	target.Node.Kind = yaml.ScalarNode
 	target.Node.Style = lhs.Node.Style
 	target.Node.Tag = "!!int"
@@ -111,12 +109,12 @@ func mergeObjects(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs
 		TraversePreferences: traversePreferences{DontFollowAlias: true, IncludeMapKeys: true}}
 	log.Debugf("merge - preferences.DeepMergeArrays %v", preferences.DeepMergeArrays)
 	log.Debugf("merge - preferences.AppendArrays %v", preferences.AppendArrays)
-	err := recursiveDecent(d, results, context.SingleChildContext(rhs), prefs)
+	err := recursiveDecent(results, context.SingleChildContext(rhs), prefs)
 	if err != nil {
 		return nil, err
 	}
 
-	var pathIndexToStartFrom int = 0
+	var pathIndexToStartFrom int
 	if results.Front() != nil {
 		pathIndexToStartFrom = len(results.Front().Value.(*CandidateNode).Path)
 	}
