@@ -8,7 +8,7 @@ import (
 
 // A yaml expression evaluator that runs the expression once against all files/nodes in memory.
 type Evaluator interface {
-	EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error
+	EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool, decoder Decoder) error
 
 	// EvaluateNodes takes an expression and one or more yaml nodes, returning a list of matching candidate nodes
 	EvaluateNodes(expression string, nodes ...*yaml.Node) (*list.List, error)
@@ -46,11 +46,11 @@ func (e *allAtOnceEvaluator) EvaluateCandidateNodes(expression string, inputCand
 	return context.MatchingNodes, nil
 }
 
-func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error {
+func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool, decoder Decoder) error {
 	fileIndex := 0
 	firstFileLeadingContent := ""
 
-	var allDocuments *list.List = list.New()
+	var allDocuments = list.New()
 	for _, filename := range filenames {
 		reader, leadingContent, err := readStream(filename, fileIndex == 0 && leadingContentPreProcessing)
 		if err != nil {
@@ -61,7 +61,7 @@ func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string
 			firstFileLeadingContent = leadingContent
 		}
 
-		fileDocuments, err := readDocuments(reader, filename, fileIndex)
+		fileDocuments, err := readDocuments(reader, filename, fileIndex, decoder)
 		if err != nil {
 			return err
 		}
@@ -71,14 +71,15 @@ func (e *allAtOnceEvaluator) EvaluateFiles(expression string, filenames []string
 
 	if allDocuments.Len() == 0 {
 		candidateNode := &CandidateNode{
-			Document:  0,
-			Filename:  "",
-			Node:      &yaml.Node{Kind: yaml.DocumentNode, HeadComment: firstFileLeadingContent, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
-			FileIndex: 0,
+			Document:       0,
+			Filename:       "",
+			Node:           &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
+			FileIndex:      0,
+			LeadingContent: firstFileLeadingContent,
 		}
 		allDocuments.PushBack(candidateNode)
 	} else {
-		allDocuments.Front().Value.(*CandidateNode).Node.HeadComment = firstFileLeadingContent
+		allDocuments.Front().Value.(*CandidateNode).LeadingContent = firstFileLeadingContent
 	}
 
 	matches, err := e.EvaluateCandidateNodes(expression, allDocuments)
