@@ -2,8 +2,8 @@ package yqlib
 
 import (
 	"fmt"
-
 	"strconv"
+	"strings"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -45,63 +45,135 @@ func add(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *Candida
 	lhsNode := lhs.Node
 
 	if lhsNode.Tag == "!!null" {
-		return lhs.CreateChild(nil, rhs.Node), nil
+		return lhs.CreateReplacement(rhs.Node), nil
 	}
 
-	target := lhs.CreateChild(nil, &yaml.Node{})
+	target := lhs.CreateReplacement(&yaml.Node{})
 
 	switch lhsNode.Kind {
 	case yaml.MappingNode:
-		return nil, fmt.Errorf("Maps not yet supported for addition")
+		addMaps(target, lhs, rhs)
 	case yaml.SequenceNode:
-		target.Node.Kind = yaml.SequenceNode
-		target.Node.Style = lhsNode.Style
-		target.Node.Tag = "!!seq"
-		target.Node.Content = append(lhsNode.Content, toNodes(rhs)...)
+		addSequences(target, lhs, rhs)
 	case yaml.ScalarNode:
 		if rhs.Node.Kind != yaml.ScalarNode {
 			return nil, fmt.Errorf("%v (%v) cannot be added to a %v", rhs.Node.Tag, rhs.Path, lhsNode.Tag)
 		}
 		target.Node.Kind = yaml.ScalarNode
 		target.Node.Style = lhsNode.Style
-		return addScalars(target, lhsNode, rhs.Node)
+		if err := addScalars(target, lhsNode, rhs.Node); err != nil {
+			return nil, err
+		}
 	}
-
 	return target, nil
 }
 
-func addScalars(target *CandidateNode, lhs *yaml.Node, rhs *yaml.Node) (*CandidateNode, error) {
+func guessTagFromCustomType(node *yaml.Node) string {
+	if node.Value == "" {
+		log.Warning("node has no value to guess the type with")
+		return node.Tag
+	}
 
-	if lhs.Tag == "!!str" {
-		target.Node.Tag = "!!str"
+	decoder := NewYamlDecoder()
+	decoder.Init(strings.NewReader(node.Value))
+	var dataBucket yaml.Node
+	errorReading := decoder.Decode(&dataBucket)
+	if errorReading != nil {
+		log.Warning("could not guess underlying tag type %v", errorReading)
+		return node.Tag
+	}
+	guessedTag := unwrapDoc(&dataBucket).Tag
+	log.Info("im guessing the tag %v is a %v", node.Tag, guessedTag)
+	return guessedTag
+}
+
+func addScalars(target *CandidateNode, lhs *yaml.Node, rhs *yaml.Node) error {
+	lhsTag := lhs.Tag
+	rhsTag := rhs.Tag
+	lhsIsCustom := false
+	if !strings.HasPrefix(lhsTag, "!!") {
+		// custom tag - we have to have a guess
+		lhsTag = guessTagFromCustomType(lhs)
+		lhsIsCustom = true
+	}
+
+	if !strings.HasPrefix(rhsTag, "!!") {
+		// custom tag - we have to have a guess
+		rhsTag = guessTagFromCustomType(rhs)
+	}
+
+	if lhsTag == "!!str" {
+		target.Node.Tag = lhs.Tag
 		target.Node.Value = lhs.Value + rhs.Value
-	} else if lhs.Tag == "!!int" && rhs.Tag == "!!int" {
+	} else if lhsTag == "!!int" && rhsTag == "!!int" {
 		format, lhsNum, err := parseInt(lhs.Value)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		_, rhsNum, err := parseInt(rhs.Value)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		sum := lhsNum + rhsNum
-		target.Node.Tag = "!!int"
+		target.Node.Tag = lhs.Tag
 		target.Node.Value = fmt.Sprintf(format, sum)
-	} else if (lhs.Tag == "!!int" || lhs.Tag == "!!float") && (rhs.Tag == "!!int" || rhs.Tag == "!!float") {
+	} else if (lhsTag == "!!int" || lhsTag == "!!float") && (rhsTag == "!!int" || rhsTag == "!!float") {
 		lhsNum, err := strconv.ParseFloat(lhs.Value, 64)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		rhsNum, err := strconv.ParseFloat(rhs.Value, 64)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		sum := lhsNum + rhsNum
-		target.Node.Tag = "!!float"
+		if lhsIsCustom {
+			target.Node.Tag = lhs.Tag
+		} else {
+			target.Node.Tag = "!!float"
+		}
 		target.Node.Value = fmt.Sprintf("%v", sum)
 	} else {
-		return nil, fmt.Errorf("%v cannot be added to %v", lhs.Tag, rhs.Tag)
+		return fmt.Errorf("%v cannot be added to %v", lhsTag, rhsTag)
 	}
+	return nil
+}
 
-	return target, nil
+func addSequences(target *CandidateNode, lhs *CandidateNode, rhs *CandidateNode) {
+	target.Node.Kind = yaml.SequenceNode
+	if len(lhs.Node.Content) > 0 {
+		target.Node.Style = lhs.Node.Style
+	}
+	target.Node.Tag = lhs.Node.Tag
+	target.Node.Content = make([]*yaml.Node, len(lhs.Node.Content))
+	copy(target.Node.Content, lhs.Node.Content)
+	target.Node.Content = append(target.Node.Content, toNodes(rhs)...)
+}
+
+func addMaps(target *CandidateNode, lhsC *CandidateNode, rhsC *CandidateNode) {
+	lhs := lhsC.Node
+	rhs := rhsC.Node
+
+	target.Node.Content = make([]*yaml.Node, len(lhs.Content))
+	copy(target.Node.Content, lhs.Content)
+
+	for index := 0; index < len(rhs.Content); index = index + 2 {
+		key := rhs.Content[index]
+		value := rhs.Content[index+1]
+		log.Debug("finding %v", key.Value)
+		indexInLhs := findInArray(target.Node, key)
+		log.Debug("indexInLhs %v", indexInLhs)
+		if indexInLhs < 0 {
+			// not in there, append it
+			target.Node.Content = append(target.Node.Content, key, value)
+		} else {
+			// it's there, replace it
+			target.Node.Content[indexInLhs+1] = value
+		}
+	}
+	target.Node.Kind = yaml.MappingNode
+	if len(lhs.Content) > 0 {
+		target.Node.Style = lhs.Style
+	}
+	target.Node.Tag = lhs.Tag
 }

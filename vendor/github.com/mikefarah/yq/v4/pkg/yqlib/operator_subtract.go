@@ -2,10 +2,10 @@ package yqlib
 
 import (
 	"fmt"
-
 	"strconv"
+	"strings"
 
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func createSubtractOp(lhs *ExpressionNode, rhs *ExpressionNode) *ExpressionNode {
@@ -24,6 +24,24 @@ func subtractOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	return crossFunction(d, context.ReadOnlyClone(), expressionNode, subtract, false)
 }
 
+func subtractArray(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
+	newLhsArray := make([]*yaml.Node, 0)
+
+	for lindex := 0; lindex < len(lhs.Node.Content); lindex = lindex + 1 {
+		shouldInclude := true
+		for rindex := 0; rindex < len(rhs.Node.Content) && shouldInclude; rindex = rindex + 1 {
+			if recursiveNodeEqual(lhs.Node.Content[lindex], rhs.Node.Content[rindex]) {
+				shouldInclude = false
+			}
+		}
+		if shouldInclude {
+			newLhsArray = append(newLhsArray, lhs.Node.Content[lindex])
+		}
+	}
+	lhs.Node.Content = newLhsArray
+	return lhs, nil
+}
+
 func subtract(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
 	lhs.Node = unwrapDoc(lhs.Node)
 	rhs.Node = unwrapDoc(rhs.Node)
@@ -31,23 +49,22 @@ func subtract(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *Ca
 	lhsNode := lhs.Node
 
 	if lhsNode.Tag == "!!null" {
-		return lhs.CreateChild(nil, rhs.Node), nil
+		return lhs.CreateReplacement(rhs.Node), nil
 	}
 
-	target := lhs.CreateChild(nil, &yaml.Node{})
+	target := lhs.CreateReplacement(&yaml.Node{})
 
 	switch lhsNode.Kind {
 	case yaml.MappingNode:
 		return nil, fmt.Errorf("Maps not yet supported for subtraction")
 	case yaml.SequenceNode:
-		return nil, fmt.Errorf("Sequences not yet supported for subtraction")
-		// target.Node.Kind = yaml.SequenceNode
-		// target.Node.Style = lhsNode.Style
-		// target.Node.Tag = "!!seq"
-		// target.Node.Content = append(lhsNode.Content, toNodes(rhs)...)
+		if rhs.Node.Kind != yaml.SequenceNode {
+			return nil, fmt.Errorf("%v (%v) cannot be subtracted from %v", rhs.Node.Tag, rhs.Path, lhsNode.Tag)
+		}
+		return subtractArray(lhs, rhs)
 	case yaml.ScalarNode:
 		if rhs.Node.Kind != yaml.ScalarNode {
-			return nil, fmt.Errorf("%v (%v) cannot be added to a %v", rhs.Node.Tag, rhs.Path, lhsNode.Tag)
+			return nil, fmt.Errorf("%v (%v) cannot be subtracted from %v", rhs.Node.Tag, rhs.Path, lhsNode.Tag)
 		}
 		target.Node.Kind = yaml.ScalarNode
 		target.Node.Style = lhsNode.Style
@@ -58,10 +75,23 @@ func subtract(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *Ca
 }
 
 func subtractScalars(target *CandidateNode, lhs *yaml.Node, rhs *yaml.Node) (*CandidateNode, error) {
+	lhsTag := lhs.Tag
+	rhsTag := rhs.Tag
+	lhsIsCustom := false
+	if !strings.HasPrefix(lhsTag, "!!") {
+		// custom tag - we have to have a guess
+		lhsTag = guessTagFromCustomType(lhs)
+		lhsIsCustom = true
+	}
 
-	if lhs.Tag == "!!str" {
+	if !strings.HasPrefix(rhsTag, "!!") {
+		// custom tag - we have to have a guess
+		rhsTag = guessTagFromCustomType(rhs)
+	}
+
+	if lhsTag == "!!str" {
 		return nil, fmt.Errorf("strings cannot be subtracted")
-	} else if lhs.Tag == "!!int" && rhs.Tag == "!!int" {
+	} else if lhsTag == "!!int" && rhsTag == "!!int" {
 		format, lhsNum, err := parseInt(lhs.Value)
 		if err != nil {
 			return nil, err
@@ -71,9 +101,9 @@ func subtractScalars(target *CandidateNode, lhs *yaml.Node, rhs *yaml.Node) (*Ca
 			return nil, err
 		}
 		result := lhsNum - rhsNum
-		target.Node.Tag = "!!int"
+		target.Node.Tag = lhs.Tag
 		target.Node.Value = fmt.Sprintf(format, result)
-	} else if (lhs.Tag == "!!int" || lhs.Tag == "!!float") && (rhs.Tag == "!!int" || rhs.Tag == "!!float") {
+	} else if (lhsTag == "!!int" || lhsTag == "!!float") && (rhsTag == "!!int" || rhsTag == "!!float") {
 		lhsNum, err := strconv.ParseFloat(lhs.Value, 64)
 		if err != nil {
 			return nil, err
@@ -83,7 +113,11 @@ func subtractScalars(target *CandidateNode, lhs *yaml.Node, rhs *yaml.Node) (*Ca
 			return nil, err
 		}
 		result := lhsNum - rhsNum
-		target.Node.Tag = "!!float"
+		if lhsIsCustom {
+			target.Node.Tag = lhs.Tag
+		} else {
+			target.Node.Tag = "!!float"
+		}
 		target.Node.Value = fmt.Sprintf("%v", result)
 	} else {
 		return nil, fmt.Errorf("%v cannot be added to %v", lhs.Tag, rhs.Tag)
