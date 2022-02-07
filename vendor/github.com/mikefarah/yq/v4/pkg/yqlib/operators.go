@@ -18,7 +18,7 @@ func compoundAssignFunction(d *dataTreeNavigator, context Context, expressionNod
 		return Context{}, err
 	}
 
-	assignmentOp := &Operation{OperationType: assignOpType}
+	assignmentOp := &Operation{OperationType: assignOpType, Preferences: expressionNode.Operation.Preferences}
 	valueOp := &Operation{OperationType: valueOpType}
 
 	for el := lhs.MatchingNodes.Front(); el != nil; el = el.Next() {
@@ -144,7 +144,7 @@ func createBooleanCandidate(owner *CandidateNode, value bool) *CandidateNode {
 		valString = "false"
 	}
 	node := &yaml.Node{Kind: yaml.ScalarNode, Value: valString, Tag: "!!bool"}
-	return owner.CreateChild(nil, node)
+	return owner.CreateReplacement(node)
 }
 
 func createTraversalTree(path []interface{}, traversePrefs traversePreferences, targetKey bool) *ExpressionNode {

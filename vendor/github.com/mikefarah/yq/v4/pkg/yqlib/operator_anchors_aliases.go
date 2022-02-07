@@ -56,7 +56,7 @@ func getAliasOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		node := &yaml.Node{Kind: yaml.ScalarNode, Value: candidate.Node.Value, Tag: "!!str"}
-		result := candidate.CreateChild(nil, node)
+		result := candidate.CreateReplacement(node)
 		results.PushBack(result)
 	}
 	return context.ChildContext(results), nil
@@ -112,7 +112,7 @@ func getAnchorOperator(d *dataTreeNavigator, context Context, expressionNode *Ex
 		candidate := el.Value.(*CandidateNode)
 		anchor := candidate.Node.Anchor
 		node := &yaml.Node{Kind: yaml.ScalarNode, Value: anchor, Tag: "!!str"}
-		result := candidate.CreateChild(nil, node)
+		result := candidate.CreateReplacement(node)
 		results.PushBack(result)
 	}
 	return context.ChildContext(results), nil
@@ -141,6 +141,48 @@ func explodeOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 	return context, nil
 }
 
+func reconstructAliasedMap(node *yaml.Node, context Context) error {
+	var newContent = list.New()
+	// can I short cut here by prechecking if there's an anchor in the map?
+	// no it needs to recurse in overrideEntry.
+
+	for index := 0; index < len(node.Content); index = index + 2 {
+		keyNode := node.Content[index]
+		valueNode := node.Content[index+1]
+		log.Debugf("traversing %v", keyNode.Value)
+		if keyNode.Value != "<<" {
+			err := overrideEntry(node, keyNode, valueNode, index, context.ChildContext(newContent))
+			if err != nil {
+				return err
+			}
+		} else {
+			if valueNode.Kind == yaml.SequenceNode {
+				log.Debugf("an alias merge list!")
+				for index := len(valueNode.Content) - 1; index >= 0; index = index - 1 {
+					aliasNode := valueNode.Content[index]
+					err := applyAlias(node, aliasNode.Alias, index, context.ChildContext(newContent))
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				log.Debugf("an alias merge!")
+				err := applyAlias(node, valueNode.Alias, index, context.ChildContext(newContent))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	node.Content = make([]*yaml.Node, newContent.Len())
+	index := 0
+	for newEl := newContent.Front(); newEl != nil; newEl = newEl.Next() {
+		node.Content[index] = newEl.Value.(*yaml.Node)
+		index++
+	}
+	return nil
+}
+
 func explodeNode(node *yaml.Node, context Context) error {
 	node.Anchor = ""
 	switch node.Kind {
@@ -165,42 +207,33 @@ func explodeNode(node *yaml.Node, context Context) error {
 		}
 		return nil
 	case yaml.MappingNode:
-		var newContent = list.New()
+		// //check the map has an alias in it
+		hasAlias := false
+		for index := 0; index < len(node.Content); index = index + 2 {
+			keyNode := node.Content[index]
+			if keyNode.Value == "<<" {
+				hasAlias = true
+				break
+			}
+		}
+
+		if hasAlias {
+			// this is a slow op, which is why we want to check before running it.
+			return reconstructAliasedMap(node, context)
+		}
+		// this map has no aliases, but it's kids might
 		for index := 0; index < len(node.Content); index = index + 2 {
 			keyNode := node.Content[index]
 			valueNode := node.Content[index+1]
-			log.Debugf("traversing %v", keyNode.Value)
-			if keyNode.Value != "<<" {
-				err := overrideEntry(node, keyNode, valueNode, index, context.ChildContext(newContent))
-				if err != nil {
-					return err
-				}
-			} else {
-				if valueNode.Kind == yaml.SequenceNode {
-					log.Debugf("an alias merge list!")
-					for index := len(valueNode.Content) - 1; index >= 0; index = index - 1 {
-						aliasNode := valueNode.Content[index]
-						err := applyAlias(node, aliasNode.Alias, index, context.ChildContext(newContent))
-						if err != nil {
-							return err
-						}
-					}
-				} else {
-					log.Debugf("an alias merge!")
-					err := applyAlias(node, valueNode.Alias, index, context.ChildContext(newContent))
-					if err != nil {
-						return err
-					}
-				}
+			err := explodeNode(keyNode, context)
+			if err != nil {
+				return err
+			}
+			err = explodeNode(valueNode, context)
+			if err != nil {
+				return err
 			}
 		}
-		node.Content = make([]*yaml.Node, newContent.Len())
-		index := 0
-		for newEl := newContent.Front(); newEl != nil; newEl = newEl.Next() {
-			node.Content[index] = newEl.Value.(*yaml.Node)
-			index++
-		}
-
 		return nil
 	default:
 		return nil

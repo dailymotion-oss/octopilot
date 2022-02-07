@@ -11,7 +11,7 @@ type ExpressionNode struct {
 	Rhs       *ExpressionNode
 }
 
-type ExpressionParser interface {
+type ExpressionParserInterface interface {
 	ParseExpression(expression string) (*ExpressionNode, error)
 }
 
@@ -20,11 +20,12 @@ type expressionParserImpl struct {
 	pathPostFixer expressionPostFixer
 }
 
-func NewExpressionParser() ExpressionParser {
+func newExpressionParser() ExpressionParserInterface {
 	return &expressionParserImpl{newExpressionTokeniser(), newExpressionPostFixer()}
 }
 
 func (p *expressionParserImpl) ParseExpression(expression string) (*ExpressionNode, error) {
+	log.Debug("Parsing expression: [%v]", expression)
 	tokens, err := p.pathTokeniser.Tokenise(expression)
 	if err != nil {
 		return nil, err
