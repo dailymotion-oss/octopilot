@@ -2,6 +2,7 @@ package yqlib
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 )
@@ -32,7 +33,7 @@ func (f *frontMatterHandlerImpl) GetContentReader() io.Reader {
 }
 
 func (f *frontMatterHandlerImpl) CleanUp() {
-	tryRemoveFile(f.yamlFrontMatterFilename)
+	tryRemoveTempFile(f.yamlFrontMatterFilename)
 }
 
 // Splits the given file by yaml front matter
@@ -63,7 +64,7 @@ func (f *frontMatterHandlerImpl) Split() error {
 
 	for {
 		peekBytes, err := reader.Peek(3)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			// we've finished reading the yaml content..I guess
 			break
 		} else if err != nil {
@@ -75,11 +76,11 @@ func (f *frontMatterHandlerImpl) Split() error {
 		}
 		line, errReading := reader.ReadString('\n')
 		lineCount = lineCount + 1
-		if errReading != nil && errReading != io.EOF {
+		if errReading != nil && !errors.Is(errReading, io.EOF) {
 			return errReading
 		}
 
-		_, errWriting := yamlTempFile.Write([]byte(line))
+		_, errWriting := yamlTempFile.WriteString(line)
 
 		if errWriting != nil {
 			return errWriting
