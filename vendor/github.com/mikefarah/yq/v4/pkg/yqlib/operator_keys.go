@@ -7,6 +7,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func getKeyOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	log.Debugf("-- getKeyOperator")
+
+	var results = list.New()
+
+	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
+
+		if candidate.Key != nil {
+			results.PushBack(candidate.CreateReplacement(candidate.Key))
+		}
+	}
+
+	return context.ChildContext(results), nil
+
+}
+
 func keysOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 	log.Debugf("-- keysOperator")
 
@@ -24,7 +41,7 @@ func keysOperator(d *dataTreeNavigator, context Context, expressionNode *Express
 			return Context{}, fmt.Errorf("Cannot get keys of %v, keys only works for maps and arrays", node.Tag)
 		}
 
-		result := candidate.CreateChild(nil, targetNode)
+		result := candidate.CreateReplacement(targetNode)
 		results.PushBack(result)
 	}
 
