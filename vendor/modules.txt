@@ -402,7 +402,7 @@ github.com/ybbus/httpretry
 github.com/zoumo/goset
 # go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a
 go.mozilla.org/gopgagent
-# go.mozilla.org/sops/v3 v3.7.1
+# go.mozilla.org/sops/v3 v3.7.2
 ## explicit
 go.mozilla.org/sops/v3
 go.mozilla.org/sops/v3/aes
