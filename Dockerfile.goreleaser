@@ -1,7 +1,7 @@
 # Dockerfile used by GoReleaser
 # Requires the binary to be pre-built
 
-FROM alpine:3.14
+FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
 
