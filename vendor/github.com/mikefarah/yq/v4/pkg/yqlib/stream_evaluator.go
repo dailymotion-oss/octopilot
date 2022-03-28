@@ -2,6 +2,8 @@ package yqlib
 
 import (
 	"container/list"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -12,31 +14,31 @@ import (
 // Uses less memory than loading all documents and running the expression once, but this cannot process
 // cross document expressions.
 type StreamEvaluator interface {
-	Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, leadingContent string) (uint, error)
-	EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error
+	Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, leadingContent string, decoder Decoder) (uint, error)
+	EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool, decoder Decoder) error
 	EvaluateNew(expression string, printer Printer, leadingContent string) error
 }
 
 type streamEvaluator struct {
 	treeNavigator DataTreeNavigator
-	treeCreator   ExpressionParser
 	fileIndex     int
 }
 
 func NewStreamEvaluator() StreamEvaluator {
-	return &streamEvaluator{treeNavigator: NewDataTreeNavigator(), treeCreator: NewExpressionParser()}
+	return &streamEvaluator{treeNavigator: NewDataTreeNavigator()}
 }
 
 func (s *streamEvaluator) EvaluateNew(expression string, printer Printer, leadingContent string) error {
-	node, err := s.treeCreator.ParseExpression(expression)
+	node, err := ExpressionParser.ParseExpression(expression)
 	if err != nil {
 		return err
 	}
 	candidateNode := &CandidateNode{
-		Document:  0,
-		Filename:  "",
-		Node:      &yaml.Node{Kind: yaml.DocumentNode, HeadComment: leadingContent, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
-		FileIndex: 0,
+		Document:       0,
+		Filename:       "",
+		Node:           &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Tag: "!!null", Kind: yaml.ScalarNode}}},
+		FileIndex:      0,
+		LeadingContent: leadingContent,
 	}
 	inputList := list.New()
 	inputList.PushBack(candidateNode)
@@ -48,9 +50,9 @@ func (s *streamEvaluator) EvaluateNew(expression string, printer Printer, leadin
 	return printer.PrintResults(result.MatchingNodes)
 }
 
-func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool) error {
-	var totalProcessDocs uint = 0
-	node, err := s.treeCreator.ParseExpression(expression)
+func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, printer Printer, leadingContentPreProcessing bool, decoder Decoder) error {
+	var totalProcessDocs uint
+	node, err := ExpressionParser.ParseExpression(expression)
 	if err != nil {
 		return err
 	}
@@ -67,7 +69,7 @@ func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, p
 		if err != nil {
 			return err
 		}
-		processedDocs, err := s.Evaluate(filename, reader, node, printer, leadingContent)
+		processedDocs, err := s.Evaluate(filename, reader, node, printer, leadingContent, decoder)
 		if err != nil {
 			return err
 		}
@@ -86,28 +88,29 @@ func (s *streamEvaluator) EvaluateFiles(expression string, filenames []string, p
 	return nil
 }
 
-func (s *streamEvaluator) Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, leadingContent string) (uint, error) {
+func (s *streamEvaluator) Evaluate(filename string, reader io.Reader, node *ExpressionNode, printer Printer, leadingContent string, decoder Decoder) (uint, error) {
 
 	var currentIndex uint
-	decoder := yaml.NewDecoder(reader)
+	decoder.Init(reader)
 	for {
 		var dataBucket yaml.Node
 		errorReading := decoder.Decode(&dataBucket)
 
-		if errorReading == io.EOF {
+		if errors.Is(errorReading, io.EOF) {
 			s.fileIndex = s.fileIndex + 1
 			return currentIndex, nil
 		} else if errorReading != nil {
-			return currentIndex, errorReading
+			return currentIndex, fmt.Errorf("bad file '%v': %w", filename, errorReading)
 		}
-		if currentIndex == 0 {
-			dataBucket.HeadComment = leadingContent
-		}
+
 		candidateNode := &CandidateNode{
 			Document:  currentIndex,
 			Filename:  filename,
 			Node:      &dataBucket,
 			FileIndex: s.fileIndex,
+		}
+		if currentIndex == 0 {
+			candidateNode.LeadingContent = leadingContent
 		}
 		inputList := list.New()
 		inputList.PushBack(candidateNode)
