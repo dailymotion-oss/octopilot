@@ -9,11 +9,42 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type changeCasePrefs struct {
+	ToUpperCase bool
+}
+
+func changeCaseOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	results := list.New()
+	prefs := expressionNode.Operation.Preferences.(changeCasePrefs)
+
+	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
+
+		node := unwrapDoc(candidate.Node)
+
+		if guessTagFromCustomType(node) != "!!str" {
+			return Context{}, fmt.Errorf("cannot change case with %v, can only operate on strings. ", node.Tag)
+		}
+
+		newStringNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: node.Tag, Style: node.Style}
+		if prefs.ToUpperCase {
+			newStringNode.Value = strings.ToUpper(node.Value)
+		} else {
+			newStringNode.Value = strings.ToLower(node.Value)
+		}
+		results.PushBack(candidate.CreateReplacement(newStringNode))
+
+	}
+
+	return context.ChildContext(results), nil
+
+}
+
 func getSubstituteParameters(d *dataTreeNavigator, block *ExpressionNode, context Context) (string, string, error) {
 	regEx := ""
 	replacementText := ""
 
-	regExNodes, err := d.GetMatchingNodes(context.ReadOnlyClone(), block.Lhs)
+	regExNodes, err := d.GetMatchingNodes(context.ReadOnlyClone(), block.LHS)
 	if err != nil {
 		return "", "", err
 	}
@@ -23,7 +54,7 @@ func getSubstituteParameters(d *dataTreeNavigator, block *ExpressionNode, contex
 
 	log.Debug("regEx %v", regEx)
 
-	replacementNodes, err := d.GetMatchingNodes(context, block.Rhs)
+	replacementNodes, err := d.GetMatchingNodes(context, block.RHS)
 	if err != nil {
 		return "", "", err
 	}
@@ -43,7 +74,7 @@ func substituteStringOperator(d *dataTreeNavigator, context Context, expressionN
 	//rhs  block operator
 	//lhs of block = regex
 	//rhs of block = replacement expression
-	block := expressionNode.Rhs
+	block := expressionNode.RHS
 
 	regExStr, replacementText, err := getSubstituteParameters(d, block, context)
 
@@ -61,12 +92,13 @@ func substituteStringOperator(d *dataTreeNavigator, context Context, expressionN
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		node := unwrapDoc(candidate.Node)
-		if node.Tag != "!!str" {
-			return Context{}, fmt.Errorf("cannot substitute with %v, can only substitute strings. Hint: Most often you'll want to use '|=' over '=' for this operation.", node.Tag)
+
+		if guessTagFromCustomType(node) != "!!str" {
+			return Context{}, fmt.Errorf("cannot substitute with %v, can only substitute strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
 		}
 
 		targetNode := substitute(node.Value, regEx, replacementText)
-		result := candidate.CreateChild(nil, targetNode)
+		result := candidate.CreateReplacement(targetNode)
 		results.PushBack(result)
 	}
 
@@ -136,21 +168,21 @@ func match(matchPrefs matchPreferences, regEx *regexp.Regexp, candidate *Candida
 	}
 
 	for i, matches := range allMatches {
-		capturesNode := &yaml.Node{Kind: yaml.SequenceNode}
+		capturesListNode := &yaml.Node{Kind: yaml.SequenceNode}
 		match, submatches := matches[0], matches[1:]
 		for j, submatch := range submatches {
 			captureNode := &yaml.Node{Kind: yaml.MappingNode}
-			captureNode.Content = addMatch(capturesNode.Content, submatch, allIndices[i][2+j*2], subNames[j+1])
-			capturesNode.Content = append(capturesNode.Content, captureNode)
+			captureNode.Content = addMatch(captureNode.Content, submatch, allIndices[i][2+j*2], subNames[j+1])
+			capturesListNode.Content = append(capturesListNode.Content, captureNode)
 		}
 
 		node := &yaml.Node{Kind: yaml.MappingNode}
 		node.Content = addMatch(node.Content, match, allIndices[i][0], "")
 		node.Content = append(node.Content,
 			createScalarNode("captures", "captures"),
-			capturesNode,
+			capturesListNode,
 		)
-		results.PushBack(candidate.CreateChild(nil, node))
+		results.PushBack(candidate.CreateReplacement(node))
 
 	}
 
@@ -187,22 +219,22 @@ func capture(matchPrefs matchPreferences, regEx *regexp.Regexp, candidate *Candi
 			}
 		}
 
-		results.PushBack(candidate.CreateChild(nil, capturesNode))
+		results.PushBack(candidate.CreateReplacement(capturesNode))
 
 	}
 
 }
 
 func extractMatchArguments(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (*regexp.Regexp, matchPreferences, error) {
-	regExExpNode := expressionNode.Rhs
+	regExExpNode := expressionNode.RHS
 
 	matchPrefs := matchPreferences{}
 
 	// we got given parameters e.g. match(exp; params)
-	if expressionNode.Rhs.Operation.OperationType == blockOpType {
-		block := expressionNode.Rhs
-		regExExpNode = block.Lhs
-		replacementNodes, err := d.GetMatchingNodes(context, block.Rhs)
+	if expressionNode.RHS.Operation.OperationType == blockOpType {
+		block := expressionNode.RHS
+		regExExpNode = block.LHS
+		replacementNodes, err := d.GetMatchingNodes(context, block.RHS)
 		if err != nil {
 			return nil, matchPrefs, err
 		}
@@ -247,7 +279,8 @@ func matchOperator(d *dataTreeNavigator, context Context, expressionNode *Expres
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		node := unwrapDoc(candidate.Node)
-		if node.Tag != "!!str" {
+
+		if guessTagFromCustomType(node) != "!!str" {
 			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
 		}
 
@@ -268,7 +301,8 @@ func captureOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		node := unwrapDoc(candidate.Node)
-		if node.Tag != "!!str" {
+
+		if guessTagFromCustomType(node) != "!!str" {
 			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
 		}
 		capture(matchPrefs, regEx, candidate, node.Value, results)
@@ -289,7 +323,8 @@ func testOperator(d *dataTreeNavigator, context Context, expressionNode *Express
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		node := unwrapDoc(candidate.Node)
-		if node.Tag != "!!str" {
+
+		if guessTagFromCustomType(node) != "!!str" {
 			return Context{}, fmt.Errorf("cannot match with %v, can only match strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
 		}
 		matches := regEx.FindStringSubmatch(node.Value)
@@ -304,7 +339,7 @@ func joinStringOperator(d *dataTreeNavigator, context Context, expressionNode *E
 	log.Debugf("-- joinStringOperator")
 	joinStr := ""
 
-	rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.Rhs)
+	rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
 	if err != nil {
 		return Context{}, err
 	}
@@ -321,7 +356,7 @@ func joinStringOperator(d *dataTreeNavigator, context Context, expressionNode *E
 			return Context{}, fmt.Errorf("cannot join with %v, can only join arrays of scalars", node.Tag)
 		}
 		targetNode := join(node.Content, joinStr)
-		result := candidate.CreateChild(nil, targetNode)
+		result := candidate.CreateReplacement(targetNode)
 		results.PushBack(result)
 	}
 
@@ -345,7 +380,7 @@ func splitStringOperator(d *dataTreeNavigator, context Context, expressionNode *
 	log.Debugf("-- splitStringOperator")
 	splitStr := ""
 
-	rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.Rhs)
+	rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
 	if err != nil {
 		return Context{}, err
 	}
@@ -361,11 +396,12 @@ func splitStringOperator(d *dataTreeNavigator, context Context, expressionNode *
 		if node.Tag == "!!null" {
 			continue
 		}
-		if node.Tag != "!!str" {
+
+		if guessTagFromCustomType(node) != "!!str" {
 			return Context{}, fmt.Errorf("Cannot split %v, can only split strings", node.Tag)
 		}
 		targetNode := split(node.Value, splitStr)
-		result := candidate.CreateChild(nil, targetNode)
+		result := candidate.CreateReplacement(targetNode)
 		results.PushBack(result)
 	}
 
