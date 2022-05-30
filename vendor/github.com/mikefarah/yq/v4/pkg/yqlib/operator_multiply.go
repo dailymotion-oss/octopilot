@@ -1,11 +1,12 @@
 package yqlib
 
 import (
+	"container/list"
 	"fmt"
 	"strconv"
+	"strings"
 
-	"container/list"
-
+	"github.com/jinzhu/copier"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -13,6 +14,22 @@ type multiplyPreferences struct {
 	AppendArrays    bool
 	DeepMergeArrays bool
 	TraversePrefs   traversePreferences
+	AssignPrefs     assignPreferences
+}
+
+func createMultiplyOp(prefs interface{}) func(lhs *ExpressionNode, rhs *ExpressionNode) *ExpressionNode {
+	return func(lhs *ExpressionNode, rhs *ExpressionNode) *ExpressionNode {
+		return &ExpressionNode{Operation: &Operation{OperationType: multiplyOpType, Preferences: prefs},
+			LHS: lhs,
+			RHS: rhs}
+	}
+}
+
+func multiplyAssignOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	var multiplyPrefs = expressionNode.Operation.Preferences
+	expressionNode.Operation.Preferences = nil
+
+	return compoundAssignFunction(d, context, expressionNode, createMultiplyOp(multiplyPrefs))
 }
 
 func multiplyOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
@@ -20,58 +37,74 @@ func multiplyOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	return crossFunction(d, context, expressionNode, multiply(expressionNode.Operation.Preferences.(multiplyPreferences)), false)
 }
 
-func getNewBlankNode(lhs *yaml.Node, rhs *yaml.Node) *yaml.Node {
-
-	blankNode := &yaml.Node{}
-
-	if lhs.HeadComment != "" {
-		blankNode.HeadComment = lhs.HeadComment
-	} else if rhs.HeadComment != "" {
-		blankNode.HeadComment = rhs.HeadComment
+func getComments(lhs *CandidateNode, rhs *CandidateNode) (leadingContent string, headComment string, footComment string) {
+	leadingContent = rhs.LeadingContent
+	headComment = rhs.Node.HeadComment
+	footComment = rhs.Node.FootComment
+	if lhs.Node.HeadComment != "" || lhs.LeadingContent != "" {
+		headComment = lhs.Node.HeadComment
+		leadingContent = lhs.LeadingContent
 	}
 
-	if lhs.FootComment != "" {
-		blankNode.FootComment = lhs.FootComment
-	} else if rhs.FootComment != "" {
-		blankNode.FootComment = rhs.FootComment
+	if lhs.Node.FootComment != "" {
+		footComment = lhs.Node.FootComment
 	}
-
-	return blankNode
+	return leadingContent, headComment, footComment
 }
 
 func multiply(preferences multiplyPreferences) func(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
 	return func(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
 		// need to do this before unWrapping the potential document node
-		newBlankNode := getNewBlankNode(lhs.Node, rhs.Node)
+		leadingContent, headComment, footComment := getComments(lhs, rhs)
 		lhs.Node = unwrapDoc(lhs.Node)
 		rhs.Node = unwrapDoc(rhs.Node)
-		log.Debugf("Multipling LHS: %v", lhs.Node.Tag)
+		log.Debugf("Multiplying LHS: %v", lhs.Node.Tag)
 		log.Debugf("-          RHS: %v", rhs.Node.Tag)
 
 		if lhs.Node.Kind == yaml.MappingNode && rhs.Node.Kind == yaml.MappingNode ||
 			(lhs.Node.Kind == yaml.SequenceNode && rhs.Node.Kind == yaml.SequenceNode) {
-
-			var newBlank = lhs.CreateChild(nil, newBlankNode)
-			log.Debugf("merge - merge lhs into blank")
-			var newThing, err = mergeObjects(d, context.WritableClone(), newBlank, lhs, multiplyPreferences{})
+			var newBlank = CandidateNode{}
+			err := copier.CopyWithOption(&newBlank, lhs, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 			if err != nil {
 				return nil, err
 			}
-			return mergeObjects(d, context.WritableClone(), newThing, rhs, preferences)
-		} else if lhs.Node.Tag == "!!int" && rhs.Node.Tag == "!!int" {
-			return multiplyIntegers(lhs, rhs)
-		} else if (lhs.Node.Tag == "!!int" || lhs.Node.Tag == "!!float") && (rhs.Node.Tag == "!!int" || rhs.Node.Tag == "!!float") {
-			return multiplyFloats(lhs, rhs)
+			newBlank.LeadingContent = leadingContent
+			newBlank.Node.HeadComment = headComment
+			newBlank.Node.FootComment = footComment
+
+			return mergeObjects(d, context.WritableClone(), &newBlank, rhs, preferences)
 		}
-		return nil, fmt.Errorf("Cannot multiply %v with %v", lhs.Node.Tag, rhs.Node.Tag)
+		return multiplyScalars(lhs, rhs)
 	}
 }
 
-func multiplyFloats(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
-	target := lhs.CreateChild(nil, &yaml.Node{})
+func multiplyScalars(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
+	lhsTag := lhs.Node.Tag
+	rhsTag := guessTagFromCustomType(rhs.Node)
+	lhsIsCustom := false
+	if !strings.HasPrefix(lhsTag, "!!") {
+		// custom tag - we have to have a guess
+		lhsTag = guessTagFromCustomType(lhs.Node)
+		lhsIsCustom = true
+	}
+
+	if lhsTag == "!!int" && rhsTag == "!!int" {
+		return multiplyIntegers(lhs, rhs)
+	} else if (lhsTag == "!!int" || lhsTag == "!!float") && (rhsTag == "!!int" || rhsTag == "!!float") {
+		return multiplyFloats(lhs, rhs, lhsIsCustom)
+	}
+	return nil, fmt.Errorf("Cannot multiply %v with %v", lhs.Node.Tag, rhs.Node.Tag)
+}
+
+func multiplyFloats(lhs *CandidateNode, rhs *CandidateNode, lhsIsCustom bool) (*CandidateNode, error) {
+	target := lhs.CreateReplacement(&yaml.Node{})
 	target.Node.Kind = yaml.ScalarNode
 	target.Node.Style = lhs.Node.Style
-	target.Node.Tag = "!!float"
+	if lhsIsCustom {
+		target.Node.Tag = lhs.Node.Tag
+	} else {
+		target.Node.Tag = "!!float"
+	}
 
 	lhsNum, err := strconv.ParseFloat(lhs.Node.Value, 64)
 	if err != nil {
@@ -86,16 +119,16 @@ func multiplyFloats(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, err
 }
 
 func multiplyIntegers(lhs *CandidateNode, rhs *CandidateNode) (*CandidateNode, error) {
-	target := lhs.CreateChild(nil, &yaml.Node{})
+	target := lhs.CreateReplacement(&yaml.Node{})
 	target.Node.Kind = yaml.ScalarNode
 	target.Node.Style = lhs.Node.Style
-	target.Node.Tag = "!!int"
+	target.Node.Tag = lhs.Node.Tag
 
-	format, lhsNum, err := parseInt(lhs.Node.Value)
+	format, lhsNum, err := parseInt64(lhs.Node.Value)
 	if err != nil {
 		return nil, err
 	}
-	_, rhsNum, err := parseInt(rhs.Node.Value)
+	_, rhsNum, err := parseInt64(rhs.Node.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +144,12 @@ func mergeObjects(d *dataTreeNavigator, context Context, lhs *CandidateNode, rhs
 		TraversePreferences: traversePreferences{DontFollowAlias: true, IncludeMapKeys: true}}
 	log.Debugf("merge - preferences.DeepMergeArrays %v", preferences.DeepMergeArrays)
 	log.Debugf("merge - preferences.AppendArrays %v", preferences.AppendArrays)
-	err := recursiveDecent(d, results, context.SingleChildContext(rhs), prefs)
+	err := recursiveDecent(results, context.SingleChildContext(rhs), prefs)
 	if err != nil {
 		return nil, err
 	}
 
-	var pathIndexToStartFrom int = 0
+	var pathIndexToStartFrom int
 	if results.Front() != nil {
 		pathIndexToStartFrom = len(results.Front().Value.(*CandidateNode).Path)
 	}
@@ -142,7 +175,7 @@ func applyAssignment(d *dataTreeNavigator, context Context, pathIndexToStartFrom
 	lhsPath := rhs.Path[pathIndexToStartFrom:]
 	log.Debugf("merge - lhsPath %v", lhsPath)
 
-	assignmentOp := &Operation{OperationType: assignAttributesOpType}
+	assignmentOp := &Operation{OperationType: assignAttributesOpType, Preferences: preferences.AssignPrefs}
 	if shouldAppendArrays && rhs.Node.Kind == yaml.SequenceNode {
 		assignmentOp.OperationType = addAssignOpType
 		log.Debugf("merge - assignmentOp.OperationType = addAssignOpType")
@@ -159,7 +192,11 @@ func applyAssignment(d *dataTreeNavigator, context Context, pathIndexToStartFrom
 	}
 	rhsOp := &Operation{OperationType: valueOpType, CandidateNode: rhs}
 
-	assignmentOpNode := &ExpressionNode{Operation: assignmentOp, Lhs: createTraversalTree(lhsPath, preferences.TraversePrefs, rhs.IsMapKey), Rhs: &ExpressionNode{Operation: rhsOp}}
+	assignmentOpNode := &ExpressionNode{
+		Operation: assignmentOp,
+		LHS:       createTraversalTree(lhsPath, preferences.TraversePrefs, rhs.IsMapKey),
+		RHS:       &ExpressionNode{Operation: rhsOp},
+	}
 
 	_, err := d.GetMatchingNodes(context.SingleChildContext(lhs), assignmentOpNode)
 
