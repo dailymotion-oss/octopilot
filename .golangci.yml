@@ -41,7 +41,6 @@ linters-settings:
     require-specific: true
     require-explanation: true
   revive:
-    enable-all-rules: true
     rules:
       - name: blank-imports
       - name: context-as-argument
