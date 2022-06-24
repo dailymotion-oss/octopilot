@@ -358,9 +358,7 @@ github.com/spf13/cast
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
-# github.com/stretchr/objx v0.2.0
-## explicit
-# github.com/stretchr/testify v1.7.0
+# github.com/stretchr/testify v1.7.5
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
@@ -638,6 +636,6 @@ gopkg.in/square/go-jose.v2/jwt
 gopkg.in/urfave/cli.v1
 # gopkg.in/warnings.v0 v0.1.2
 gopkg.in/warnings.v0
-# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
