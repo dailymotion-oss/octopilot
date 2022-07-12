@@ -31,7 +31,7 @@ jobs:
         with:
           args: -o .chglog/CHANGELOG.md ${{ steps.tag.outputs.TAG }}
 
-      - uses: actions/setup-go@v2.1.4
+      - uses: actions/setup-go@v3.2.1
         with:
           go-version: '1.16'
       - name: Run GoReleaser
