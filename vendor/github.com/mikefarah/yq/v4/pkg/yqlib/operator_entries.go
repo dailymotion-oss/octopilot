@@ -20,7 +20,7 @@ func entrySeqFor(key *yaml.Node, value *yaml.Node) *yaml.Node {
 
 func toEntriesFromMap(candidateNode *CandidateNode) *CandidateNode {
 	var sequence = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-	var entriesNode = candidateNode.CreateChild(nil, sequence)
+	var entriesNode = candidateNode.CreateReplacementWithDocWrappers(sequence)
 
 	var contents = unwrapDoc(candidateNode.Node).Content
 	for index := 0; index < len(contents); index = index + 2 {
@@ -34,7 +34,7 @@ func toEntriesFromMap(candidateNode *CandidateNode) *CandidateNode {
 
 func toEntriesfromSeq(candidateNode *CandidateNode) *CandidateNode {
 	var sequence = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-	var entriesNode = candidateNode.CreateChild(nil, sequence)
+	var entriesNode = candidateNode.CreateReplacementWithDocWrappers(sequence)
 
 	var contents = unwrapDoc(candidateNode.Node).Content
 	for index := 0; index < len(contents); index = index + 1 {
@@ -68,38 +68,38 @@ func toEntriesOperator(d *dataTreeNavigator, context Context, expressionNode *Ex
 	return context.ChildContext(results), nil
 }
 
-func parseEntry(d *dataTreeNavigator, entry *yaml.Node, position int) (*yaml.Node, *yaml.Node, error) {
+func parseEntry(entry *yaml.Node, position int) (*yaml.Node, *yaml.Node, error) {
 	prefs := traversePreferences{DontAutoCreate: true}
 	candidateNode := &CandidateNode{Node: entry}
 
-	keyResults, err := traverseMap(Context{}, candidateNode, "key", prefs, false)
+	keyResults, err := traverseMap(Context{}, candidateNode, createStringScalarNode("key"), prefs, false)
 
 	if err != nil {
 		return nil, nil, err
 	} else if keyResults.Len() != 1 {
-		return nil, nil, fmt.Errorf("Expected to find one 'key' entry but found %v in position %v", keyResults.Len(), position)
+		return nil, nil, fmt.Errorf("expected to find one 'key' entry but found %v in position %v", keyResults.Len(), position)
 	}
 
-	valueResults, err := traverseMap(Context{}, candidateNode, "value", prefs, false)
+	valueResults, err := traverseMap(Context{}, candidateNode, createStringScalarNode("value"), prefs, false)
 
 	if err != nil {
 		return nil, nil, err
 	} else if valueResults.Len() != 1 {
-		return nil, nil, fmt.Errorf("Expected to find one 'value' entry but found %v in position %v", valueResults.Len(), position)
+		return nil, nil, fmt.Errorf("expected to find one 'value' entry but found %v in position %v", valueResults.Len(), position)
 	}
 
 	return keyResults.Front().Value.(*CandidateNode).Node, valueResults.Front().Value.(*CandidateNode).Node, nil
 
 }
 
-func fromEntries(d *dataTreeNavigator, candidateNode *CandidateNode) (*CandidateNode, error) {
+func fromEntries(candidateNode *CandidateNode) (*CandidateNode, error) {
 	var node = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	var mapCandidateNode = candidateNode.CreateChild(nil, node)
+	var mapCandidateNode = candidateNode.CreateReplacementWithDocWrappers(node)
 
 	var contents = unwrapDoc(candidateNode.Node).Content
 
 	for index := 0; index < len(contents); index = index + 1 {
-		key, value, err := parseEntry(d, contents[index], index)
+		key, value, err := parseEntry(contents[index], index)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func fromEntriesOperator(d *dataTreeNavigator, context Context, expressionNode *
 
 		switch candidateNode.Kind {
 		case yaml.SequenceNode:
-			mapResult, err := fromEntries(d, candidate)
+			mapResult, err := fromEntries(candidate)
 			if err != nil {
 				return Context{}, err
 			}
@@ -138,25 +138,43 @@ func withEntriesOperator(d *dataTreeNavigator, context Context, expressionNode *
 		return Context{}, err
 	}
 
-	//run expression against entries
-	// splat toEntries and pipe it into Rhs
-	splatted, err := splat(d, toEntries, traversePreferences{})
-	if err != nil {
-		return Context{}, err
-	}
+	var results = list.New()
 
-	result, err := d.GetMatchingNodes(splatted, expressionNode.Rhs)
-	log.Debug("expressionNode.Rhs %v", expressionNode.Rhs.Operation.OperationType)
-	log.Debug("result %v", result)
-	if err != nil {
-		return Context{}, err
-	}
+	for el := toEntries.MatchingNodes.Front(); el != nil; el = el.Next() {
+		candidate := el.Value.(*CandidateNode)
 
-	collected, err := collectOperator(d, result, expressionNode)
-	if err != nil {
-		return Context{}, err
+		//run expression against entries
+		// splat toEntries and pipe it into Rhs
+		splatted, err := splat(context.SingleChildContext(candidate), traversePreferences{})
+		if err != nil {
+			return Context{}, err
+		}
+
+		result, err := d.GetMatchingNodes(splatted, expressionNode.RHS)
+		log.Debug("expressionNode.Rhs %v", expressionNode.RHS.Operation.OperationType)
+		log.Debug("result %v", result)
+		if err != nil {
+			return Context{}, err
+		}
+
+		selfExpression := &ExpressionNode{Operation: &Operation{OperationType: selfReferenceOpType}}
+		collected, err := collectTogether(d, result, selfExpression)
+		if err != nil {
+			return Context{}, err
+		}
+		collected.LeadingContent = candidate.LeadingContent
+		collected.TrailingContent = candidate.TrailingContent
+
+		log.Debugf("**** collected %v", collected.LeadingContent)
+
+		fromEntries, err := fromEntriesOperator(d, context.SingleChildContext(collected), expressionNode)
+		if err != nil {
+			return Context{}, err
+		}
+		results.PushBackList(fromEntries.MatchingNodes)
+
 	}
 
 	//from_entries on the result
-	return fromEntriesOperator(d, collected, expressionNode)
+	return context.ChildContext(results), nil
 }

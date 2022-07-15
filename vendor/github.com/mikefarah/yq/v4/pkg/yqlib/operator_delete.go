@@ -7,7 +7,7 @@ import (
 )
 
 func deleteChildOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-	nodesToDelete, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.Rhs)
+	nodesToDelete, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
 
 	if err != nil {
 		return Context{}, err
@@ -47,7 +47,7 @@ func deleteFromMap(candidate *CandidateNode, childPath interface{}) {
 		key := contents[index]
 		value := contents[index+1]
 
-		childCandidate := candidate.CreateChild(key.Value, value)
+		childCandidate := candidate.CreateChildInMap(key, value)
 
 		shouldDelete := key.Value == childPath
 
