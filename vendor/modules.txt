@@ -365,7 +365,7 @@ github.com/mitchellh/reflectwalk
 # github.com/nwaples/rardecode v1.0.0
 ## explicit
 github.com/nwaples/rardecode
-# github.com/otiai10/copy v1.6.0
+# github.com/otiai10/copy v1.7.0
 ## explicit; go 1.14
 github.com/otiai10/copy
 # github.com/pierrec/lz4 v2.6.1+incompatible
