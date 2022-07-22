@@ -1,4 +1,4 @@
-# age
+<p align="center"><img alt="The age logo, an wireframe of St. Peters dome in Rome, with the text: age, file encryption" width="600" src="https://user-images.githubusercontent.com/1225294/132245842-fda4da6a-1cea-4738-a3da-2dc860861c98.png"></p>
 
 [![Go Reference](https://pkg.go.dev/badge/filippo.io/age.svg)](https://pkg.go.dev/filippo.io/age)
 [![man page](https://img.shields.io/badge/man-page-lightgrey)](https://htmlpreview.github.io/?https://github.com/FiloSottile/age/blob/master/doc/age.1.html)
@@ -197,9 +197,21 @@ Keep in mind that people might not protect SSH keys long-term, since they are re
             <code>emerge app-crypt/age</code>
         </td>
     </tr>
+     <tr>
+        <td>Void Linux</td>
+        <td>
+            <code>xbps-install age</code>
+        </td>
+    </tr>
 </table>
 
-On Windows, Linux, macOS, and FreeBSD you can use [the pre-built binaries](https://github.com/FiloSottile/age/releases).
+On Windows, Linux, macOS, and FreeBSD you can use the pre-built binaries.
+
+```
+https://dl.filippo.io/age/latest?for=linux/amd64
+https://dl.filippo.io/age/v1.0.0-rc.1?for=darwin/arm64
+...
+```
 
 If your system has [Go 1.13+](https://golang.org/dl/), you can build from source.
 

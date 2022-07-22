@@ -199,8 +199,10 @@ newtoken: new-token-value
 		agePublicKey = "age16fvu9n7dkhdkrrrtfwctfzf94zvh58ars22k2fv9rmhkr9rkfszsyw8zzq"
 	)
 	os.Setenv("SOPS_AGE_KEY_FILE", ageKeyFile)
-	masterKey, err := age.MasterKeyFromRecipient(agePublicKey)
-	require.NoErrorf(t, err, "can't get age master key from pubkey %s", agePublicKey)
+	masterKeys, err := age.MasterKeysFromRecipients(agePublicKey)
+	require.NoErrorf(t, err, "can't get age master keys from pubkey %s", agePublicKey)
+	require.Len(t, masterKeys, 1, "expected one master key from pubkey %s", agePublicKey)
+	masterKey := masterKeys[0]
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

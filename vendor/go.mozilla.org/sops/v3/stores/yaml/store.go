@@ -70,7 +70,7 @@ func (store Store) nodeToTreeValue(node *yaml.Node, commentsWereHandled bool) (i
 		return result, nil
 	case yaml.MappingNode:
 		branch := make(sops.TreeBranch, 0)
-		return store.appendYamlNodeToTreeBranch(node, branch, false)
+		return store.appendYamlNodeToTreeBranch(node, branch, commentsWereHandled)
 	case yaml.ScalarNode:
 		var result interface{}
 		node.Decode(&result)
@@ -361,11 +361,7 @@ func (store *Store) EmitPlainFile(branches sops.TreeBranches) ([]byte, error) {
 		mapping.Kind = yaml.MappingNode
 		// Marshal branch to global mapping node
 		store.appendTreeBranch(branch, &mapping)
-		if len(mapping.Content) == 0 {
-			doc.HeadComment = mapping.HeadComment
-		} else {
-			doc.Content = append(doc.Content, &mapping)
-		}
+		doc.Content = append(doc.Content, &mapping)
 		// Encode YAML
 		err := e.Encode(&doc)
 		if err != nil {
