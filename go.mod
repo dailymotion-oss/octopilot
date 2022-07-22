@@ -12,7 +12,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mikefarah/yq/v4 v4.26.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/otiai10/copy v1.6.0
+	github.com/otiai10/copy v1.7.0
 	github.com/rs/xid v1.4.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
