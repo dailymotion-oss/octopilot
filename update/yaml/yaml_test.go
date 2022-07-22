@@ -393,7 +393,7 @@ func TestYqExpression(t *testing.T) {
 				Path: ".version",
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.version) as $x | $x = "1.2.3"`,
+			expectedExpression: `(.version) ref $x | $x = "1.2.3"`,
 		},
 		{
 			name: "v4 path with custom style",
@@ -402,7 +402,7 @@ func TestYqExpression(t *testing.T) {
 				Style: "double",
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.path.to.version) as $x | $x = "1.2.3" | $x style="double"`,
+			expectedExpression: `(.path.to.version) ref $x | $x = "1.2.3" | $x style="double"`,
 		},
 		{
 			name: "v4 path with auto-create and custom style",
@@ -412,7 +412,7 @@ func TestYqExpression(t *testing.T) {
 				AutoCreate: true,
 			},
 			value:              "1.2.3",
-			expectedExpression: `.path.to.version = "1.2.3" | (.path.to.version) as $x | $x = "1.2.3" | $x style="folded"`,
+			expectedExpression: `.path.to.version = "1.2.3" | (.path.to.version) ref $x | $x = "1.2.3" | $x style="folded"`,
 		},
 		{
 			name: "complex v4 path",
@@ -420,7 +420,7 @@ func TestYqExpression(t *testing.T) {
 				Path: `.releases[] | select(.chart == "repo/chart") | .version`,
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) as $x | $x = "1.2.3"`,
+			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) ref $x | $x = "1.2.3"`,
 		},
 		{
 			name: "simple v3 path",
@@ -428,7 +428,7 @@ func TestYqExpression(t *testing.T) {
 				Path: "version",
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.version) as $x | $x = "1.2.3"`,
+			expectedExpression: `(.version) ref $x | $x = "1.2.3"`,
 		},
 		{
 			name: "v3 path with custom style",
@@ -437,7 +437,7 @@ func TestYqExpression(t *testing.T) {
 				Style: "double",
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.path.to.version) as $x | $x = "1.2.3" | $x style="double"`,
+			expectedExpression: `(.path.to.version) ref $x | $x = "1.2.3" | $x style="double"`,
 		},
 		{
 			name: "complex v3 path",
@@ -445,7 +445,7 @@ func TestYqExpression(t *testing.T) {
 				Path: `releases.(chart==repo/chart).version`,
 			},
 			value:              "1.2.3",
-			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) as $x | $x = "1.2.3"`,
+			expectedExpression: `(.releases[] | select(.chart == "repo/chart") | .version) ref $x | $x = "1.2.3"`,
 		},
 	}
 

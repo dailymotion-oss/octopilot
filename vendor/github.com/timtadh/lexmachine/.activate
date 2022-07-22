@@ -1,2 +1,0 @@
-export GOPATH=$(readlink -e $(pwd)/../../../..)
-export PATH=$GOPATH/bin:$PATH

@@ -7,11 +7,11 @@ import (
 
 type ExpressionNode struct {
 	Operation *Operation
-	Lhs       *ExpressionNode
-	Rhs       *ExpressionNode
+	LHS       *ExpressionNode
+	RHS       *ExpressionNode
 }
 
-type ExpressionParser interface {
+type ExpressionParserInterface interface {
 	ParseExpression(expression string) (*ExpressionNode, error)
 }
 
@@ -20,11 +20,12 @@ type expressionParserImpl struct {
 	pathPostFixer expressionPostFixer
 }
 
-func NewExpressionParser() ExpressionParser {
-	return &expressionParserImpl{newExpressionTokeniser(), newExpressionPostFixer()}
+func newExpressionParser() ExpressionParserInterface {
+	return &expressionParserImpl{newParticipleLexer(), newExpressionPostFixer()}
 }
 
 func (p *expressionParserImpl) ParseExpression(expression string) (*ExpressionNode, error) {
+	log.Debug("Parsing expression: [%v]", expression)
 	tokens, err := p.pathTokeniser.Tokenise(expression)
 	if err != nil {
 		return nil, err
@@ -54,15 +55,15 @@ func (p *expressionParserImpl) createExpressionTree(postFixPath []*Operation) (*
 					return nil, fmt.Errorf("'%v' expects 1 arg but received none", strings.TrimSpace(Operation.StringValue))
 				}
 				remaining, rhs := stack[:len(stack)-1], stack[len(stack)-1]
-				newNode.Rhs = rhs
+				newNode.RHS = rhs
 				stack = remaining
 			} else if numArgs == 2 {
 				if len(stack) < 2 {
 					return nil, fmt.Errorf("'%v' expects 2 args but there is %v", strings.TrimSpace(Operation.StringValue), len(stack))
 				}
 				remaining, lhs, rhs := stack[:len(stack)-2], stack[len(stack)-2], stack[len(stack)-1]
-				newNode.Lhs = lhs
-				newNode.Rhs = rhs
+				newNode.LHS = lhs
+				newNode.RHS = rhs
 				stack = remaining
 			}
 		}

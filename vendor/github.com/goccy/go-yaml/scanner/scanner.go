@@ -128,6 +128,45 @@ func (s *Scanner) newLineCount(src []rune) int {
 	return cnt
 }
 
+func (s *Scanner) updateIndentState(ctx *Context) {
+	indentNumBasedIndentState := s.indentState
+	if s.prevIndentNum < s.indentNum {
+		s.indentLevel = s.prevIndentLevel + 1
+		indentNumBasedIndentState = IndentStateUp
+	} else if s.prevIndentNum == s.indentNum {
+		s.indentLevel = s.prevIndentLevel
+		indentNumBasedIndentState = IndentStateEqual
+	} else {
+		indentNumBasedIndentState = IndentStateDown
+		if s.prevIndentLevel > 0 {
+			s.indentLevel = s.prevIndentLevel - 1
+		}
+	}
+
+	if s.prevIndentColumn > 0 {
+		if s.prevIndentColumn < s.column {
+			s.indentState = IndentStateUp
+		} else if s.prevIndentColumn != s.column || indentNumBasedIndentState != IndentStateEqual {
+			// The following case ( current position is 'd' ), some variables becomes like here
+			// - prevIndentColumn: 1 of 'a'
+			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
+			// Therefore, s.prevIndentColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
+			// So, we look also current indentState value by the above prevIndentNum based logic, and determins finally indentState.
+			// ---
+			// a:
+			//   b
+			//   c
+			// d: e
+			// ^
+			s.indentState = IndentStateDown
+		} else {
+			s.indentState = IndentStateEqual
+		}
+	} else {
+		s.indentState = indentNumBasedIndentState
+	}
+}
+
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	if s.isFirstCharAtLine && s.isNewLineChar(c) && ctx.isDocument() {
 		return
@@ -140,35 +179,15 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 		s.indentState = IndentStateKeep
 		return
 	}
-
-	if s.prevIndentNum < s.indentNum {
-		s.indentLevel = s.prevIndentLevel + 1
-		s.indentState = IndentStateUp
-	} else if s.prevIndentNum == s.indentNum {
-		s.indentLevel = s.prevIndentLevel
-		s.indentState = IndentStateEqual
-	} else {
-		s.indentState = IndentStateDown
-		if s.prevIndentLevel > 0 {
-			s.indentLevel = s.prevIndentLevel - 1
-		}
-	}
-
-	if s.prevIndentColumn > 0 {
-		if s.prevIndentColumn < s.column {
-			s.indentState = IndentStateUp
-		} else if s.prevIndentColumn == s.column {
-			s.indentState = IndentStateEqual
-		} else {
-			s.indentState = IndentStateDown
-		}
-	}
+	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
 	if s.isNeededKeepPreviousIndentNum(ctx, c) {
 		return
 	}
+	if s.indentState != IndentStateUp {
+		s.prevIndentColumn = 0
+	}
 	s.prevIndentNum = s.indentNum
-	s.prevIndentColumn = 0
 	s.prevIndentLevel = s.indentLevel
 }
 
@@ -197,18 +216,25 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('\'')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
 	isFirstLineChar := false
+	isNewLine := false
 	for idx := startIndex; idx < size; idx++ {
+		if !isNewLine {
+			s.progressColumn(ctx, 1)
+		} else {
+			isNewLine = false
+		}
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
 			value = append(value, ' ')
 			isFirstLineChar = true
+			isNewLine = true
+			s.progressLine(ctx)
 			continue
 		} else if c == ' ' && isFirstLineChar {
 			continue
@@ -224,6 +250,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			idx++
 			continue
 		}
+		s.progressColumn(ctx, 1)
 		tk = token.SingleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
@@ -253,18 +280,25 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('"')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
 	isFirstLineChar := false
+	isNewLine := false
 	for idx := startIndex; idx < size; idx++ {
+		if !isNewLine {
+			s.progressColumn(ctx, 1)
+		} else {
+			isNewLine = false
+		}
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
 			value = append(value, ' ')
 			isFirstLineChar = true
+			isNewLine = true
+			s.progressLine(ctx)
 			continue
 		} else if c == ' ' && isFirstLineChar {
 			continue
@@ -365,6 +399,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			isFirstLineChar = false
 			continue
 		}
+		s.progressColumn(ctx, 1)
 		tk = token.DoubleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
@@ -440,6 +475,17 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 	return
 }
 
+func trimCommentFromLiteralOpt(text string) (string, error) {
+	idx := strings.Index(text, "#")
+	if idx < 0 {
+		return text, nil
+	}
+	if idx == 0 {
+		return "", xerrors.New("invalid literal header")
+	}
+	return text[:idx-1], nil
+}
+
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
@@ -482,14 +528,44 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 		case '\n', '\r':
 			value := ctx.source(ctx.idx, ctx.idx+idx)
 			opt := strings.TrimRight(value, " ")
+			orgOptLen := len(opt)
+			opt, err = trimCommentFromLiteralOpt(opt)
+			if err != nil {
+				return
+			}
 			switch opt {
 			case "", "+", "-",
 				"0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+				hasComment := len(opt) < orgOptLen
 				if header == '|' {
-					ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
+					if hasComment {
+						commentLen := orgOptLen - len(opt)
+						headerPos := strings.Index(string(ctx.obuf), "|")
+						litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+						commentBuf := ctx.obuf[len(litBuf):]
+						ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
+						s.column += len(litBuf)
+						s.offset += len(litBuf)
+						commentHeader := strings.Index(value, "#")
+						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+					} else {
+						ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
+					}
 					ctx.isLiteral = true
 				} else if header == '>' {
-					ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
+					if hasComment {
+						commentLen := orgOptLen - len(opt)
+						headerPos := strings.Index(string(ctx.obuf), ">")
+						foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+						commentBuf := ctx.obuf[len(foldedBuf):]
+						ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))
+						s.column += len(foldedBuf)
+						s.offset += len(foldedBuf)
+						commentHeader := strings.Index(value, "#")
+						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+					} else {
+						ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
+					}
 					ctx.isFolded = true
 				}
 				s.indentState = IndentStateKeep
@@ -728,7 +804,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if !ctx.existsBuffer() {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
-				s.progressColumn(ctx, progress)
 				pos += progress
 				return
 			}

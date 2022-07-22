@@ -23,16 +23,16 @@ linters:
 
 linters-settings:
   gosimple:
-    go: "1.16"
+    go: "1.18"
     checks: ["all"]
   staticcheck:
-    go: "1.16"
+    go: "1.18"
     checks: ["all"]
   stylecheck:
-    go: "1.16"
+    go: "1.18"
     checks: ["all"]
   unused:
-    go: "1.16"
+    go: "1.18"
   errorlint:
     errorf: true
     asserts: true
@@ -41,7 +41,7 @@ linters-settings:
     require-specific: true
     require-explanation: true
   revive:
-    enable-all-rules: true
+    #enable-all-rules: true
     rules:
       - name: blank-imports
       - name: context-as-argument
