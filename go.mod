@@ -16,7 +16,7 @@ require (
 	github.com/rs/xid v1.3.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.0
 	github.com/writeas/go-strip-markdown v2.0.1+incompatible
 	github.com/ybbus/httpretry v1.0.1
 	github.com/zoumo/goset v0.2.0
@@ -100,7 +100,6 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
