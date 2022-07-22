@@ -12,8 +12,7 @@ import (
 func TestExtractLeadingContentForYQ(t *testing.T) {
 	t.Parallel()
 	const (
-		yqLeadingContentPrefix = "$yqLeadingContent$\n"
-		yqDocSeparatorPrefix   = "$yqDocSeperator$\n"
+		yqDocSeparatorPrefix = "$yqDocSeperator$\n"
 	)
 	tests := []struct {
 		name                   string
@@ -78,8 +77,7 @@ key: value`,
 				require.EqualError(t, err, test.expectedErrorMsg)
 			} else {
 				require.NoError(t, err)
-				expectedLeadingContent := yqLeadingContentPrefix + test.expectedLeadingContent
-				assert.Equal(t, expectedLeadingContent, actualLeadingContent)
+				assert.Equal(t, test.expectedLeadingContent, actualLeadingContent)
 				actualBytes, err := io.ReadAll(actual)
 				require.NoError(t, err)
 				assert.Equal(t, test.expected, string(actualBytes))

@@ -20,6 +20,7 @@ import (
 
 func init() {
 	gologging.SetLevel(gologging.CRITICAL, "yq-lib")
+	yqlib.InitExpressionParser()
 }
 
 // YQUpdater is an updater that uses the yq lib to manipulate YAML (or JSON) files.
@@ -60,7 +61,7 @@ func NewUpdater(params map[string]string) (*YQUpdater, error) {
 
 	updater.OutputFormat = yqlib.YamlOutputFormat
 	if outputToJSON, _ := strconv.ParseBool(params["json"]); outputToJSON {
-		updater.OutputFormat = yqlib.JsonOutputFormat
+		updater.OutputFormat = yqlib.JSONOutputFormat
 	}
 
 	updater.Trim, _ = strconv.ParseBool(params["trim"])
@@ -71,7 +72,7 @@ func NewUpdater(params map[string]string) (*YQUpdater, error) {
 
 // Update updates the repository cloned at the given path, and returns true if changes have been made
 func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
-	expressionNode, err := yqlib.NewExpressionParser().ParseExpression(u.Expression)
+	expressionNode, err := yqlib.ExpressionParser.ParseExpression(u.Expression)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse yq expression %s: %w", u.Expression, err)
 	}
@@ -102,6 +103,23 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}
 
+	var encoder yqlib.Encoder
+	switch u.OutputFormat {
+	case yqlib.YamlOutputFormat:
+		const (
+			yamlColorise           = false
+			yamlPrintDocSeparators = true
+		)
+		encoder = yqlib.NewYamlEncoder(u.Indent, yamlColorise, yamlPrintDocSeparators, u.UnwrapScalar)
+	case yqlib.JSONOutputFormat:
+		const (
+			jsonColorise = false
+		)
+		encoder = yqlib.NewJONEncoder(u.Indent, jsonColorise)
+	default:
+		return false, fmt.Errorf("unknown output format %v", u.OutputFormat)
+	}
+
 	var (
 		streamEvaluator = yqlib.NewStreamEvaluator()
 		updated         = false
@@ -128,8 +146,8 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 		}
 
 		buffer := new(bytes.Buffer)
-		printer := yqlib.NewPrinter(buffer, u.OutputFormat, u.UnwrapScalar, false, u.Indent, true)
-		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
+		printer := yqlib.NewPrinter(encoder, yqlib.NewSinglePrinterWriter(buffer))
+		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent, yqlib.NewYamlDecoder())
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", u.Expression, filePath, err)
 		}

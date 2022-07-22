@@ -18,7 +18,6 @@ func ExtractLeadingContentForYQ(input io.Reader) (io.Reader, string, error) {
 		reader           = bufio.NewReader(input)
 		sb               strings.Builder
 	)
-	sb.WriteString("$yqLeadingContent$\n")
 	for {
 		peekBytes, err := reader.Peek(3)
 		if errors.Is(err, io.EOF) {
@@ -29,7 +28,7 @@ func ExtractLeadingContentForYQ(input io.Reader) (io.Reader, string, error) {
 		} else if string(peekBytes) == "---" {
 			_, err := reader.ReadString('\n')
 			sb.WriteString("$yqDocSeperator$\n")
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return reader, sb.String(), nil
 			} else if err != nil {
 				return reader, sb.String(), err
@@ -37,7 +36,7 @@ func ExtractLeadingContentForYQ(input io.Reader) (io.Reader, string, error) {
 		} else if commentLineRegEx.MatchString(string(peekBytes)) {
 			line, err := reader.ReadString('\n')
 			sb.WriteString(line)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return reader, sb.String(), nil
 			} else if err != nil {
 				return reader, sb.String(), err

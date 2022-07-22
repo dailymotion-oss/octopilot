@@ -22,6 +22,7 @@ import (
 
 func init() {
 	gologging.SetLevel(gologging.CRITICAL, "yq-lib")
+	yqlib.InitExpressionParser()
 }
 
 // YamlUpdater is an updater that uses the yq lib to update YAML files.
@@ -80,7 +81,13 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}
 
+	const (
+		yamlColorise           = false
+		yamlPrintDocSeparators = true
+		yamlUnwrapScalar       = false
+	)
 	var (
+		yamlEncoder     = yqlib.NewYamlEncoder(u.Indent, yamlColorise, yamlPrintDocSeparators, yamlUnwrapScalar)
 		streamEvaluator = yqlib.NewStreamEvaluator()
 		updated         = false
 	)
@@ -106,8 +113,8 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		}
 
 		buffer := new(bytes.Buffer)
-		printer := yqlib.NewPrinter(buffer, yqlib.YamlOutputFormat, false, false, u.Indent, true)
-		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent)
+		printer := yqlib.NewPrinter(yamlEncoder, yqlib.NewSinglePrinterWriter(buffer))
+		_, err = streamEvaluator.Evaluate(relFilePath, reader, expressionNode, printer, leadingContent, yqlib.NewYamlDecoder())
 		if err != nil {
 			return false, fmt.Errorf("failed to evaluate expression `%s` for file %s: %w", expression, filePath, err)
 		}
@@ -145,23 +152,23 @@ func (u *YamlUpdater) String() string {
 
 func (u *YamlUpdater) yqExpression(value string) (string, *yqlib.ExpressionNode, error) {
 	var (
-		parser        = yqlib.NewExpressionParser()
+		parser        = yqlib.ExpressionParser
 		rawExpression string
 	)
 
-	if _, err := parser.ParseExpression(u.Path); err == nil {
-		// we have a valid yq v4 expression
+	if _, err := parser.ParseExpression(u.Path); err == nil && strings.HasPrefix(u.Path, ".") {
+		// we have a valid yq v4 expression - that starts with a dot
 		rawExpression = u.Path
 	} else {
-		//most likely an old v3 path format, let's convert it to a valid v4 path
+		// most likely an old v3 path format, let's convert it to a valid v4 path
 		rawExpression = convertYqExpressionToV4(u.Path)
 	}
 
 	// add the assignment operator to set the new value
-	expression := fmt.Sprintf(`(%s) as $x | $x = %q`, rawExpression, value)
+	expression := fmt.Sprintf(`(%s) ref $x | $x = %q`, rawExpression, value)
 
 	if u.AutoCreate {
-		// ensure the new path is created first (the `... as $x | $x = ...` doesn't create it)
+		// ensure the new path is created first (the `... ref $x | $x = ...` doesn't create it)
 		expression = fmt.Sprintf(`%s = %q | %s`, rawExpression, value, expression)
 	}
 

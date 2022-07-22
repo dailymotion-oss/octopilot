@@ -38,7 +38,7 @@ func TestNewUpdater(t *testing.T) {
 				Indent:       4,
 				Trim:         true,
 				UnwrapScalar: false,
-				OutputFormat: yqlib.JsonOutputFormat,
+				OutputFormat: yqlib.JSONOutputFormat,
 			},
 		},
 		{
@@ -367,7 +367,7 @@ object:
 				FilePath:     "output-to-json.yaml",
 				Expression:   `.`,
 				Output:       "output-to-json.json",
-				OutputFormat: yqlib.JsonOutputFormat,
+				OutputFormat: yqlib.JSONOutputFormat,
 				Indent:       2,
 			},
 			expected: true,
