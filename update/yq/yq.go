@@ -115,7 +115,7 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 		const (
 			jsonColorise = false
 		)
-		encoder = yqlib.NewJONEncoder(u.Indent, jsonColorise)
+		encoder = yqlib.NewJSONEncoder(u.Indent, jsonColorise)
 	default:
 		return false, fmt.Errorf("unknown output format %v", u.OutputFormat)
 	}

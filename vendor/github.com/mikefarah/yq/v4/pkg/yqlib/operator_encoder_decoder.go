@@ -13,7 +13,7 @@ import (
 func configureEncoder(format PrinterOutputFormat, indent int) Encoder {
 	switch format {
 	case JSONOutputFormat:
-		return NewJONEncoder(indent, false)
+		return NewJSONEncoder(indent, false)
 	case PropsOutputFormat:
 		return NewPropertiesEncoder(true)
 	case CSVOutputFormat:
@@ -114,6 +114,10 @@ func decodeOperator(d *dataTreeNavigator, context Context, expressionNode *Expre
 		decoder = NewBase64Decoder()
 	case PropertiesInputFormat:
 		decoder = NewPropertiesDecoder()
+	case CSVObjectInputFormat:
+		decoder = NewCSVObjectDecoder(',')
+	case TSVObjectInputFormat:
+		decoder = NewCSVObjectDecoder('\t')
 	}
 
 	var results = list.New()

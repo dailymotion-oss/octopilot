@@ -234,6 +234,17 @@ github.com/go-git/go-git/v5/utils/merkletrie/filesystem
 github.com/go-git/go-git/v5/utils/merkletrie/index
 github.com/go-git/go-git/v5/utils/merkletrie/internal/frame
 github.com/go-git/go-git/v5/utils/merkletrie/noder
+# github.com/goccy/go-json v0.9.10
+## explicit; go 1.12
+github.com/goccy/go-json
+github.com/goccy/go-json/internal/decoder
+github.com/goccy/go-json/internal/encoder
+github.com/goccy/go-json/internal/encoder/vm
+github.com/goccy/go-json/internal/encoder/vm_color
+github.com/goccy/go-json/internal/encoder/vm_color_indent
+github.com/goccy/go-json/internal/encoder/vm_indent
+github.com/goccy/go-json/internal/errors
+github.com/goccy/go-json/internal/runtime
 # github.com/goccy/go-yaml v1.9.5
 ## explicit; go 1.12
 github.com/goccy/go-yaml/ast
@@ -400,7 +411,7 @@ github.com/mattn/go-isatty
 # github.com/mholt/archiver v3.1.1+incompatible
 ## explicit
 github.com/mholt/archiver
-# github.com/mikefarah/yq/v4 v4.26.1
+# github.com/mikefarah/yq/v4 v4.27.2
 ## explicit; go 1.18
 github.com/mikefarah/yq/v4/pkg/yqlib
 # github.com/mitchellh/copystructure v1.2.0

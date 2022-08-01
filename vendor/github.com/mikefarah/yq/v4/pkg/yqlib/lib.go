@@ -205,10 +205,10 @@ func findInArray(array *yaml.Node, item *yaml.Node) int {
 	return -1
 }
 
-func findKeyInMap(array *yaml.Node, item *yaml.Node) int {
+func findKeyInMap(dataMap *yaml.Node, item *yaml.Node) int {
 
-	for index := 0; index < len(array.Content); index = index + 2 {
-		if recursiveNodeEqual(array.Content[index], item) {
+	for index := 0; index < len(dataMap.Content); index = index + 2 {
+		if recursiveNodeEqual(dataMap.Content[index], item) {
 			return index
 		}
 	}
@@ -240,18 +240,26 @@ func guessTagFromCustomType(node *yaml.Node) string {
 		log.Warning("node has no value to guess the type with")
 		return node.Tag
 	}
+	dataBucket, errorReading := parseSnippet(node.Value)
 
-	decoder := NewYamlDecoder()
-	decoder.Init(strings.NewReader(node.Value))
-	var dataBucket yaml.Node
-	errorReading := decoder.Decode(&dataBucket)
 	if errorReading != nil {
 		log.Warning("could not guess underlying tag type %v", errorReading)
 		return node.Tag
 	}
-	guessedTag := unwrapDoc(&dataBucket).Tag
+	guessedTag := unwrapDoc(dataBucket).Tag
 	log.Info("im guessing the tag %v is a %v", node.Tag, guessedTag)
 	return guessedTag
+}
+
+func parseSnippet(value string) (*yaml.Node, error) {
+	decoder := NewYamlDecoder()
+	decoder.Init(strings.NewReader(value))
+	var dataBucket yaml.Node
+	err := decoder.Decode(&dataBucket)
+	if len(dataBucket.Content) == 0 {
+		return nil, fmt.Errorf("bad data")
+	}
+	return dataBucket.Content[0], err
 }
 
 func recursiveNodeEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
