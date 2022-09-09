@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v36 v36.0.0
 	github.com/imdario/mergo v0.3.13
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/mikefarah/yq/v4 v4.27.3
+	github.com/mikefarah/yq/v4 v4.27.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
 	github.com/rs/xid v1.4.0
@@ -56,7 +56,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
-	github.com/elliotchance/orderedmap v1.4.0 // indirect
+	github.com/elliotchance/orderedmap v1.5.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
