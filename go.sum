@@ -448,8 +448,8 @@ github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27k
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mholt/archiver v3.1.1+incompatible h1:1dCVxuqs0dJseYEhi5pl7MYPH9zDa1wBi7mF09cbNkU=
 github.com/mholt/archiver v3.1.1+incompatible/go.mod h1:Dh2dOXnSdiLxRiPoVfIr/fI1TwETms9B8CTWfeh7ROU=
-github.com/mikefarah/yq/v4 v4.27.5 h1:u1pzF6df2Ozaw7ko/+geyTnlIjH6sPMTIJyLeWnut38=
-github.com/mikefarah/yq/v4 v4.27.5/go.mod h1:jzkd8Ro++h/zwCdqCybwgYWOvQIyG3pe+wpqVA+HtM4=
+github.com/mikefarah/yq/v4 v4.28.1 h1:S+H+WXnLFfG0UAYyZddfN4yinxfW7Wk5ndUH20KSKg0=
+github.com/mikefarah/yq/v4 v4.28.1/go.mod h1:jzkd8Ro++h/zwCdqCybwgYWOvQIyG3pe+wpqVA+HtM4=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
 github.com/mitchellh/copystructure v1.0.0/go.mod h1:SNtv71yrdKgLRyLFxmLdkAbkKEFWgYaq1OVrnRcwhnw=
 github.com/mitchellh/copystructure v1.2.0 h1:vpKXTN4ewci03Vljg/q9QvCGUDttBOGBIa15WveJJGw=
