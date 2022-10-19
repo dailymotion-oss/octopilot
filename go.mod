@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v36 v36.0.0
 	github.com/imdario/mergo v0.3.13
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/mikefarah/yq/v4 v4.28.1
+	github.com/mikefarah/yq/v4 v4.28.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
 	github.com/rs/xid v1.4.0
