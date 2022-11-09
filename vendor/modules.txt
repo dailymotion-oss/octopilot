@@ -438,7 +438,7 @@ github.com/nwaples/rardecode
 # github.com/oklog/run v1.1.0
 ## explicit; go 1.13
 github.com/oklog/run
-# github.com/otiai10/copy v1.7.0
+# github.com/otiai10/copy v1.9.0
 ## explicit; go 1.14
 github.com/otiai10/copy
 # github.com/pierrec/lz4 v2.6.1+incompatible
