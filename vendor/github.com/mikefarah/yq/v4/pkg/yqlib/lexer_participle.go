@@ -1,6 +1,7 @@
 package yqlib
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,10 @@ var participleYqRules = []*participleYqRule{
 	{"LINE_COMMENT", `line_?comment|lineComment`, opTokenWithPrefs(getCommentOpType, assignCommentOpType, commentOpPreferences{LineComment: true}), 0},
 	{"HEAD_COMMENT", `head_?comment|headComment`, opTokenWithPrefs(getCommentOpType, assignCommentOpType, commentOpPreferences{HeadComment: true}), 0},
 	{"FOOT_COMMENT", `foot_?comment|footComment`, opTokenWithPrefs(getCommentOpType, assignCommentOpType, commentOpPreferences{FootComment: true}), 0},
+
+	{"SliceArray", `\.\[-?[0-9]+:-?[0-9]+\]`, sliceArrayTwoNumbers(), 0},
+	{"SliceArraySecond", `\.\[\:-?[0-9]+\]`, sliceArraySecondNumberOnly(), 0},
+	{"SliceArrayFirst", `\.\[-?[0-9]+\:\]`, sliceArrayFirstNumberOnly(), 0},
 
 	{"OpenBracket", `\(`, literalToken(openBracket, false), 0},
 	{"CloseBracket", `\)`, literalToken(closeBracket, true), 0},
@@ -76,7 +81,7 @@ var participleYqRules = []*participleYqRule{
 	{"Base64d", `@base64d`, decodeOp(Base64InputFormat), 0},
 	{"Base64", `@base64`, encodeWithIndent(Base64OutputFormat, 0), 0},
 
-	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(XMLPreferences.AttributePrefix, XMLPreferences.ContentName, XMLPreferences.StrictMode, XMLPreferences.KeepNamespace, XMLPreferences.UseRawToken), false), 0},
+	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(ConfiguredXMLPreferences), false), 0},
 
 	{"LoadBase64", `load_?base64`, loadOp(NewBase64Decoder(), false), 0},
 
@@ -84,7 +89,7 @@ var participleYqRules = []*participleYqRule{
 
 	{"LoadString", `load_?str|str_?load`, loadOp(nil, true), 0},
 
-	{"LoadYaml", `load`, loadOp(NewYamlDecoder(), false), 0},
+	{"LoadYaml", `load`, loadOp(NewYamlDecoder(ConfiguredYamlPreferences), false), 0},
 
 	{"SplitDocument", `splitDoc|split_?doc`, opToken(splitDocumentOpType), 0},
 
@@ -296,6 +301,84 @@ func flattenWithDepth() yqAction {
 
 		prefs := flattenPreferences{depth: depth}
 		op := &Operation{OperationType: flattenOpType, Value: flattenOpType.Type, StringValue: value, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: op}, nil
+	}
+}
+
+func sliceArrayTwoNumbers() yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		value := rawToken.Value
+		sliceArrayNumbers := regexp.MustCompile(`\.\[(-?[0-9]+)\:(-?[0-9]+)\]`)
+		matches := sliceArrayNumbers.FindStringSubmatch(value)
+		log.Debug("sliceArrayTwoNumbers value: %v", value)
+		log.Debug("Matches: %v", matches)
+
+		firstNumber, err := parseInt(matches[1])
+		if err != nil {
+			return nil, err
+		}
+		secondNumber, err := parseInt(matches[2])
+		if err != nil {
+			return nil, err
+		}
+
+		prefs := sliceArrayPreferences{
+			firstNumber:         firstNumber,
+			secondNumber:        secondNumber,
+			secondNumberDefined: true,
+		}
+		log.Debug("%v", prefs)
+
+		op := &Operation{OperationType: sliceArrayOpType, Value: sliceArrayOpType.Type, StringValue: value, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: op}, nil
+	}
+}
+
+func sliceArraySecondNumberOnly() yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		value := rawToken.Value
+		sliceArrayNumbers := regexp.MustCompile(`\.\[\:(-?[0-9]+)\]`)
+		matches := sliceArrayNumbers.FindStringSubmatch(value)
+		log.Debug("sliceArraySecondNumberOnly value: %v", value)
+		log.Debug("Matches: %v", matches)
+
+		secondNumber, err := parseInt(matches[1])
+		if err != nil {
+			return nil, err
+		}
+
+		prefs := sliceArrayPreferences{
+			firstNumber:         0,
+			secondNumber:        secondNumber,
+			secondNumberDefined: true,
+		}
+		log.Debug("%v", prefs)
+
+		op := &Operation{OperationType: sliceArrayOpType, Value: sliceArrayOpType.Type, StringValue: value, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: op}, nil
+	}
+}
+
+func sliceArrayFirstNumberOnly() yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		value := rawToken.Value
+		sliceArrayNumbers := regexp.MustCompile(`\.\[(-?[0-9]+)\:\]`)
+		matches := sliceArrayNumbers.FindStringSubmatch(value)
+		log.Debug("sliceArrayFirstNumberOnly value: %v", value)
+		log.Debug("Matches: %v", matches)
+
+		firstNumber, err := parseInt(matches[1])
+		if err != nil {
+			return nil, err
+		}
+
+		prefs := sliceArrayPreferences{
+			firstNumber:         firstNumber,
+			secondNumberDefined: false,
+		}
+		log.Debug("%v", prefs)
+
+		op := &Operation{OperationType: sliceArrayOpType, Value: sliceArrayOpType.Type, StringValue: value, Preferences: prefs}
 		return &token{TokenType: operationToken, Operation: op}, nil
 	}
 }
