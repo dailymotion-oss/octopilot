@@ -50,6 +50,8 @@ var participleYqRules = []*participleYqRule{
 	simpleOp("sortKeys", sortKeysOpType),
 	simpleOp("sort_?keys", sortKeysOpType),
 
+	{"ArrayToMap", "array_?to_?map", expressionOpToken(`(.[] | select(. != null) ) as $i ireduce({}; .[$i | key] = $i)`), 0},
+
 	{"YamlEncodeWithIndent", `to_?yaml\([0-9]+\)`, encodeParseIndent(YamlOutputFormat), 0},
 	{"XMLEncodeWithIndent", `to_?xml\([0-9]+\)`, encodeParseIndent(XMLOutputFormat), 0},
 	{"JSONEncodeWithIndent", `to_?json\([0-9]+\)`, encodeParseIndent(JSONOutputFormat), 0},
@@ -76,7 +78,7 @@ var participleYqRules = []*participleYqRule{
 	{"Base64d", `@base64d`, decodeOp(Base64InputFormat), 0},
 	{"Base64", `@base64`, encodeWithIndent(Base64OutputFormat, 0), 0},
 
-	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(XMLPreferences.AttributePrefix, XMLPreferences.ContentName, XMLPreferences.StrictMode, XMLPreferences.KeepNamespace, XMLPreferences.UseRawToken), false), 0},
+	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(ConfiguredXMLPreferences), false), 0},
 
 	{"LoadBase64", `load_?base64`, loadOp(NewBase64Decoder(), false), 0},
 
@@ -84,7 +86,7 @@ var participleYqRules = []*participleYqRule{
 
 	{"LoadString", `load_?str|str_?load`, loadOp(nil, true), 0},
 
-	{"LoadYaml", `load`, loadOp(NewYamlDecoder(), false), 0},
+	{"LoadYaml", `load`, loadOp(NewYamlDecoder(ConfiguredYamlPreferences), false), 0},
 
 	{"SplitDocument", `splitDoc|split_?doc`, opToken(splitDocumentOpType), 0},
 
@@ -283,6 +285,14 @@ func opTokenWithPrefs(opType *operationType, assignOpType *operationType, prefer
 			assign = &Operation{OperationType: assignOpType, Value: assignOpType.Type, StringValue: value, Preferences: preferences}
 		}
 		return &token{TokenType: operationToken, Operation: op, AssignOperation: assign}, nil
+	}
+}
+
+func expressionOpToken(expression string) yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		prefs := expressionOpPreferences{expression: expression}
+		expressionOp := &Operation{OperationType: expressionOpType, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: expressionOp}, nil
 	}
 }
 
