@@ -76,10 +76,13 @@ func traverse(context Context, matchingNode *CandidateNode, operation *Operation
 }
 
 func traverseArrayOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-
 	//lhs may update the variable context, we should pass that into the RHS
 	// BUT we still return the original context back (see jq)
 	// https://stedolan.github.io/jq/manual/#Variable/SymbolicBindingOperator:...as$identifier|...
+
+	if expressionNode.RHS != nil && expressionNode.RHS.RHS != nil && expressionNode.RHS.RHS.Operation.OperationType == createMapOpType {
+		return sliceArrayOperator(d, context, expressionNode.RHS.RHS)
+	}
 
 	lhs, err := d.GetMatchingNodes(context, expressionNode.LHS)
 	if err != nil {
