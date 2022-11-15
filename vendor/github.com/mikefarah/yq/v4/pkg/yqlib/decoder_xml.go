@@ -12,34 +12,24 @@ import (
 )
 
 type xmlDecoder struct {
-	reader          io.Reader
-	readAnything    bool
-	attributePrefix string
-	contentName     string
-	strictMode      bool
-	keepNamespace   bool
-	useRawToken     bool
-	finished        bool
+	reader       io.Reader
+	readAnything bool
+	finished     bool
+	prefs        XmlPreferences
 }
 
-func NewXMLDecoder(attributePrefix string, contentName string, strictMode bool, keepNamespace bool, useRawToken bool) Decoder {
-	if contentName == "" {
-		contentName = "content"
-	}
+func NewXMLDecoder(prefs XmlPreferences) Decoder {
 	return &xmlDecoder{
-		attributePrefix: attributePrefix,
-		contentName:     contentName,
-		finished:        false,
-		strictMode:      strictMode,
-		keepNamespace:   keepNamespace,
-		useRawToken:     useRawToken,
+		finished: false,
+		prefs:    prefs,
 	}
 }
 
-func (dec *xmlDecoder) Init(reader io.Reader) {
+func (dec *xmlDecoder) Init(reader io.Reader) error {
 	dec.reader = reader
 	dec.readAnything = false
 	dec.finished = false
+	return nil
 }
 
 func (dec *xmlDecoder) createSequence(nodes []*xmlNode) (*yaml.Node, error) {
@@ -67,7 +57,7 @@ func (dec *xmlDecoder) createMap(n *xmlNode) (*yaml.Node, error) {
 	yamlNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 
 	if len(n.Data) > 0 {
-		label := dec.contentName
+		label := dec.prefs.ContentName
 		labelNode := createScalarNode(label, label)
 		labelNode.HeadComment = dec.processComment(n.HeadComment)
 		labelNode.FootComment = dec.processComment(n.FootComment)
@@ -86,9 +76,7 @@ func (dec *xmlDecoder) createMap(n *xmlNode) (*yaml.Node, error) {
 
 		}
 
-		// if i == len(n.Children)-1 {
 		labelNode.FootComment = dec.processComment(keyValuePair.FootComment)
-		// }
 
 		log.Debug("len of children in %v is %v", label, len(children))
 		if len(children) > 1 {
@@ -131,32 +119,36 @@ func (dec *xmlDecoder) convertToYamlNode(n *xmlNode) (*yaml.Node, error) {
 	return scalar, nil
 }
 
-func (dec *xmlDecoder) Decode(rootYamlNode *yaml.Node) error {
+func (dec *xmlDecoder) Decode() (*CandidateNode, error) {
 	if dec.finished {
-		return io.EOF
+		return nil, io.EOF
 	}
 	root := &xmlNode{}
 	// cant use xj - it doesn't keep map order.
 	err := dec.decodeXML(root)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 	firstNode, err := dec.convertToYamlNode(root)
 
 	if err != nil {
-		return err
+		return nil, err
 	} else if firstNode.Tag == "!!null" {
 		dec.finished = true
 		if dec.readAnything {
-			return io.EOF
+			return nil, io.EOF
 		}
 	}
 	dec.readAnything = true
-	rootYamlNode.Kind = yaml.DocumentNode
-	rootYamlNode.Content = []*yaml.Node{firstNode}
 	dec.finished = true
-	return nil
+
+	return &CandidateNode{
+		Node: &yaml.Node{
+			Kind:    yaml.DocumentNode,
+			Content: []*yaml.Node{firstNode},
+		},
+	}, nil
 }
 
 type xmlNode struct {
@@ -205,7 +197,7 @@ type element struct {
 // of the map keys.
 func (dec *xmlDecoder) decodeXML(root *xmlNode) error {
 	xmlDec := xml.NewDecoder(dec.reader)
-	xmlDec.Strict = dec.strictMode
+	xmlDec.Strict = dec.prefs.StrictMode
 	// That will convert the charset if the provided XML is non-UTF-8
 	xmlDec.CharsetReader = charset.NewReaderLabel
 
@@ -216,7 +208,7 @@ func (dec *xmlDecoder) decodeXML(root *xmlNode) error {
 	}
 
 	getToken := func() (xml.Token, error) {
-		if dec.useRawToken {
+		if dec.prefs.UseRawToken {
 			return xmlDec.RawToken()
 		}
 		return xmlDec.Token()
@@ -244,12 +236,12 @@ func (dec *xmlDecoder) decodeXML(root *xmlNode) error {
 
 			// Extract attributes as children
 			for _, a := range se.Attr {
-				if dec.keepNamespace {
+				if dec.prefs.KeepNamespace {
 					if a.Name.Space != "" {
 						a.Name.Local = a.Name.Space + ":" + a.Name.Local
 					}
 				}
-				elem.n.AddChild(dec.attributePrefix+a.Name.Local, &xmlNode{Data: a.Value})
+				elem.n.AddChild(dec.prefs.AttributePrefix+a.Name.Local, &xmlNode{Data: a.Value})
 			}
 		case xml.CharData:
 			// Extract XML data (if any)
@@ -282,6 +274,14 @@ func (dec *xmlDecoder) decodeXML(root *xmlNode) error {
 				elem.n.HeadComment = joinFilter([]string{elem.n.HeadComment, commentStr})
 			}
 
+		case xml.ProcInst:
+			if !dec.prefs.SkipProcInst {
+				elem.n.AddChild(dec.prefs.ProcInstPrefix+se.Target, &xmlNode{Data: string(se.Inst)})
+			}
+		case xml.Directive:
+			if !dec.prefs.SkipDirectives {
+				elem.n.AddChild(dec.prefs.DirectiveName, &xmlNode{Data: string(se)})
+			}
 		}
 	}
 
