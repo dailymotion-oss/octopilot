@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v36 v36.0.0
 	github.com/imdario/mergo v0.3.13
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/mikefarah/yq/v4 v4.28.2
+	github.com/mikefarah/yq/v4 v4.30.6
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.9.0
 	github.com/rs/xid v1.4.0
@@ -62,8 +62,8 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
-	github.com/goccy/go-json v0.9.11 // indirect
-	github.com/goccy/go-yaml v1.9.5 // indirect
+	github.com/goccy/go-json v0.10.0 // indirect
+	github.com/goccy/go-yaml v1.9.7 // indirect
 	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -99,7 +99,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/lib/pq v1.10.5 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

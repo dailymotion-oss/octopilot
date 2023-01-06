@@ -21,14 +21,6 @@ func InitExpressionParser() {
 	}
 }
 
-type xmlPreferences struct {
-	AttributePrefix string
-	ContentName     string
-	StrictMode      bool
-	KeepNamespace   bool
-	UseRawToken     bool
-}
-
 var log = logging.MustGetLogger("yq-lib")
 
 var PrettyPrintExp = `(... | (select(tag != "!!str"), select(tag == "!!str") | select(test("(?i)^(y|yes|n|no|on|off)$") | not))  ) style=""`
@@ -87,6 +79,8 @@ var shortPipeOpType = &operationType{Type: "SHORT_PIPE", NumArgs: 2, Precedence:
 var lengthOpType = &operationType{Type: "LENGTH", NumArgs: 0, Precedence: 50, Handler: lengthOperator}
 var lineOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: lineOperator}
 var columnOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: columnOperator}
+
+var expressionOpType = &operationType{Type: "EXP", NumArgs: 0, Precedence: 50, Handler: expressionOperator}
 
 var collectOpType = &operationType{Type: "COLLECT", NumArgs: 1, Precedence: 50, Handler: collectOperator}
 var mapOpType = &operationType{Type: "MAP", NumArgs: 1, Precedence: 50, Handler: mapOperator}
@@ -241,13 +235,13 @@ func guessTagFromCustomType(node *yaml.Node) string {
 	if strings.HasPrefix(node.Tag, "!!") {
 		return node.Tag
 	} else if node.Value == "" {
-		log.Warning("node has no value to guess the type with")
+		log.Debug("guessTagFromCustomType: node has no value to guess the type with")
 		return node.Tag
 	}
 	dataBucket, errorReading := parseSnippet(node.Value)
 
 	if errorReading != nil {
-		log.Warning("could not guess underlying tag type %v", errorReading)
+		log.Debug("guessTagFromCustomType: could not guess underlying tag type %v", errorReading)
 		return node.Tag
 	}
 	guessedTag := unwrapDoc(dataBucket).Tag
@@ -256,14 +250,28 @@ func guessTagFromCustomType(node *yaml.Node) string {
 }
 
 func parseSnippet(value string) (*yaml.Node, error) {
-	decoder := NewYamlDecoder()
-	decoder.Init(strings.NewReader(value))
-	var dataBucket yaml.Node
-	err := decoder.Decode(&dataBucket)
-	if len(dataBucket.Content) == 0 {
+	if value == "" {
+		return &yaml.Node{
+			Kind: yaml.ScalarNode,
+			Tag:  "!!null",
+		}, nil
+	}
+	decoder := NewYamlDecoder(ConfiguredYamlPreferences)
+	err := decoder.Init(strings.NewReader(value))
+	if err != nil {
+		return nil, err
+	}
+	parsedNode, err := decoder.Decode()
+	if err != nil {
+		return nil, err
+	}
+	if len(parsedNode.Node.Content) == 0 {
 		return nil, fmt.Errorf("bad data")
 	}
-	return dataBucket.Content[0], err
+	result := unwrapDoc(parsedNode.Node)
+	result.Line = 0
+	result.Column = 0
+	return result, err
 }
 
 func recursiveNodeEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
@@ -358,8 +366,8 @@ func parseInt(numberString string) (int, error) {
 
 	if err != nil {
 		return 0, err
-	} else if parsed > math.MaxInt {
-		return 0, fmt.Errorf("%v is too big (larger than %v)", parsed, math.MaxInt)
+	} else if parsed > math.MaxInt || parsed < math.MinInt {
+		return 0, fmt.Errorf("%v is not within [%v, %v]", parsed, math.MinInt, math.MaxInt)
 	}
 
 	return int(parsed), err
