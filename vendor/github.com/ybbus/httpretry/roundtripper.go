@@ -3,7 +3,6 @@ package httpretry
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -47,14 +46,14 @@ func (r *RetryRoundtripper) RoundTrip(req *http.Request) (*http.Response, error)
 
 			// store it for the first time
 			if dataBuffer == nil {
-				data, err := ioutil.ReadAll(req.Body)
+				data, err := io.ReadAll(req.Body)
 				req.Body.Close()
 				if err != nil {
 					return nil, err
 				}
 				dataBuffer = bytes.NewReader(data)
 				req.ContentLength = int64(dataBuffer.Len())
-				req.Body = ioutil.NopCloser(dataBuffer)
+				req.Body = io.NopCloser(dataBuffer)
 			}
 
 			// reset the request body
@@ -96,7 +95,7 @@ func (r *RetryRoundtripper) RoundTrip(req *http.Request) (*http.Response, error)
 
 func drainAndCloseBody(resp *http.Response, maxBytes int64) {
 	if resp != nil {
-		io.CopyN(ioutil.Discard, resp.Body, maxBytes)
+		io.CopyN(io.Discard, resp.Body, maxBytes)
 		resp.Body.Close()
 	}
 }
