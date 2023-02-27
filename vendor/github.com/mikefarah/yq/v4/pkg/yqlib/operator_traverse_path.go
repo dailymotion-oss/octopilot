@@ -39,7 +39,7 @@ func traverse(context Context, matchingNode *CandidateNode, operation *Operation
 	log.Debug("Traversing %v", NodeToString(matchingNode))
 	value := matchingNode.Node
 
-	if value.Tag == "!!null" && operation.Value != "[]" {
+	if value.Tag == "!!null" && operation.Value != "[]" && !context.DontAutoCreate {
 		log.Debugf("Guessing kind")
 		// we must have added this automatically, lets guess what it should be now
 		switch operation.Value.(type) {
@@ -76,10 +76,13 @@ func traverse(context Context, matchingNode *CandidateNode, operation *Operation
 }
 
 func traverseArrayOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-
 	//lhs may update the variable context, we should pass that into the RHS
 	// BUT we still return the original context back (see jq)
 	// https://stedolan.github.io/jq/manual/#Variable/SymbolicBindingOperator:...as$identifier|...
+
+	if expressionNode.RHS != nil && expressionNode.RHS.RHS != nil && expressionNode.RHS.RHS.Operation.OperationType == createMapOpType {
+		return sliceArrayOperator(d, context, expressionNode.RHS.RHS)
+	}
 
 	lhs, err := d.GetMatchingNodes(context, expressionNode.LHS)
 	if err != nil {

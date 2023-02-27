@@ -13,7 +13,7 @@ import (
 func configureEncoder(format PrinterOutputFormat, indent int) Encoder {
 	switch format {
 	case JSONOutputFormat:
-		return NewJSONEncoder(indent, false)
+		return NewJSONEncoder(indent, false, false)
 	case PropsOutputFormat:
 		return NewPropertiesEncoder(true)
 	case CSVOutputFormat:
@@ -21,11 +21,15 @@ func configureEncoder(format PrinterOutputFormat, indent int) Encoder {
 	case TSVOutputFormat:
 		return NewCsvEncoder('\t')
 	case YamlOutputFormat:
-		return NewYamlEncoder(indent, false, true, true)
+		return NewYamlEncoder(indent, false, ConfiguredYamlPreferences)
 	case XMLOutputFormat:
-		return NewXMLEncoder(indent, XMLPreferences.AttributePrefix, XMLPreferences.ContentName)
+		return NewXMLEncoder(indent, ConfiguredXMLPreferences)
 	case Base64OutputFormat:
 		return NewBase64Encoder()
+	case UriOutputFormat:
+		return NewUriEncoder()
+	case ShOutputFormat:
+		return NewShEncoder()
 	}
 	panic("invalid encoder")
 }
@@ -102,14 +106,9 @@ func decodeOperator(d *dataTreeNavigator, context Context, expressionNode *Expre
 	var decoder Decoder
 	switch preferences.format {
 	case YamlInputFormat:
-		decoder = NewYamlDecoder()
+		decoder = NewYamlDecoder(ConfiguredYamlPreferences)
 	case XMLInputFormat:
-		decoder = NewXMLDecoder(
-			XMLPreferences.AttributePrefix,
-			XMLPreferences.ContentName,
-			XMLPreferences.StrictMode,
-			XMLPreferences.KeepNamespace,
-			XMLPreferences.UseRawToken)
+		decoder = NewXMLDecoder(ConfiguredXMLPreferences)
 	case Base64InputFormat:
 		decoder = NewBase64Decoder()
 	case PropertiesInputFormat:
@@ -118,6 +117,8 @@ func decodeOperator(d *dataTreeNavigator, context Context, expressionNode *Expre
 		decoder = NewCSVObjectDecoder(',')
 	case TSVObjectInputFormat:
 		decoder = NewCSVObjectDecoder('\t')
+	case UriInputFormat:
+		decoder = NewUriDecoder()
 	}
 
 	var results = list.New()
@@ -126,17 +127,19 @@ func decodeOperator(d *dataTreeNavigator, context Context, expressionNode *Expre
 
 		context.SetVariable("decoded: "+candidate.GetKey(), candidate.AsList())
 
-		var dataBucket yaml.Node
 		log.Debugf("got: [%v]", candidate.Node.Value)
 
-		decoder.Init(strings.NewReader(unwrapDoc(candidate.Node).Value))
+		err := decoder.Init(strings.NewReader(unwrapDoc(candidate.Node).Value))
+		if err != nil {
+			return Context{}, err
+		}
 
-		errorReading := decoder.Decode(&dataBucket)
+		decodedNode, errorReading := decoder.Decode()
 		if errorReading != nil {
 			return Context{}, errorReading
 		}
 		//first node is a doc
-		node := unwrapDoc(&dataBucket)
+		node := unwrapDoc(decodedNode.Node)
 
 		results.PushBack(candidate.CreateReplacement(node))
 	}

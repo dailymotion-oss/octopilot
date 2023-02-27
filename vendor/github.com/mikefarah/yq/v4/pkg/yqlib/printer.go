@@ -27,6 +27,8 @@ const (
 	TSVOutputFormat
 	XMLOutputFormat
 	Base64OutputFormat
+	UriOutputFormat
+	ShOutputFormat
 )
 
 func OutputFormatFromString(format string) (PrinterOutputFormat, error) {
@@ -111,7 +113,7 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 
 		mappedDoc := el.Value.(*CandidateNode)
 		log.Debug("-- print sep logic: p.firstTimePrinting: %v, previousDocIndex: %v, mappedDoc.Document: %v", p.firstTimePrinting, p.previousDocIndex, mappedDoc.Document)
-
+		log.Debug("%v", NodeToString(mappedDoc))
 		writer, errorWriting := p.printerWriter.GetWriter(mappedDoc)
 		if errorWriting != nil {
 			return errorWriting
