@@ -2,7 +2,6 @@ package helm
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -216,7 +215,7 @@ dependencies:
 				for filename, content := range test.files {
 					err := os.MkdirAll(filepath.Dir(filepath.Join("testdata", filename)), 0755)
 					require.NoErrorf(t, err, "can't create testdata directories for %s", filename)
-					err = ioutil.WriteFile(filepath.Join("testdata", filename), []byte(content), 0644)
+					err = os.WriteFile(filepath.Join("testdata", filename), []byte(content), 0644)
 					require.NoErrorf(t, err, "can't write testdata file %s", filename)
 				}
 			}
@@ -230,7 +229,7 @@ dependencies:
 				assert.Equal(t, test.expected, actual)
 				for expectedFilePath, expectedFileContent := range test.expectedFiles {
 					actualFilePath := filepath.Join("testdata", expectedFilePath)
-					actualFileContent, err := ioutil.ReadFile(actualFilePath)
+					actualFileContent, err := os.ReadFile(actualFilePath)
 					require.NoErrorf(t, err, "can't read actual testdata file %s", actualFilePath)
 					assert.Equalf(t, expectedFileContent, string(actualFileContent), "testdata file %s doesn't match", actualFilePath)
 				}

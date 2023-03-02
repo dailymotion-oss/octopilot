@@ -34,3 +34,18 @@ First, you'll need to set the `--github-auth-token` flag value to `app`, and the
 See GitHub's documentation for more details on:
 - [Creating a GitHub App](https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app)
 - [Authenticating with GitHub Apps](https://docs.github.com/en/developers/apps/building-github-apps/authenticating-with-github-apps)
+
+## Using octopilot with Enterprise GitHub
+
+By default, octopilot will operate on repositories hosted on https://github.com. Octopilot can work on repositories hosted on an Enterprise Github servers by adding the `--github-url` flag.
+This flag must be set to the URL of the Enterprise GitHub server (the URL used to browse to the GitHub server main page). Authentication is usually required using any of the authentication method described above.
+
+Example of use:
+
+```bash
+
+$ octopilot \
+    --github-url https://mygitserver.acme.com \
+    --repo "${ORG_NAME}/test-repo" \
+    ...
+```

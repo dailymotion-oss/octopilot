@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,7 +17,11 @@ import (
 )
 
 func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options GitHubOptions) (*git.Repository, error) {
-	url := fmt.Sprintf("https://github.com/%s.git", repo.FullName())
+	gitURL, err := url.JoinPath(options.URL, repo.GitFullName())
+	if err != nil {
+		// likely the Url passed is malformed
+		return nil, fmt.Errorf("invalid github url format: %w", err)
+	}
 
 	branch := "HEAD"
 	if b, ok := repo.Params["branch"]; ok && strings.TrimSpace(b) != "" {
@@ -24,7 +29,7 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	}
 	referenceName := plumbing.ReferenceName(branch)
 	logrus.WithFields(logrus.Fields{
-		"git-url":       url,
+		"git-url":       gitURL,
 		"git-reference": referenceName.String(),
 		"local-path":    localPath,
 	}).Trace("Cloning git repository")
@@ -36,18 +41,18 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 
 	gitRepo, err := git.PlainCloneContext(ctx, localPath, false, &git.CloneOptions{
 		ReferenceName: referenceName,
-		URL:           url,
+		URL:           gitURL,
 		Auth: &http.BasicAuth{
 			Username: "x-access-token", // For GitHub Apps, the username must be `x-access-token`. For Personal Tokens, it doesn't matter.
 			Password: token,
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to clone git repository from %s to %s: %w", url, localPath, err)
+		return nil, fmt.Errorf("failed to clone git repository from %s to %s: %w", gitURL, localPath, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"git-url":       url,
+		"git-url":       gitURL,
 		"git-reference": referenceName.String(),
 		"local-path":    localPath,
 	}).Debug("Git repository cloned")

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -135,7 +134,7 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
 		}
 
-		fileData, err := ioutil.ReadFile(filePath)
+		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
@@ -164,7 +163,7 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 			_, err = buffer.WriteTo(output)
 		} else {
 			// we need to write in-place in the same (source) file
-			err = ioutil.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
+			err = os.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
 		}
 		if err != nil {
 			return false, fmt.Errorf("failed to write yq result to the output: %w", err)

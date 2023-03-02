@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +37,7 @@ func TestSwitchBranch(t *testing.T) {
 				require.NoError(t, err)
 				f, err := workTree.Filesystem.Open("master-branch.txt")
 				require.NoError(t, err)
-				data, err := ioutil.ReadAll(f)
+				data, err := io.ReadAll(f)
 				require.NoError(t, err)
 				assert.Equal(t, "this is a file from the master branch\n", string(data))
 			},
@@ -58,7 +58,7 @@ func TestSwitchBranch(t *testing.T) {
 				require.NoError(t, err)
 				f, err := workTree.Filesystem.Open("update-branch.txt")
 				require.NoError(t, err)
-				data, err := ioutil.ReadAll(f)
+				data, err := io.ReadAll(f)
 				require.NoError(t, err)
 				assert.Equal(t, "this is a file from the update branch\n", string(data))
 			},

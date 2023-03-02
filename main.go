@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -49,6 +48,7 @@ func init() {
 	pflag.Int64Var(&options.GitHub.InstallationID, "github-installation-id", int64(getenvInt("GITHUB_INSTALLATION_ID")), "For the `app` GitHub auth method, contains the GitHubApp Installation ID. Default to the GITHUB_INSTALLATION_ID env var.")
 	pflag.StringVar(&options.GitHub.PrivateKey, "github-privatekey", os.Getenv("GITHUB_PRIVATEKEY"), "For the `app` GitHub auth method, contains the GitHubApp Private key file in PEM format. Default to the GITHUB_PRIVATEKEY env var.")
 	pflag.StringVar(&options.GitHub.PrivateKeyPath, "github-privatekey-path", os.Getenv("GITHUB_PRIVATEKEY_PATH"), "For the `app` GitHub auth method, contains the GitHubApp Private key file path `/some/key.pem` (used if the github-privatekey is empty). Default to the GITHUB_PRIVATEKEY_PATH env var.")
+	pflag.StringVar(&options.GitHub.URL, "github-url", repository.PublicGithubURL, `GitHub server URL`)
 
 	// pull-request flags
 	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "The title of the Pull Request to create. Default to the commit title.")
@@ -211,7 +211,7 @@ func printHelpOrVersion() {
 }
 
 func temporaryDirectory() string {
-	dir, err := ioutil.TempDir("", "octopilot")
+	dir, err := os.MkdirTemp("", "octopilot")
 	if err != nil {
 		dir = filepath.Join(os.TempDir(), "octopilot")
 	}

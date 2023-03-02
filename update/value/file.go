@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 )
 
@@ -30,7 +30,7 @@ func (v FileValuer) Value(_ context.Context, repoPath string) (string, error) {
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(repoPath, v.Path)
 	}
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", v.Path, err)
 	}

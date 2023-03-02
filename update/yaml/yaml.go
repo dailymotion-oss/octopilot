@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -102,7 +101,7 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
 		}
 
-		fileData, err := ioutil.ReadFile(filePath)
+		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
@@ -127,7 +126,7 @@ func (u *YamlUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			continue
 		}
 
-		err = ioutil.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
+		err = os.WriteFile(filePath, buffer.Bytes(), fileInfo.Mode())
 		if err != nil {
 			return false, fmt.Errorf("failed to write file %s: %w", filePath, err)
 		}

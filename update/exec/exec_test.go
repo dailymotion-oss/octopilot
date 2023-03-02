@@ -3,7 +3,6 @@ package exec
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -148,7 +147,7 @@ func TestUpdate(t *testing.T) {
 			},
 			expected: true,
 			extraCheck: func() bool {
-				actualFileContent, _ := ioutil.ReadFile(filepath.Join("testdata", "file-to-print.stdout"))
+				actualFileContent, _ := os.ReadFile(filepath.Join("testdata", "file-to-print.stdout"))
 				return bytes.Equal(actualFileContent, []byte("some content"))
 			},
 		},
@@ -165,7 +164,7 @@ func TestUpdate(t *testing.T) {
 			},
 			expected: true,
 			extraCheck: func() bool {
-				actualFileContent, _ := ioutil.ReadFile(filepath.Join("testdata", "ls-result.stdout"))
+				actualFileContent, _ := os.ReadFile(filepath.Join("testdata", "ls-result.stdout"))
 				return bytes.Equal(actualFileContent, []byte("sh-c-file-to-list.txt\n"))
 			},
 		},
@@ -179,7 +178,7 @@ func TestUpdate(t *testing.T) {
 				for filename, content := range test.files {
 					err := os.MkdirAll(filepath.Dir(filepath.Join("testdata", filename)), 0755)
 					require.NoErrorf(t, err, "can't create testdata directories for %s", filename)
-					err = ioutil.WriteFile(filepath.Join("testdata", filename), []byte(content), 0644)
+					err = os.WriteFile(filepath.Join("testdata", filename), []byte(content), 0644)
 					require.NoErrorf(t, err, "can't write testdata file %s", filename)
 				}
 			}
