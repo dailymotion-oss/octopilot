@@ -21,14 +21,6 @@ func InitExpressionParser() {
 	}
 }
 
-type xmlPreferences struct {
-	AttributePrefix string
-	ContentName     string
-	StrictMode      bool
-	KeepNamespace   bool
-	UseRawToken     bool
-}
-
 var log = logging.MustGetLogger("yq-lib")
 
 var PrettyPrintExp = `(... | (select(tag != "!!str"), select(tag == "!!str") | select(test("(?i)^(y|yes|n|no|on|off)$") | not))  ) style=""`
@@ -61,7 +53,7 @@ var subtractAssignOpType = &operationType{Type: "SUBTRACT_ASSIGN", NumArgs: 2, P
 
 var assignAttributesOpType = &operationType{Type: "ASSIGN_ATTRIBUTES", NumArgs: 2, Precedence: 40, Handler: assignAttributesOperator}
 var assignStyleOpType = &operationType{Type: "ASSIGN_STYLE", NumArgs: 2, Precedence: 40, Handler: assignStyleOperator}
-var assignVariableOpType = &operationType{Type: "ASSIGN_VARIABLE", NumArgs: 2, Precedence: 40, Handler: assignVariableOperator}
+var assignVariableOpType = &operationType{Type: "ASSIGN_VARIABLE", NumArgs: 2, Precedence: 40, Handler: useWithPipe}
 var assignTagOpType = &operationType{Type: "ASSIGN_TAG", NumArgs: 2, Precedence: 40, Handler: assignTagOperator}
 var assignCommentOpType = &operationType{Type: "ASSIGN_COMMENT", NumArgs: 2, Precedence: 40, Handler: assignCommentsOperator}
 var assignAnchorOpType = &operationType{Type: "ASSIGN_ANCHOR", NumArgs: 2, Precedence: 40, Handler: assignAnchorOperator}
@@ -88,6 +80,8 @@ var lengthOpType = &operationType{Type: "LENGTH", NumArgs: 0, Precedence: 50, Ha
 var lineOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: lineOperator}
 var columnOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: columnOperator}
 
+var expressionOpType = &operationType{Type: "EXP", NumArgs: 0, Precedence: 50, Handler: expressionOperator}
+
 var collectOpType = &operationType{Type: "COLLECT", NumArgs: 1, Precedence: 50, Handler: collectOperator}
 var mapOpType = &operationType{Type: "MAP", NumArgs: 1, Precedence: 50, Handler: mapOperator}
 var errorOpType = &operationType{Type: "ERROR", NumArgs: 1, Precedence: 50, Handler: errorOperator}
@@ -99,6 +93,8 @@ var formatDateTimeOpType = &operationType{Type: "FORMAT_DATE_TIME", NumArgs: 1, 
 var withDtFormatOpType = &operationType{Type: "WITH_DATE_TIME_FORMAT", NumArgs: 1, Precedence: 50, Handler: withDateTimeFormat}
 var nowOpType = &operationType{Type: "NOW", NumArgs: 0, Precedence: 50, Handler: nowOp}
 var tzOpType = &operationType{Type: "TIMEZONE", NumArgs: 1, Precedence: 50, Handler: tzOp}
+var fromUnixOpType = &operationType{Type: "FROM_UNIX", NumArgs: 0, Precedence: 50, Handler: fromUnixOp}
+var toUnixOpType = &operationType{Type: "TO_UNIX", NumArgs: 0, Precedence: 50, Handler: toUnixOp}
 
 var encodeOpType = &operationType{Type: "ENCODE", NumArgs: 0, Precedence: 50, Handler: encodeOperator}
 var decodeOpType = &operationType{Type: "DECODE", NumArgs: 0, Precedence: 50, Handler: decodeOperator}
@@ -139,6 +135,7 @@ var explodeOpType = &operationType{Type: "EXPLODE", NumArgs: 1, Precedence: 50, 
 var sortByOpType = &operationType{Type: "SORT_BY", NumArgs: 1, Precedence: 50, Handler: sortByOperator}
 var reverseOpType = &operationType{Type: "REVERSE", NumArgs: 0, Precedence: 50, Handler: reverseOperator}
 var sortOpType = &operationType{Type: "SORT", NumArgs: 0, Precedence: 50, Handler: sortOperator}
+var shuffleOpType = &operationType{Type: "SHUFFLE", NumArgs: 0, Precedence: 50, Handler: shuffleOperator}
 
 var sortKeysOpType = &operationType{Type: "SORT_KEYS", NumArgs: 1, Precedence: 50, Handler: sortKeysOperator}
 
@@ -161,6 +158,7 @@ var traverseArrayOpType = &operationType{Type: "TRAVERSE_ARRAY", NumArgs: 2, Pre
 
 var selfReferenceOpType = &operationType{Type: "SELF", NumArgs: 0, Precedence: 55, Handler: selfOperator}
 var valueOpType = &operationType{Type: "VALUE", NumArgs: 0, Precedence: 50, Handler: valueOperator}
+var referenceOpType = &operationType{Type: "REF", NumArgs: 0, Precedence: 50, Handler: referenceOperator}
 var envOpType = &operationType{Type: "ENV", NumArgs: 0, Precedence: 50, Handler: envOperator}
 var notOpType = &operationType{Type: "NOT", NumArgs: 0, Precedence: 50, Handler: notOperator}
 var emptyOpType = &operationType{Type: "EMPTY", Precedence: 50, Handler: emptyOperator}
@@ -241,13 +239,13 @@ func guessTagFromCustomType(node *yaml.Node) string {
 	if strings.HasPrefix(node.Tag, "!!") {
 		return node.Tag
 	} else if node.Value == "" {
-		log.Warning("node has no value to guess the type with")
+		log.Debug("guessTagFromCustomType: node has no value to guess the type with")
 		return node.Tag
 	}
 	dataBucket, errorReading := parseSnippet(node.Value)
 
 	if errorReading != nil {
-		log.Warning("could not guess underlying tag type %v", errorReading)
+		log.Debug("guessTagFromCustomType: could not guess underlying tag type %v", errorReading)
 		return node.Tag
 	}
 	guessedTag := unwrapDoc(dataBucket).Tag
@@ -256,14 +254,28 @@ func guessTagFromCustomType(node *yaml.Node) string {
 }
 
 func parseSnippet(value string) (*yaml.Node, error) {
-	decoder := NewYamlDecoder()
-	decoder.Init(strings.NewReader(value))
-	var dataBucket yaml.Node
-	err := decoder.Decode(&dataBucket)
-	if len(dataBucket.Content) == 0 {
+	if value == "" {
+		return &yaml.Node{
+			Kind: yaml.ScalarNode,
+			Tag:  "!!null",
+		}, nil
+	}
+	decoder := NewYamlDecoder(ConfiguredYamlPreferences)
+	err := decoder.Init(strings.NewReader(value))
+	if err != nil {
+		return nil, err
+	}
+	parsedNode, err := decoder.Decode()
+	if err != nil {
+		return nil, err
+	}
+	if len(parsedNode.Node.Content) == 0 {
 		return nil, fmt.Errorf("bad data")
 	}
-	return dataBucket.Content[0], err
+	result := unwrapDoc(parsedNode.Node)
+	result.Line = 0
+	result.Column = 0
+	return result, err
 }
 
 func recursiveNodeEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
@@ -326,7 +338,7 @@ func deepCloneWithOptions(node *yaml.Node, cloneContent bool) *yaml.Node {
 		Tag:         node.Tag,
 		Value:       node.Value,
 		Anchor:      node.Anchor,
-		Alias:       deepClone(node.Alias),
+		Alias:       node.Alias,
 		HeadComment: node.HeadComment,
 		LineComment: node.LineComment,
 		FootComment: node.FootComment,
@@ -358,8 +370,8 @@ func parseInt(numberString string) (int, error) {
 
 	if err != nil {
 		return 0, err
-	} else if parsed > math.MaxInt {
-		return 0, fmt.Errorf("%v is too big (larger than %v)", parsed, math.MaxInt)
+	} else if parsed > math.MaxInt || parsed < math.MinInt {
+		return 0, fmt.Errorf("%v is not within [%v, %v]", parsed, math.MinInt, math.MaxInt)
 	}
 
 	return int(parsed), err
@@ -408,6 +420,7 @@ func footComment(node *yaml.Node) string {
 }
 
 func createValueOperation(value interface{}, stringValue string) *Operation {
+	log.Debug("creating value op for string %v", stringValue)
 	var node = createScalarNode(value, stringValue)
 
 	return &Operation{
