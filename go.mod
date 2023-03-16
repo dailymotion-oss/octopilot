@@ -8,7 +8,7 @@ require (
 	github.com/cosiner/argv v0.1.1-0.20200416041250-86e3c689263e
 	github.com/go-git/go-git/v5 v5.6.0
 	github.com/google/go-github/v36 v36.0.0
-	github.com/imdario/mergo v0.3.13
+	github.com/imdario/mergo v0.3.14
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mikefarah/yq/v4 v4.28.2
 	github.com/mitchellh/go-homedir v1.1.0
