@@ -61,13 +61,25 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		s.savedPos = nil
 		return tk
 	}
-	size := len(ctx.buf)
+	line := s.line
+	column := s.column - len(ctx.buf)
+	level := s.indentLevel
+	if ctx.isSaveIndentMode() {
+		line -= s.newLineCount(ctx.buf)
+		column = strings.Index(string(ctx.obuf), string(ctx.buf)) + 1
+		// Since we are in a literal, folded or raw folded
+		// we can use the indent level from the last token.
+		last := ctx.lastToken()
+		if last != nil { // The last token should never be nil here.
+			level = last.Position.IndentLevel + 1
+		}
+	}
 	return ctx.bufferedToken(&token.Position{
-		Line:        s.line,
-		Column:      s.column - size,
-		Offset:      s.offset - size,
+		Line:        line,
+		Column:      column,
+		Offset:      s.offset - len(ctx.buf),
 		IndentNum:   s.indentNum,
-		IndentLevel: s.indentLevel,
+		IndentLevel: level,
 	})
 }
 
@@ -472,6 +484,10 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 			return
 		}
 	}
+	// document ends with comment.
+	value := string(ctx.src[ctx.idx:])
+	tk = token.Comment(value, string(ctx.obuf), s.pos())
+	pos = len([]rune(value)) + 1
 	return
 }
 
@@ -733,6 +749,12 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				if tk != nil {
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
+				} else if tk := ctx.lastToken(); tk != nil {
+					// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
+					// Therefore, we need to check the last token.
+					if tk.Indicator == token.QuotedScalarIndicator {
+						s.prevIndentColumn = tk.Position.Column
+					}
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
 				s.progressColumn(ctx, 1)
@@ -805,6 +827,11 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				pos += progress
+				// If the non-whitespace character immediately following the quote is ':', the quote should be treated as a map key.
+				// Therefore, do not return and continue processing as a normal map key.
+				if ctx.currentCharWithSkipWhitespace() == ':' {
+					continue
+				}
 				return
 			}
 		case '\r', '\n':
