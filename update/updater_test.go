@@ -78,6 +78,17 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name:    "single helm deleter",
+			updates: []string{"helm(dependency=my-chart)="},
+			expected: []Updater{
+				&helm.HelmUpdater{
+					Dependency: "my-chart",
+					Valuer:     value.StringValuer(""),
+					Indent:     2,
+				},
+			},
+		},
+		{
 			name:    "single yq updater",
 			updates: []string{`yq(file=values.yaml,expression='.path.to.subkey = "value"')`},
 			expected: []Updater{
@@ -89,6 +100,30 @@ func TestParse(t *testing.T) {
 					Trim:         false,
 					UnwrapScalar: true,
 					Indent:       2,
+				},
+			},
+		},
+		{
+			name:    "single regex updater",
+			updates: []string{`regex(file=helmfile.yaml,pattern='chart: example/my-chart\s+version: \"(.*)\"')=1.2.3`},
+			expected: []Updater{
+				&regex.RegexUpdater{
+					FilePath: "helmfile.yaml",
+					Pattern:  `chart: example/my-chart\s+version: \"(.*)\"`,
+					Regexp:   regexp.MustCompile(`chart: example/my-chart\s+version: \"(.*)\"`),
+					Valuer:   value.StringValuer("1.2.3"),
+				},
+			},
+		},
+		{
+			name:    "single regex deleter",
+			updates: []string{`regex(file=helmfile.yaml,pattern='chart: example/my-chart\s+version: \"(.*)\"')=`},
+			expected: []Updater{
+				&regex.RegexUpdater{
+					FilePath: "helmfile.yaml",
+					Pattern:  `chart: example/my-chart\s+version: \"(.*)\"`,
+					Regexp:   regexp.MustCompile(`chart: example/my-chart\s+version: \"(.*)\"`),
+					Valuer:   value.StringValuer(""),
 				},
 			},
 		},

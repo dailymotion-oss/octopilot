@@ -21,7 +21,7 @@ var (
 	updaterRegexp = regexp.MustCompile(`^(?P<name>[a-z]+)\((?P<params>.+)\)`)
 
 	// name(params)=value
-	updaterWithValueRegexp = regexp.MustCompile(`^(?P<name>[a-z]+)\((?P<params>.+)\)=(?P<value>.+)$`)
+	updaterWithValueRegexp = regexp.MustCompile(`^(?P<name>[a-z]+)\((?P<params>.+)\)=(?P<value>.*)$`)
 )
 
 // Updater updates a git repository
