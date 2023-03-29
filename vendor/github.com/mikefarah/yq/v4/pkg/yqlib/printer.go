@@ -27,15 +27,17 @@ const (
 	TSVOutputFormat
 	XMLOutputFormat
 	Base64OutputFormat
+	UriOutputFormat
+	ShOutputFormat
 )
 
 func OutputFormatFromString(format string) (PrinterOutputFormat, error) {
 	switch format {
-	case "yaml", "y":
+	case "yaml", "y", "yml":
 		return YamlOutputFormat, nil
 	case "json", "j":
 		return JSONOutputFormat, nil
-	case "props", "p":
+	case "props", "p", "properties":
 		return PropsOutputFormat, nil
 	case "csv", "c":
 		return CSVOutputFormat, nil
@@ -111,7 +113,7 @@ func (p *resultsPrinter) PrintResults(matchingNodes *list.List) error {
 
 		mappedDoc := el.Value.(*CandidateNode)
 		log.Debug("-- print sep logic: p.firstTimePrinting: %v, previousDocIndex: %v, mappedDoc.Document: %v", p.firstTimePrinting, p.previousDocIndex, mappedDoc.Document)
-
+		log.Debug("%v", NodeToString(mappedDoc))
 		writer, errorWriting := p.printerWriter.GetWriter(mappedDoc)
 		if errorWriting != nil {
 			return errorWriting
