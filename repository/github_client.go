@@ -31,11 +31,20 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 		return nil, "", err
 	}
 	httpClient = httpretry.NewCustomClient(httpClient)
-	ghc := github.NewClient(httpClient)
+	var ghc *github.Client
+	if ghOptions.isEnterprise() {
+		var err error
+		ghc, err = github.NewEnterpriseClient(ghOptions.URL, ghOptions.URL, httpClient)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to create an enterprise client: %w", err)
+		}
+	} else {
+		ghc = github.NewClient(httpClient)
+	}
 	return ghc, token, nil
 }
 
-func githubTokenClient(ctx context.Context, token string) (*http.Client, string, error) { // nolint: unparam // the returned error is not used, but we need it for the method signature
+func githubTokenClient(ctx context.Context, token string) (*http.Client, string, error) { //nolint: unparam // the returned error is not used, but we need it for the method signature
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	return oauth2.NewClient(ctx, tokenSource), token, nil
 }

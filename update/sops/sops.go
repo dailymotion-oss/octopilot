@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -144,7 +143,7 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 			return false, fmt.Errorf("failed to generate re-encrypted file %s: %w", filePath, err)
 		}
 
-		err = ioutil.WriteFile(filePath, encryptedFile, fileInfo.Mode())
+		err = os.WriteFile(filePath, encryptedFile, fileInfo.Mode())
 		if err != nil {
 			return false, fmt.Errorf("failed to write re-encrypted data to file %s: %w", filePath, err)
 		}

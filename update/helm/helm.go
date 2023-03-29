@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -75,7 +74,7 @@ func (u *HelmUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 }
 
 func (u *HelmUpdater) updateChartDependenciesFile(filePath string, version string) (bool, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -74,7 +73,7 @@ func (u RegexUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to access file %s: %w", relFilePath, err)
 		}
 
-		content, err := ioutil.ReadFile(filePath)
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			return false, fmt.Errorf("failed to read file %s: %w", relFilePath, err)
 		}
@@ -105,7 +104,7 @@ func (u RegexUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 			return false, fmt.Errorf("failed to copy existing content to the buffer: %w", err)
 		}
 
-		if err = ioutil.WriteFile(filePath, updatedContent.Bytes(), fileInfo.Mode()); err != nil {
+		if err = os.WriteFile(filePath, updatedContent.Bytes(), fileInfo.Mode()); err != nil {
 			return false, fmt.Errorf("failed to write updated content to file %s: %w", relFilePath, err)
 		}
 

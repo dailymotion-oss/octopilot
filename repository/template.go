@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -54,7 +54,7 @@ func tplReadFileFunc(repoPath string) func(string) string {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(repoPath, path)
 		}
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			panic(fmt.Sprintf("failed to readFile %s: %v", path, err))
 		}

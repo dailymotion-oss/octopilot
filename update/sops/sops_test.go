@@ -2,7 +2,6 @@ package sops
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -234,7 +233,7 @@ newtoken: new-token-value
 					require.NoErrorf(t, err, "failed to encrypt file %s", filename)
 					encryptedData, err := store.EmitEncryptedFile(tree)
 					require.NoErrorf(t, err, "failed to generate encrypted file %s", filename)
-					err = ioutil.WriteFile(filepath.Join("testdata", filename), encryptedData, 0644)
+					err = os.WriteFile(filepath.Join("testdata", filename), encryptedData, 0644)
 					require.NoErrorf(t, err, "failed to write encrypted data to file %s", filename)
 				}
 			}
@@ -247,7 +246,7 @@ newtoken: new-token-value
 				require.NoError(t, err)
 				assert.Equal(t, test.expected, actual)
 
-				actualEncryptedData, err := ioutil.ReadFile(filepath.Join("testdata", test.updater.FilePath))
+				actualEncryptedData, err := os.ReadFile(filepath.Join("testdata", test.updater.FilePath))
 				require.NoError(t, err, "can't read actual encrypted file")
 				actualCleartextData, err := decrypt.DataWithFormat(actualEncryptedData, formats.FormatForPath(test.updater.FilePath))
 				require.NoError(t, err, "can't decrypt actual encrypted content")

@@ -210,3 +210,8 @@ func (r Repository) adjustOptionsFromParams(options *UpdateOptions) {
 func (r Repository) FullName() string {
 	return fmt.Sprintf("%s/%s", r.Owner, r.Name)
 }
+
+// FullName returns the repository full name with the git extension
+func (r Repository) GitFullName() string {
+	return fmt.Sprintf("%s/%s.git", r.Owner, r.Name)
+}

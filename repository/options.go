@@ -14,6 +14,8 @@ const (
 	ReplaceUpdateOperation = "replace"
 	PrependUpdateOperation = "prepend"
 	AppendUpdateOperation  = "append"
+
+	PublicGithubURL = "https://github.com"
 )
 
 // UpdateOptions is the options entrypoint for a git repo update
@@ -42,6 +44,7 @@ type GitOptions struct {
 
 // GitHubOptions holds all the options required to perform github operations: auth, PRs, ...
 type GitHubOptions struct {
+	URL            string
 	AuthMethod     string
 	Token          string
 	AppID          int64
@@ -49,6 +52,10 @@ type GitHubOptions struct {
 	PrivateKey     string
 	PrivateKeyPath string
 	PullRequest    PullRequestOptions
+}
+
+func (o *GitHubOptions) isEnterprise() bool {
+	return o.URL != PublicGithubURL
 }
 
 // PullRequestOptions holds all the options required to perform github PR operations: title/body, merge, ...

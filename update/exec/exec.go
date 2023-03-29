@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -121,7 +120,7 @@ func (u *ExecUpdater) writeCmdOutputToFile(output bytes.Buffer, repoPath, filePa
 		return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(filePath), err)
 	}
 
-	err = ioutil.WriteFile(filePath, output.Bytes(), 0644)
+	err = os.WriteFile(filePath, output.Bytes(), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write output of cmd '%s' to %s: %w", u.Command, filePath, err)
 	}
