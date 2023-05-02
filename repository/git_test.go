@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
 	"github.com/mholt/archiver"
 	"github.com/stretchr/testify/assert"
@@ -93,6 +94,86 @@ func TestSwitchBranch(t *testing.T) {
 			require.NoError(t, err)
 
 			test.validateFunc(t, repo)
+		})
+	}
+}
+
+func TestParseSigningKey(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                 string
+		signingKeyPath       string
+		signingKeyPassphrase string
+		validateFunc         func(*testing.T, *openpgp.Entity, error)
+	}{
+		{
+			name: "no-signing-key-path",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.Nil(t, signingKey)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:           "invalid-signing-key-path",
+			signingKeyPath: "testdata/parse-signing-key/unknown-dir/private-key.pgp",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.Nil(t, signingKey)
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:           "invalid-signing-key-format",
+			signingKeyPath: "testdata/parse-signing-key/invalid-format/private-key.pgp",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.Nil(t, signingKey)
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:           "valid-unencrypted",
+			signingKeyPath: "testdata/parse-signing-key/valid-unencrypted/private-key.pgp",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.NotNil(t, signingKey)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:           "valid-encrypted-without-passphrase",
+			signingKeyPath: "testdata/parse-signing-key/valid-encrypted/private-key.pgp",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.Nil(t, signingKey)
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:                 "valid-encrypted-with-passphrase",
+			signingKeyPath:       "testdata/parse-signing-key/valid-encrypted/private-key.pgp",
+			signingKeyPassphrase: "fake-passphrase",
+			validateFunc: func(t *testing.T, signingKey *openpgp.Entity, err error) {
+				t.Helper()
+
+				assert.NotNil(t, signingKey)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for i := range tests {
+		test := tests[i]
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			signingKey, err := parseSigningKey(test.signingKeyPath, test.signingKeyPassphrase)
+			test.validateFunc(t, signingKey, err)
 		})
 	}
 }

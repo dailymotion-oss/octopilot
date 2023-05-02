@@ -80,6 +80,8 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CommitBody, "git-commit-body", "", "Body of the git commit.")
 	pflag.StringVar(&options.UpdateOptions.Git.CommitFooter, "git-commit-footer", defaultCommitFooter(), "Footer of the git commit.")
 	pflag.StringVar(&options.UpdateOptions.Git.BranchPrefix, "git-branch-prefix", "octopilot-", "Prefix of the new branch to create.")
+	pflag.StringVar(&options.UpdateOptions.Git.SigningKeyPath, "git-signing-key-path", os.Getenv("GIT_SIGNING_KEY_PATH"), "Path to the private key file to sign commits or tags (e.g. `/some/key.pgp`). Default to the GIT_SIGNING_KEY_PATH env var.")
+	pflag.StringVar(&options.UpdateOptions.Git.SigningKeyPassphrase, "git-signing-key-passphrase", os.Getenv("GIT_SIGNING_KEY_PASSPHRASE"), "Passphrase to decrypt the signing key. Default to the GIT_SIGNING_KEY_PASSPHRASE env var.")
 
 	pflag.StringVar(&options.Strategy, "strategy", "reset", `Strategy to use when creating/updating the Pull Requests: either "reset" (reset any existing PR from the current base branch), "append" (append new commit to any existing PR) or "recreate" (always create a new PR).`)
 	pflag.BoolVar(&options.KeepFiles, "keep-files", false, "Keep the cloned repositories on disk. If false, the files will be deleted at the end of the process.")

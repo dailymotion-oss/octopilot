@@ -1,13 +1,17 @@
 package repository
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -146,6 +150,11 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 		commitMsg.WriteString(options.Git.CommitFooter)
 	}
 
+	signingKey, err := parseSigningKey(options.Git.SigningKeyPath, options.Git.SigningKeyPassphrase)
+	if err != nil {
+		return false, err
+	}
+
 	commit, err := workTree.Commit(commitMsg.String(),
 		&git.CommitOptions{
 			All: options.Git.StageAllChanged,
@@ -159,6 +168,7 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 				Email: options.Git.CommitterEmail,
 				When:  now,
 			},
+			SignKey: signingKey,
 		},
 	)
 	if err != nil {
@@ -170,6 +180,33 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 	}).Debug("Git commit")
 
 	return true, nil
+}
+
+func parseSigningKey(signingKeyPath, signingKeyPassphrase string) (*openpgp.Entity, error) {
+	if signingKeyPath == "" {
+		return nil, nil
+	}
+
+	b, err := os.ReadFile(signingKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read signing key file %q: %w", signingKeyPath, err)
+	}
+
+	el, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read signing key file content: %w", err)
+	}
+	signingKey := el[0]
+
+	if signingKeyPassphrase != "" {
+		if err := signingKey.PrivateKey.Decrypt([]byte(signingKeyPassphrase)); err != nil {
+			return nil, fmt.Errorf("failed to decrypt signing key: %w", err)
+		}
+	} else if signingKey.PrivateKey.Encrypted {
+		return nil, errors.New("signing key is encrypted, please provide a passphrase")
+	}
+
+	return signingKey, nil
 }
 
 type pushOptions struct {

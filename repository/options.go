@@ -29,17 +29,19 @@ type UpdateOptions struct {
 
 // GitOptions holds all the options required to perform git operations: clone, commit, ...
 type GitOptions struct {
-	CloneDir        string
-	StagePatterns   []string
-	StageAllChanged bool
-	AuthorName      string
-	AuthorEmail     string
-	CommitterName   string
-	CommitterEmail  string
-	CommitTitle     string
-	CommitBody      string
-	CommitFooter    string
-	BranchPrefix    string
+	CloneDir             string
+	StagePatterns        []string
+	StageAllChanged      bool
+	AuthorName           string
+	AuthorEmail          string
+	CommitterName        string
+	CommitterEmail       string
+	CommitTitle          string
+	CommitBody           string
+	CommitFooter         string
+	BranchPrefix         string
+	SigningKeyPath       string
+	SigningKeyPassphrase string
 }
 
 // GitHubOptions holds all the options required to perform github operations: auth, PRs, ...
