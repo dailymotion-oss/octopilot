@@ -17,7 +17,7 @@ require (
 	github.com/rs/xid v1.5.0
 	github.com/sirupsen/logrus v1.9.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/writeas/go-strip-markdown v2.0.1+incompatible
 	github.com/ybbus/httpretry v1.0.2
 	github.com/zoumo/goset v0.2.0
