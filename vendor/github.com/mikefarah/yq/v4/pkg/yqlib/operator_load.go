@@ -9,6 +9,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var LoadYamlPreferences = YamlPreferences{
+	LeadingContentPreProcessing: false,
+	PrintDocSeparators:          true,
+	UnwrapScalar:                true,
+	EvaluateTogether:            false,
+}
+
 type loadPrefs struct {
 	loadAsString bool
 	decoder      Decoder
@@ -27,6 +34,9 @@ func loadString(filename string) (*CandidateNode, error) {
 }
 
 func loadYaml(filename string, decoder Decoder) (*CandidateNode, error) {
+	if decoder == nil {
+		return nil, fmt.Errorf("could not load %s", filename)
+	}
 
 	file, err := os.Open(filename) // #nosec
 	if err != nil {
@@ -43,12 +53,13 @@ func loadYaml(filename string, decoder Decoder) (*CandidateNode, error) {
 		// return null candidate
 		return &CandidateNode{Node: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null"}}, nil
 	} else if documents.Len() == 1 {
-		return documents.Front().Value.(*CandidateNode), nil
+		candidate := documents.Front().Value.(*CandidateNode)
+		return candidate, nil
 
 	} else {
 		sequenceNode := &CandidateNode{Node: &yaml.Node{Kind: yaml.SequenceNode}}
 		for doc := documents.Front(); doc != nil; doc = doc.Next() {
-			sequenceNode.Node.Content = append(sequenceNode.Node.Content, doc.Value.(*CandidateNode).Node)
+			sequenceNode.Node.Content = append(sequenceNode.Node.Content, unwrapDoc(doc.Value.(*CandidateNode).Node))
 		}
 		return sequenceNode, nil
 	}
