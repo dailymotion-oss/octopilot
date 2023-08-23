@@ -18,6 +18,7 @@ import (
 // ExecUpdater is an updater that executes an external command to update the repository.
 type ExecUpdater struct {
 	Command string
+	Path    string
 	Args    []string
 	Stdout  string
 	Stderr  string
@@ -32,6 +33,8 @@ func NewUpdater(params map[string]string) (*ExecUpdater, error) {
 	if len(updater.Command) == 0 {
 		return nil, errors.New("missing cmd parameter")
 	}
+
+	updater.Path = params["path"]
 
 	if args, ok := params["args"]; ok {
 		argv, err := argv.Argv(args, func(backquoted string) (string, error) {
@@ -72,13 +75,13 @@ func (u *ExecUpdater) Update(ctx context.Context, repoPath string) (bool, error)
 		stderr bytes.Buffer
 	)
 	cmd := exec.CommandContext(ctx, u.Command, u.Args...)
-	cmd.Dir = repoPath
+	cmd.Dir = repoPath + u.Path
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
-		return false, fmt.Errorf("failed to run cmd '%s' with args %v - got stdout [%s] and stderr [%s]: %w", u.Command, u.Args, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err)
+		return false, fmt.Errorf("failed to run cmd '%s' with args %v in path: %s - got stdout [%s] and stderr [%s]: %w", u.Command, u.Args, u.Path, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err)
 	}
 
 	if len(u.Stdout) > 0 {

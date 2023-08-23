@@ -58,6 +58,25 @@ func TestNewUpdater(t *testing.T) {
 			},
 		},
 		{
+			name: "valid params with cmd, path, args, stdout, stderr and timeout",
+			params: map[string]string{
+				"cmd":     "ls",
+				"path":    ".",
+				"args":    "-lh",
+				"stdout":  "/path/to/some/file",
+				"stderr":  "/path/to/some/other/file",
+				"timeout": "3s",
+			},
+			expected: &ExecUpdater{
+				Command: "ls",
+				Path:    ".",
+				Args:    []string{"-lh"},
+				Stdout:  "/path/to/some/file",
+				Stderr:  "/path/to/some/other/file",
+				Timeout: 3 * time.Second,
+			},
+		},
+		{
 			name:             "nil params",
 			expectedErrorMsg: "missing cmd parameter",
 		},
@@ -130,8 +149,8 @@ func TestUpdate(t *testing.T) {
 			},
 			expected: false,
 			expectedErrorMessages: []string{
-				"failed to run cmd 'rm' with args [does-not-exists.txt] - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
-				"failed to run cmd 'rm' with args [does-not-exists.txt] - got stdout [] and stderr [rm: cannot remove 'does-not-exists.txt': No such file or directory]: exit status 1",
+				"failed to run cmd 'rm' with args [does-not-exists.txt] in path:  - got stdout [] and stderr [rm: does-not-exists.txt: No such file or directory]: exit status 1",
+				"failed to run cmd 'rm' with args [does-not-exists.txt] in path:  - got stdout [] and stderr [rm: cannot remove 'does-not-exists.txt': No such file or directory]: exit status 1",
 			},
 		},
 		{
