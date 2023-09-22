@@ -1,0 +1,29 @@
+name: Setup Octopilot
+description: Download and install Octopilot (https://github.com/dailymotion-oss/octopilot)
+inputs:
+  version:
+    required: false
+    default: "1.2.23"
+    description: Octopilot version to install (https://github.com/dailymotion-oss/octopilot/releases)
+runs:
+  using: composite
+  steps:
+    - name: Download
+      shell: bash
+      run: |
+        curl -fLO https://github.com/dailymotion-oss/octopilot/releases/download/v${VERSION}/octopilot_${VERSION}_checksums.txt
+        curl -fLO https://github.com/dailymotion-oss/octopilot/releases/download/v${VERSION}/octopilot_${VERSION}_linux_amd64
+        check=$(sha256sum -c octopilot_${VERSION}_checksums.txt 2>&1 || true)
+        grep "OK" <<< "$check"
+      env:
+        VERSION: ${{ inputs.version }}
+    - name: Add to $PATH
+      shell: bash
+      run: |
+        mkdir -p .octopilot/bin
+        mv octopilot_${VERSION}_linux_amd64 .octopilot/bin/octopilot
+        chmod +x .octopilot/bin/octopilot
+        realpath .octopilot/bin >> "$GITHUB_PATH"
+      env:
+        VERSION: ${{ inputs.version }}
+ 
