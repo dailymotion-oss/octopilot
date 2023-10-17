@@ -29,8 +29,9 @@ var options struct {
 	updates []string
 	repos   []string
 	repository.UpdateOptions
-	logLevel    string
-	failOnError bool
+	logLevel           string
+	failOnError        bool
+	maxConcurrentRepos int
 }
 
 func init() {
@@ -89,6 +90,7 @@ func init() {
 	pflag.StringVar(&options.logLevel, "log-level", "info", "Log level. Supported values: trace, debug, info, warning, error, fatal, panic.")
 
 	pflag.BoolVar(&options.failOnError, "fail-on-error", false, "Exit with error code 1 if any repository update fails.")
+	pflag.IntVar(&options.maxConcurrentRepos, "max-concurrent-repos", 0, "Maximum number of repositories to handle in parallel. Default to unlimited")
 	pflag.BoolP("help", "h", false, "Display this help message.")
 	pflag.Bool("version", false, "Display the version and exit.")
 
@@ -130,10 +132,22 @@ func main() {
 	logrus.WithField("repositories-count", len(repositories)).Trace("Starting updates")
 	var wg sync.WaitGroup
 	errors := make(chan error, len(repositories))
+	var workers chan struct{}
+	if options.maxConcurrentRepos > 0 {
+		workers = make(chan struct{}, options.maxConcurrentRepos)
+	}
 	for _, repo := range repositories {
 		wg.Add(1)
+		if workers != nil {
+			workers <- struct{}{}
+		}
 		go func(repo repository.Repository) {
-			defer wg.Done()
+			defer func() {
+				if workers != nil {
+					<-workers
+				}
+				wg.Done()
+			}()
 			logrus.WithField("repository", repo.FullName()).Trace("Starting repository update")
 			updated, err := repo.Update(ctx, updaters, options.UpdateOptions)
 			if err != nil {
