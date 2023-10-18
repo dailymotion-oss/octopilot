@@ -11,17 +11,16 @@ import (
 )
 
 type yamlEncoder struct {
-	indent             int
-	colorise           bool
-	printDocSeparators bool
-	unwrapScalar       bool
+	indent   int
+	colorise bool
+	prefs    YamlPreferences
 }
 
-func NewYamlEncoder(indent int, colorise bool, printDocSeparators bool, unwrapScalar bool) Encoder {
+func NewYamlEncoder(indent int, colorise bool, prefs YamlPreferences) Encoder {
 	if indent < 0 {
 		indent = 0
 	}
-	return &yamlEncoder{indent, colorise, printDocSeparators, unwrapScalar}
+	return &yamlEncoder{indent, colorise, prefs}
 }
 
 func (ye *yamlEncoder) CanHandleAliases() bool {
@@ -29,7 +28,7 @@ func (ye *yamlEncoder) CanHandleAliases() bool {
 }
 
 func (ye *yamlEncoder) PrintDocumentSeparator(writer io.Writer) error {
-	if ye.printDocSeparators {
+	if ye.prefs.PrintDocSeparators {
 		log.Debug("-- writing doc sep")
 		if err := writeString(writer, "---\n"); err != nil {
 			return err
@@ -39,7 +38,6 @@ func (ye *yamlEncoder) PrintDocumentSeparator(writer io.Writer) error {
 }
 
 func (ye *yamlEncoder) PrintLeadingContent(writer io.Writer, content string) error {
-	// log.Debug("headcommentwas [%v]", content)
 	reader := bufio.NewReader(strings.NewReader(content))
 
 	for {
@@ -48,7 +46,7 @@ func (ye *yamlEncoder) PrintLeadingContent(writer io.Writer, content string) err
 		if errReading != nil && !errors.Is(errReading, io.EOF) {
 			return errReading
 		}
-		if strings.Contains(readline, "$yqDocSeperator$") {
+		if strings.Contains(readline, "$yqDocSeparator$") {
 
 			if err := ye.PrintDocumentSeparator(writer); err != nil {
 				return err
@@ -62,7 +60,7 @@ func (ye *yamlEncoder) PrintLeadingContent(writer io.Writer, content string) err
 
 		if errors.Is(errReading, io.EOF) {
 			if readline != "" {
-				// the last comment we read didn't have a new line, put one in
+				// the last comment we read didn't have a newline, put one in
 				if err := writeString(writer, "\n"); err != nil {
 					return err
 				}
@@ -76,7 +74,7 @@ func (ye *yamlEncoder) PrintLeadingContent(writer io.Writer, content string) err
 
 func (ye *yamlEncoder) Encode(writer io.Writer, node *yaml.Node) error {
 
-	if node.Kind == yaml.ScalarNode && ye.unwrapScalar {
+	if node.Kind == yaml.ScalarNode && ye.prefs.UnwrapScalar {
 		return writeString(writer, node.Value+"\n")
 	}
 

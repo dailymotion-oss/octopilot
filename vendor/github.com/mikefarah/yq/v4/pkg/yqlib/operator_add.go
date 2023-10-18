@@ -98,7 +98,7 @@ func addScalars(context Context, target *CandidateNode, lhs *yaml.Node, rhs *yam
 
 	// if the lhs is a string, it might be a timestamp in a custom format.
 	if lhsTag == "!!str" && context.GetDateTimeLayout() != time.RFC3339 {
-		_, err := time.Parse(context.GetDateTimeLayout(), lhs.Value)
+		_, err := parseDateTime(context.GetDateTimeLayout(), lhs.Value)
 		isDateTime = err == nil
 	}
 
@@ -107,7 +107,11 @@ func addScalars(context Context, target *CandidateNode, lhs *yaml.Node, rhs *yam
 
 	} else if lhsTag == "!!str" {
 		target.Node.Tag = lhs.Tag
-		target.Node.Value = lhs.Value + rhs.Value
+		if rhsTag == "!!null" {
+			target.Node.Value = lhs.Value
+		} else {
+			target.Node.Value = lhs.Value + rhs.Value
+		}
 	} else if rhsTag == "!!str" {
 		target.Node.Tag = rhs.Tag
 		target.Node.Value = lhs.Value + rhs.Value
@@ -152,7 +156,7 @@ func addDateTimes(layout string, target *CandidateNode, lhs *yaml.Node, rhs *yam
 		return fmt.Errorf("unable to parse duration [%v]: %w", rhs.Value, err)
 	}
 
-	currentTime, err := time.Parse(layout, lhs.Value)
+	currentTime, err := parseDateTime(layout, lhs.Value)
 	if err != nil {
 		return err
 	}
