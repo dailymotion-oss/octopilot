@@ -3,20 +3,31 @@ description: Download and install Octopilot (https://github.com/dailymotion-oss/
 inputs:
   version:
     required: false
-    default: "1.2.23"
-    description: Octopilot version to install (https://github.com/dailymotion-oss/octopilot/releases)
+    description: "Octopilot version to install, e.g. '1.2.23' (https://github.com/dailymotion-oss/octopilot/releases)"
 runs:
   using: composite
   steps:
+    - name: Determine version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        if [ -z "${VERSION}" ]; then
+          echo "Looking for latest version of Octopilot at https://github.com/dailymotion-oss/octopilot/releases/latest"
+          VERSION=$(curl -sI https://github.com/dailymotion-oss/octopilot/releases/latest | grep "location: " | sed 's:.*/::' | tr -d '\r')
+        fi
+        # Remove any 'v' prefix:
+        VERSION="${VERSION/#v}"
+        echo "Found Octopilot version '${VERSION}'."
+        echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
     - name: Download
       shell: bash
       run: |
+        echo "Downloading Octopilot version '${VERSION}' from https://github.com/dailymotion-oss/octopilot/releases/tag/v${VERSION}"
         curl -fLO https://github.com/dailymotion-oss/octopilot/releases/download/v${VERSION}/octopilot_${VERSION}_checksums.txt
         curl -fLO https://github.com/dailymotion-oss/octopilot/releases/download/v${VERSION}/octopilot_${VERSION}_linux_amd64
         check=$(sha256sum -c octopilot_${VERSION}_checksums.txt 2>&1 || true)
         grep "OK" <<< "$check"
-      env:
-        VERSION: ${{ inputs.version }}
     - name: Add to $PATH
       shell: bash
       run: |
@@ -24,6 +35,4 @@ runs:
         mv octopilot_${VERSION}_linux_amd64 .octopilot/bin/octopilot
         chmod +x .octopilot/bin/octopilot
         realpath .octopilot/bin >> "$GITHUB_PATH"
-      env:
-        VERSION: ${{ inputs.version }}
  
