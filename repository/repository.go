@@ -23,6 +23,28 @@ var (
 	repoWithNameRegexp = regexp.MustCompile(`^(?P<owner>[A-Za-z0-9_\-]+)/(?P<name>[A-Za-z0-9._\-]+)(?:\((?P<params>.+)\))?$`)
 )
 
+// SearchType represents the type of search to be performed.
+type SearchType int
+
+const (
+	// Repositories is a search type for repositories.
+	Repositories SearchType = iota
+	// Code is a search type for code.
+	Code
+)
+
+const (
+	// used as a search type for repositories in the GitHub search.
+	githubRepositoriesSearch = "repositories"
+	// used as a search type for code in the GitHub search.
+	githubCodeSearch = "code"
+)
+
+var searchTypeMap = map[string]SearchType{
+	githubRepositoriesSearch: Repositories,
+	githubCodeSearch:         Code,
+}
+
 // Repository is a representation of a GitHub repository.
 type Repository struct {
 	Owner  string
@@ -60,12 +82,14 @@ func Parse(ctx context.Context, repos []string, githubOpts GitHubOptions) ([]Rep
 			})
 		}
 	}
-	return repositories, nil
+
+	return removeDuplicate(repositories), nil
 }
 
 func discoverRepositoriesFrom(ctx context.Context, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
+	searchType := parseSearchType(params["searchtype"])
 	if query, ok := params["query"]; ok {
-		return discoverRepositoriesFromQuery(ctx, query, params, githubOpts)
+		return discoverRepositoriesFromQuery(ctx, searchType, query, params, githubOpts)
 	}
 
 	if envVar, ok := params["env"]; ok {
