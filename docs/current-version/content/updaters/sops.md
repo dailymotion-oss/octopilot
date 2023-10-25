@@ -28,7 +28,7 @@ The syntax is: `sops(params)=value` - you can read more about the value in the [
 
 It supports the following parameters:
 
-- `file` (string): mandatory path to the sops-encrypted file to update. Can be a file pattern - such as `config/secrets.*`. If it's a relative path, it will be relative to the root of the cloned git repository.
+- `file` (string): mandatory path to the file to update. Can be a file pattern - such as `config/secrets.*` to match files in the same directory, or `config/**/secrets.*` using double asterisks (**) to match files in subdirectories. If it's a relative path, it will be relative to the root of the cloned git repository. For more information on using file patterns, you can refer to the [go-zglob documentation](https://github.com/mattn/go-zglob).
 - `key` (string): mandatory key to update in the file(s).
 
 Note that depending on the sops backend you use (KMS, age, vault, ...) you might need to set some environment variables, such as:

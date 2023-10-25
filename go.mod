@@ -10,6 +10,7 @@ require (
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/google/go-github/v36 v36.0.0
 	github.com/imdario/mergo v0.3.16
+	github.com/mattn/go-zglob v0.0.4
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mikefarah/yq/v4 v4.28.2
 	github.com/mitchellh/go-homedir v1.1.0
@@ -35,7 +36,7 @@ require (
 	github.com/Azure/azure-sdk-for-go v63.3.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.26 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.9.18 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.5 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
@@ -67,7 +68,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/goccy/go-yaml v1.9.5 // indirect
-	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

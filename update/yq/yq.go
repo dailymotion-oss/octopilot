@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dailymotion-oss/octopilot/internal/glob"
 	"github.com/dailymotion-oss/octopilot/internal/yaml"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	gologging "gopkg.in/op/go-logging.v1"
@@ -97,7 +98,7 @@ func (u *YQUpdater) Update(_ context.Context, repoPath string) (bool, error) {
 		output = f
 	}
 
-	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
+	filePaths, err := glob.ExpandGlobPattern(repoPath, u.FilePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}
