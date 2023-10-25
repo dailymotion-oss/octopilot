@@ -8,7 +8,8 @@ Octopilot can also be used with a "dynamic" list of repositories: repositories t
 
 It can retrieve the list of repositories to update from:
 - one or more **environment variables**
-- one or more [GitHub Search Query](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-for-repositories)
+- one or more [GitHub Repositories Search Query](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-for-repositories)
+- one or more [GitHub Code Search Query](https://docs.github.com/en/search-github/searching-on-github/searching-code)
 
 ## Using environment variables
 
@@ -34,20 +35,22 @@ Note that each repository listed in an environment variable supports all the par
 
 ## Using GitHub Search Query
 
-A more powerful feature is the ability to load a list of repositories from a [GitHub Search Query](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-for-repositories), such as:
+A more powerful feature is the ability to load a list of repositories from a [GitHub Repositories Search Query](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-for-repositories) or a [GitHub Code Search Query](https://docs.github.com/en/search-github/searching-on-github/searching-code), such as:
 
 ```bash
 $ octopilot \
     --repo "discover-from(query=org:my-github-org topic:some-topic)" \
     --repo "discover-from(query=org:my-github-org in:readme some-specific-content-in-the-readme,draft=true)" \
-    --repo "discover-from(query=org:my-github-org language:java is:private mirror:false archived:false,merge=true)"
+    --repo "discover-from(query=org:my-github-org language:java is:private mirror:false archived:false,merge=true)" \
+    --repo "discover-from(searchtype=code,query=org:my-org filename:my-file path:dir-path in-file-text)" \
+    --repo "discover-from(searchtype=code,query=org:my-org filename:my-file path:dir-path fork:true)"
 ```
 
 At runtime, Octopilot will use the GitHub API to retrieve the list of repositories matching a given query. This is useful when you have a common library used/imported by many repositories, and you want to create a PR to update the version when there is a new release of your lib. Instead of hardcoding the list of "dependant" repositories in your library repository, you can use a GitHub Search Query to find all repositories with a specific topic, or specific content in the description of the repo, or specific content in the README.md file of the repo, and so on. So "dependant" repositories can easily opt-in to get automatic PRs just by adding a topic for example.
 
 It supports the following parameters:
-
-- `query` (string): the name of the environment variable to use, to retrieve the list of repositories.
+- `searchtype` (string): represents the type of github search to be performed. Only `code` and `repositories` are availables. Default to `repositories`.
+- `query` (string): Specifies search criteria for listing repositories, including filters for file contents, location, language, topic, and more.
 - `merge` (boolean): if `true`, then the PRs created on the repositories from this query will be automatically merged - see the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge` flag for the repositories retrieved from this query.
 - `draft` (boolean): if `true`, then the PRs will be created as [draft PRs](https://github.blog/2019-02-14-introducing-draft-pull-requests/) on GitHub. You will need to manually mark them as "ready for review" before being able to merge them. It overrides the value of the `--pr-draft` flag for the repositories retrieved from this query.
 - `branch` (string): the name of the base branch to use when cloning the repositories. Default to the `HEAD` branch - which means the default branch configured in GitHub: usually `main` or `master`.

@@ -46,6 +46,8 @@ $ octopilot \
     --repo "my-org/another-repo(merge=true)" \
     --repo "discover-from(env=PROMOTE_TO_REPOSITORIES)" \
     --repo "discover-from(query=org:my-org topic:my-topic)" \
+    --repo "discover-from(searchtype=code,query=org:my-org filename:my-file path:dir-path in-file-text)" \
+    --repo "discover-from(searchtype=code,query=org:my-org filename:my-file path:dir-path fork:true)" \
     --update "yaml(file=config.yaml,path='version')=file(path=VERSION)" \
     --update "yq(file=helmfile.yaml,expression='(.releases[] | select(.chart == \"repo/my-chart\") | .version ) = strenv(VERSION)')" \
     --update "sops(file=secrets.yaml,key=path.to.base64encodedCertificateKey)=$(kubectl -n cert-manager get secrets tls-myapp -o template='{{index .data \"tls.key\"}}')" \
