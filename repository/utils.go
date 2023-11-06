@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/go-github/v36/github"
 )
@@ -14,15 +15,16 @@ func removeDuplicate(inputList []Repository) []Repository {
 		return inputList
 	}
 
-	allKeys := make(map[string]bool)
-	repositories := []Repository{}
-	for _, r := range inputList {
-		key := fmt.Sprintf("%s-%s", r.Owner, r.Name)
-		if _, ok := allKeys[key]; !ok {
-			allKeys[key] = true
-			repositories = append(repositories, r)
+	seen := make(map[string]bool)
+	isDuplicate := func(repo Repository) bool {
+		key := fmt.Sprintf("%s-%s", repo.Owner, repo.Name)
+		if seen[key] {
+			return true
 		}
+		seen[key] = true
+		return false
 	}
+	repositories := slices.DeleteFunc(inputList, isDuplicate)
 
 	return repositories
 }
