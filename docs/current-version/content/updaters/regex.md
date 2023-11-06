@@ -25,7 +25,7 @@ The syntax is: `regex(params)=value` - you can read more about the value in the 
 
 It supports the following parameters:
 
-- `file` (string): mandatory path to the file to update. Can be a file pattern - such as `files/**/*.txt`. If it's a relative path, it will be relative to the root of the cloned git repository.
+- `file` (string): mandatory path to the file to update. Can be a file pattern - such as `files/*.txt` to match files in the same directory, or `files/**/*.txt` using double asterisks (**) to match files in subdirectories. If it's a relative path, it will be relative to the root of the cloned git repository. For more information on using file patterns, you can refer to the [go-zglob documentation](https://github.com/mattn/go-zglob).
 - `pattern` (string): mandatory regex pattern to find and replace something in the file(s). The pattern must be in the [Golang syntax](https://golang.org/pkg/regexp/syntax/). If this pattern includes a capturing group, then it will be replaced by the provided value.
 
 A few things you can do with the regex updater:

@@ -16,6 +16,7 @@ import (
 	"go.mozilla.org/sops/v3/cmd/sops/formats"
 	"go.mozilla.org/sops/v3/keyservice"
 
+	"github.com/dailymotion-oss/octopilot/internal/glob"
 	"github.com/dailymotion-oss/octopilot/update/value"
 )
 
@@ -57,7 +58,7 @@ func (u SopsUpdater) Update(ctx context.Context, repoPath string) (bool, error) 
 		return false, fmt.Errorf("failed to get value: %w", err)
 	}
 
-	filePaths, err := filepath.Glob(filepath.Join(repoPath, u.FilePath))
+	filePaths, err := glob.ExpandGlobPattern(repoPath, u.FilePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to expand glob pattern %s: %w", u.FilePath, err)
 	}

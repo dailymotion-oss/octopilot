@@ -26,7 +26,7 @@ The syntax is: `yaml(params)=value` - you can read more about the value in the [
 
 It supports the following parameters:
 
-- `file` (string): mandatory path to the YAML file to update. Can be a file pattern - such as `config/*.yaml`. If it's a relative path, it will be relative to the root of the cloned git repository.
+- `file` (string): mandatory path to the file to update. Can be a file pattern - such as `config/*.yaml` to match files in the same directory, or `config/**/*.yaml` using double asterisks (**) to match files in subdirectories. If it's a relative path, it will be relative to the root of the cloned git repository. For more information on using file patterns, you can refer to the [go-zglob documentation](https://github.com/mattn/go-zglob).
 - `path` (string): mandatory path to the key to update in the YAML file(s). We support [yq v3 path expressions](https://mikefarah.gitbook.io/yq/v/v3.x/usage/path-expressions) or [yq v4 syntax](https://mikefarah.gitbook.io/yq/operators/traverse-read).
 - `indent` (int): optional number of spaces used for indentation when writing the YAML file(s) after update. Default to `2`.
 - `trim` (boolean): if `true`, the content will be "trimmed" before being written to disk - to avoid extra line break at the end of the file for example.

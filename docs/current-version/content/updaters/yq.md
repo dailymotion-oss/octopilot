@@ -16,7 +16,7 @@ $ octopilot \
 
 It supports the following parameters:
 
-- `file` (string): mandatory path to the YAML (or JSON) file to update. Can be a file pattern - such as `config/*.yaml`. If it's a relative path, it will be relative to the root of the cloned git repository.
+- `file` (string): mandatory path to the file to update. Can be a file pattern - such as `config/*.yaml` to match files in the same directory, or `config/**/*.yaml` using double asterisks (**) to match files in subdirectories. If it's a relative path, it will be relative to the root of the cloned git repository. For more information on using file patterns, you can refer to the [go-zglob documentation](https://github.com/mattn/go-zglob).
 - `expression` (string): mandatory [yq v4 expression](https://mikefarah.gitbook.io/yq/commands/evaluate) that will be evaluated against each file.
 - `output` (string): optional output of the result. By default the result is written to the source file - in-place editing. But you can send the result to `stdout`, `stderr` or a specific file.
 - `json` (boolean): if `true`, then the output will be written in JSON format instead of YAML format.
