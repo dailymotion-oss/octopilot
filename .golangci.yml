@@ -22,16 +22,16 @@ linters:
 
 linters-settings:
   gosimple:
-    go: "1.19"
+    go: "1.21"
     checks: ["all"]
   staticcheck:
-    go: "1.19"
+    go: "1.21"
     checks: ["all"]
   stylecheck:
-    go: "1.19"
+    go: "1.21"
     checks: ["all"]
   unused:
-    go: "1.19"
+    go: "1.21"
   errorlint:
     errorf: true
     asserts: true

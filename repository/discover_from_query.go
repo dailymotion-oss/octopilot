@@ -7,8 +7,10 @@ import (
 	"github.com/google/go-github/v36/github"
 )
 
-func discoverRepositoriesFromQuery(ctx context.Context, query string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
-	repos := []Repository{}
+func discoverRepositoriesFromQuery(ctx context.Context, searchType SearchType, query string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
+	var repos []Repository
+	var resp *github.Response
+
 	ghClient, _, err := githubClient(ctx, githubOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github client: %w", err)
@@ -22,17 +24,14 @@ func discoverRepositoriesFromQuery(ctx context.Context, query string, params map
 				PerPage: 100,
 			},
 		}
-		result, resp, err := ghClient.Search.Repositories(ctx, query, opts)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list all repositories matching query %s on GitHub (page %d): %w", query, page, err)
+		if searchType == Code {
+			repos, resp, err = searchCodeRepositories(ctx, ghClient, query, opts, params)
+		} else {
+			repos, resp, err = searchRepositories(ctx, ghClient, query, opts, params)
 		}
 
-		for _, ghRepo := range result.Repositories {
-			repos = append(repos, Repository{
-				Owner:  ghRepo.Owner.GetLogin(),
-				Name:   ghRepo.GetName(),
-				Params: params,
-			})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list all repositories matching query %s on GitHub (page %d): %w", query, page, err)
 		}
 
 		page = resp.NextPage
