@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/magiconair/properties"
-	yaml "gopkg.in/yaml.v3"
 )
 
 type propertiesEncoder struct {
@@ -37,7 +36,7 @@ func (pe *propertiesEncoder) PrintLeadingContent(writer io.Writer, content strin
 		if errReading != nil && !errors.Is(errReading, io.EOF) {
 			return errReading
 		}
-		if strings.Contains(readline, "$yqDocSeperator$") {
+		if strings.Contains(readline, "$yqDocSeparator$") {
 
 			if err := pe.PrintDocumentSeparator(writer); err != nil {
 				return err
@@ -51,7 +50,7 @@ func (pe *propertiesEncoder) PrintLeadingContent(writer io.Writer, content strin
 
 		if errors.Is(errReading, io.EOF) {
 			if readline != "" {
-				// the last comment we read didn't have a new line, put one in
+				// the last comment we read didn't have a newline, put one in
 				if err := writeString(writer, "\n"); err != nil {
 					return err
 				}
@@ -62,10 +61,15 @@ func (pe *propertiesEncoder) PrintLeadingContent(writer io.Writer, content strin
 	return nil
 }
 
-func (pe *propertiesEncoder) Encode(writer io.Writer, node *yaml.Node) error {
+func (pe *propertiesEncoder) Encode(writer io.Writer, node *CandidateNode) error {
+
+	if node.Kind == ScalarNode {
+		return writeString(writer, node.Value+"\n")
+	}
+
 	mapKeysToStrings(node)
 	p := properties.NewProperties()
-	err := pe.doEncode(p, node, "")
+	err := pe.doEncode(p, node, "", nil)
 	if err != nil {
 		return err
 	}
@@ -74,10 +78,19 @@ func (pe *propertiesEncoder) Encode(writer io.Writer, node *yaml.Node) error {
 	return err
 }
 
-func (pe *propertiesEncoder) doEncode(p *properties.Properties, node *yaml.Node, path string) error {
-	p.SetComment(path, headAndLineComment(node))
+func (pe *propertiesEncoder) doEncode(p *properties.Properties, node *CandidateNode, path string, keyNode *CandidateNode) error {
+
+	comments := ""
+	if keyNode != nil {
+		// include the key node comments if present
+		comments = headAndLineComment(keyNode)
+	}
+	comments = comments + headAndLineComment(node)
+	commentsWithSpaces := strings.ReplaceAll(comments, "\n", "\n ")
+	p.SetComments(path, strings.Split(commentsWithSpaces, "\n"))
+
 	switch node.Kind {
-	case yaml.ScalarNode:
+	case ScalarNode:
 		var nodeValue string
 		if pe.unwrapScalar || !strings.Contains(node.Value, " ") {
 			nodeValue = node.Value
@@ -86,14 +99,12 @@ func (pe *propertiesEncoder) doEncode(p *properties.Properties, node *yaml.Node,
 		}
 		_, _, err := p.Set(path, nodeValue)
 		return err
-	case yaml.DocumentNode:
-		return pe.doEncode(p, node.Content[0], path)
-	case yaml.SequenceNode:
+	case SequenceNode:
 		return pe.encodeArray(p, node.Content, path)
-	case yaml.MappingNode:
+	case MappingNode:
 		return pe.encodeMap(p, node.Content, path)
-	case yaml.AliasNode:
-		return pe.doEncode(p, node.Alias, path)
+	case AliasNode:
+		return pe.doEncode(p, node.Alias, path, nil)
 	default:
 		return fmt.Errorf("Unsupported node %v", node.Tag)
 	}
@@ -106,9 +117,9 @@ func (pe *propertiesEncoder) appendPath(path string, key interface{}) string {
 	return fmt.Sprintf("%v.%v", path, key)
 }
 
-func (pe *propertiesEncoder) encodeArray(p *properties.Properties, kids []*yaml.Node, path string) error {
+func (pe *propertiesEncoder) encodeArray(p *properties.Properties, kids []*CandidateNode, path string) error {
 	for index, child := range kids {
-		err := pe.doEncode(p, child, pe.appendPath(path, index))
+		err := pe.doEncode(p, child, pe.appendPath(path, index), nil)
 		if err != nil {
 			return err
 		}
@@ -116,11 +127,11 @@ func (pe *propertiesEncoder) encodeArray(p *properties.Properties, kids []*yaml.
 	return nil
 }
 
-func (pe *propertiesEncoder) encodeMap(p *properties.Properties, kids []*yaml.Node, path string) error {
+func (pe *propertiesEncoder) encodeMap(p *properties.Properties, kids []*CandidateNode, path string) error {
 	for index := 0; index < len(kids); index = index + 2 {
 		key := kids[index]
 		value := kids[index+1]
-		err := pe.doEncode(p, value, pe.appendPath(path, key.Value))
+		err := pe.doEncode(p, value, pe.appendPath(path, key.Value), key)
 		if err != nil {
 			return err
 		}
