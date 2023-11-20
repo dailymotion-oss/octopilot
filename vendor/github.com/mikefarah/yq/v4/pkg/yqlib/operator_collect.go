@@ -2,12 +2,10 @@ package yqlib
 
 import (
 	"container/list"
-
-	yaml "gopkg.in/yaml.v3"
 )
 
 func collectTogether(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (*CandidateNode, error) {
-	collectedNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	collectedNode := &CandidateNode{Kind: SequenceNode, Tag: "!!seq"}
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 		collectExpResults, err := d.GetMatchingNodes(context.SingleReadonlyChildContext(candidate), expressionNode)
@@ -17,19 +15,19 @@ func collectTogether(d *dataTreeNavigator, context Context, expressionNode *Expr
 		for result := collectExpResults.MatchingNodes.Front(); result != nil; result = result.Next() {
 			resultC := result.Value.(*CandidateNode)
 			log.Debugf("found this: %v", NodeToString(resultC))
-			collectedNode.Content = append(collectedNode.Content, unwrapDoc(resultC.Node))
+			collectedNode.AddChild(resultC)
 		}
 	}
-	return &CandidateNode{Node: collectedNode}, nil
+	return collectedNode, nil
 }
 
 func collectOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 	log.Debugf("-- collectOperation")
 
 	if context.MatchingNodes.Len() == 0 {
-		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Value: "[]"}
-		candidate := &CandidateNode{Node: node}
-		return context.SingleChildContext(candidate), nil
+		log.Debugf("nothing to collect")
+		node := &CandidateNode{Kind: SequenceNode, Tag: "!!seq", Value: "[]"}
+		return context.SingleChildContext(node), nil
 	}
 
 	var evaluateAllTogether = true
@@ -41,6 +39,7 @@ func collectOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 	}
 
 	if evaluateAllTogether {
+		log.Debugf("collect together")
 		collectedNode, err := collectTogether(d, context, expressionNode.RHS)
 		if err != nil {
 			return Context{}, err
@@ -53,10 +52,11 @@ func collectOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
 
-		collectedNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		collectCandidate := candidate.CreateReplacement(collectedNode)
+		collectCandidate := candidate.CreateReplacement(SequenceNode, "!!seq", "")
 
-		collectExpResults, err := d.GetMatchingNodes(context.SingleReadonlyChildContext(candidate), expressionNode.RHS)
+		log.Debugf("collect rhs: %v", expressionNode.RHS.Operation.toString())
+
+		collectExpResults, err := d.GetMatchingNodes(context.SingleChildContext(candidate), expressionNode.RHS)
 		if err != nil {
 			return Context{}, err
 		}
@@ -64,8 +64,9 @@ func collectOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 		for result := collectExpResults.MatchingNodes.Front(); result != nil; result = result.Next() {
 			resultC := result.Value.(*CandidateNode)
 			log.Debugf("found this: %v", NodeToString(resultC))
-			collectedNode.Content = append(collectedNode.Content, unwrapDoc(resultC.Node))
+			collectCandidate.AddChild(resultC)
 		}
+		log.Debugf("done collect rhs: %v", expressionNode.RHS.Operation.toString())
 
 		results.PushBack(collectCandidate)
 	}
