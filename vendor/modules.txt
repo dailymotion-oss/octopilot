@@ -88,9 +88,6 @@ github.com/ProtonMail/go-crypto/openpgp/s2k
 # github.com/a8m/envsubst v1.3.0
 ## explicit; go 1.17
 github.com/a8m/envsubst/parse
-# github.com/acomagu/bufpipe v1.0.4
-## explicit; go 1.12
-github.com/acomagu/bufpipe
 # github.com/alecthomas/participle/v2 v2.0.0-beta.5
 ## explicit; go 1.18
 github.com/alecthomas/participle/v2/lexer
@@ -218,7 +215,7 @@ github.com/go-git/go-billy/v5/helper/polyfill
 github.com/go-git/go-billy/v5/memfs
 github.com/go-git/go-billy/v5/osfs
 github.com/go-git/go-billy/v5/util
-# github.com/go-git/go-git/v5 v5.10.0
+# github.com/go-git/go-git/v5 v5.10.1
 ## explicit; go 1.19
 github.com/go-git/go-git/v5
 github.com/go-git/go-git/v5/config
@@ -265,6 +262,7 @@ github.com/go-git/go-git/v5/utils/merkletrie/index
 github.com/go-git/go-git/v5/utils/merkletrie/internal/frame
 github.com/go-git/go-git/v5/utils/merkletrie/noder
 github.com/go-git/go-git/v5/utils/sync
+github.com/go-git/go-git/v5/utils/trace
 # github.com/goccy/go-json v0.9.11
 ## explicit; go 1.12
 github.com/goccy/go-json
@@ -534,7 +532,7 @@ github.com/shopspring/decimal
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/skeema/knownhosts v1.2.0
+# github.com/skeema/knownhosts v1.2.1
 ## explicit; go 1.17
 github.com/skeema/knownhosts
 # github.com/spf13/cast v1.3.1
