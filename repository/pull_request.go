@@ -82,6 +82,11 @@ func (r Repository) createPullRequest(ctx context.Context, options GitHubOptions
 		return nil, fmt.Errorf("failed to add comments to Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
+	err = r.addPullRequestAssignees(ctx, options, pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
 	return pr, nil
 }
 
@@ -154,6 +159,11 @@ func (r Repository) updatePullRequest(ctx context.Context, options GitHubOptions
 		return nil, fmt.Errorf("failed to add comments to Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
+	err = r.addPullRequestAssignees(ctx, options, pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
 	return pr, nil
 }
 
@@ -210,7 +220,7 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 			Body: github.String(comment),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to add labels %v on PR %s: %w", options.PullRequest.Labels, pr.GetHTMLURL(), err)
+			return fmt.Errorf("failed to add comment %v on PR %s: %w", github.String(comment), pr.GetHTMLURL(), err)
 		}
 
 		logrus.WithFields(logrus.Fields{
@@ -228,6 +238,41 @@ func (r Repository) addPullRequestComments(ctx context.Context, options GitHubOp
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
+
+	return nil
+}
+
+func (r Repository) addPullRequestAssignees(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	if len(options.PullRequest.Assignees) == 0 {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Debug("No assignees to add to the Pull Request")
+		return nil
+	}
+
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":   r.FullName(),
+		"pull-request": pr.GetHTMLURL(),
+		"assignees":    options.PullRequest.Assignees,
+	}).Trace("Adding assignees to the Pull Request")
+
+	_, _, err = client.Issues.AddAssignees(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Assignees)
+
+	if err != nil {
+		return fmt.Errorf("failed to add assignees %v on PR %s: %w", options.PullRequest.Assignees, pr.GetHTMLURL(), err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":   r.FullName(),
+		"pull-request": pr.GetHTMLURL(),
+		"assignees":    options.PullRequest.Assignees,
+	}).Debug("Assignees added to the Pull Request")
 
 	return nil
 }

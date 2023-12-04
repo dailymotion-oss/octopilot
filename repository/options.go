@@ -69,6 +69,7 @@ type PullRequestOptions struct {
 	Body                 string
 	BodyUpdateOperation  string
 	Comments             []string
+	Assignees            []string
 	Draft                bool
 	Merge                PullRequestMergeOptions
 }

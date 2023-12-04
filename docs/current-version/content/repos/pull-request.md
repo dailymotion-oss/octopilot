@@ -25,10 +25,10 @@ In detail, it will:
 - reset the branch to the base branch - usually `main` or `master`
 - run the [updaters](#updaters)
 - [commit](#commit) the changes and (force) push the commit
-- update the existing Pull Request title/body/labels/comments or create a new one
+- update the existing Pull Request title/body/labels/comments/assignees or create a new one
 
 Note that you can control how the existing Pull Request will be updated. For both the title and body, you can either:
-- **ignore** the new changes. The existing PR won't be changed - except for the labels and comments, and of course the commit.
+- **ignore** the new changes. The existing PR won't be changed - except for the labels, comments, assignees, and of course the commit.
 - **replace** the title and/or body with the new ones. This is the default for the **reset** strategy.
 - **prepend** the title and/or body with the new ones. This is mostly useful for the body.
 - **append** the title and/or body with the new ones. This is mostly useful for the body.
@@ -42,10 +42,10 @@ In detail, it will:
 - find a "matching" Pull Request - based on the pre-configured labels. If there is a matching Pull Request, it will switch to the PR's branch. Otherwise it will just create a new branch from the base branch, and switch to it.
 - run the [updaters](#updaters)
 - [commit](#commit) the changes and push the commit
-- update the existing Pull Request title/body/labels/comments or create a new one
+- update the existing Pull Request title/body/labels/comments/asignees or create a new one
 
 Note that you can control how the existing Pull Request will be updated. For both the title and body, you can either:
-- **ignore** the new changes. The existing PR won't be changed - except for the labels and comments, and of course the commit. This is the default for the **append** strategy.
+- **ignore** the new changes. The existing PR won't be changed - except for the labels, comments, assignees, and of course the commit. This is the default for the **append** strategy.
 - **replace** the title and/or body with the new ones.
 - **prepend** the title and/or body with the new ones. This is mostly useful for the body.
 - **append** the title and/or body with the new ones. This is mostly useful for the body.
@@ -72,6 +72,7 @@ You can control how the Pull Requests will be created or updated using the follo
 - `--pr-body` (string): the body of the Pull Request. Default to the commit body and the commit footer. Note that you can use the [templating](#templating) feature here.
 - `--pr-body-update-operation` (string): the type of operation when updating a Pull Request's body: either `ignore` (keep old value), `replace`, `prepend` or `append`. Default is: `ignore` for "append" strategy, `replace` for "reset" strategy, and not applicable for "recreate" strategy.
 - `--pr-comment` (array of string): optional list of comments to add to the Pull Request.
+- `--pr-assignees` (array of string): optional list of assignees (Github usernames) to add to the Pull Request.
 - `--pr-labels` (array of string): optional list of labels to set on the pull requests, and used to find existing pull requests to update. Default to `["octopilot-update"]`.
 - `--pr-base-branch` (string): name of the branch used as a base when creating pull requests. Default to `master`.
 - `--pr-draft` (bool): if enabled, the Pull Request will be created as a draft - instead of regular ones. It means that the PRs can't be merged until marked as "ready for review". Default to `false`.

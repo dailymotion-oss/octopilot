@@ -57,6 +57,7 @@ func init() {
 	pflag.StringVar(&options.GitHub.PullRequest.Body, "pr-body", "", "The body of the Pull Request to create. Default to the commit body and the commit footer.")
 	pflag.StringVar(&options.GitHub.PullRequest.BodyUpdateOperation, "pr-body-update-operation", "", `The type of operation when updating the PR's body: "ignore" (keep old value), "replace", "prepend" or "append". Default is: "ignore" for "append" strategy, "replace" for "reset" strategy, and not applicable for "recreate" strategy.`)
 	pflag.StringArrayVar(&options.GitHub.PullRequest.Comments, "pr-comment", []string{}, "List of comments to add to the Pull Request.")
+	pflag.StringSliceVar(&options.GitHub.PullRequest.Assignees, "pr-assignees", []string{}, "List of users to assign PR to.")
 	pflag.StringSliceVar(&options.GitHub.PullRequest.Labels, "pr-labels", []string{"octopilot-update"}, "List of labels set on the pull requests, and used to find existing pull requests to update.")
 	pflag.StringVar(&options.GitHub.PullRequest.BaseBranch, "pr-base-branch", "master", "Name of the branch used as a base when creating pull requests.")
 	pflag.BoolVar(&options.GitHub.PullRequest.Draft, "pr-draft", false, `Create "draft" Pull Requests, instead of regular ones. It means that the PRs can't be merged until marked as "ready for review".`)
