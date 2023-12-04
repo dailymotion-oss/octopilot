@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/google/go-github/v36/github"
 	"github.com/sirupsen/logrus"
-	"github.com/zoumo/goset"
 )
 
 func (r Repository) findMatchingPullRequest(ctx context.Context, options GitHubOptions) (*github.PullRequest, error) {
@@ -368,8 +366,8 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 		return fmt.Errorf("failed to create github client: %w", err)
 	}
 
-	// first, ensure PR is mergeable
-	// https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests
+	// wait until PR is mergeable
+	// i.e. no conflicts with target branch & all checks from statuses API, checks API & other branch protection rules are satisfied
 	for {
 		logrus.WithFields(logrus.Fields{
 			"repository":   r.FullName(),
@@ -392,15 +390,17 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 			return nil
 		}
 
-		if pr.Mergeable != nil {
-			if !pr.GetMergeable() {
-				return fmt.Errorf("pull request %s is not mergeable: %s", pr.GetHTMLURL(), pr.GetMergeableState())
-			}
+		if pr.Mergeable != nil && !pr.GetMergeable() {
+			return fmt.Errorf("pull request %s is not mergeable: %s", pr.GetHTMLURL(), pr.GetMergeableState())
+		}
+
+		if pr.GetMergeableState() == "clean" {
 			logrus.WithFields(logrus.Fields{
 				"repository":   r.FullName(),
 				"pull-request": pr.GetHTMLURL(),
 			}).Debug("Pull Request is mergeable")
-			break
+
+			return nil
 		}
 
 		if time.Since(startTime) > options.PullRequest.Merge.PollTimeout {
@@ -411,78 +411,14 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 			"repository":      r.FullName(),
 			"pull-request":    pr.GetHTMLURL(),
 			"mergeable-state": pr.GetMergeableState(),
-		}).Debug("Pull Request mergeable status is not available yet")
+		}).Debug("Pull Request is not mergeable yet")
+
 		logrus.WithFields(logrus.Fields{
 			"repository":   r.FullName(),
 			"pull-request": pr.GetHTMLURL(),
 		}).Tracef("Waiting %s until next GitHub request...", options.PullRequest.Merge.PollInterval.String())
 		time.Sleep(options.PullRequest.Merge.PollInterval)
 	}
-
-	// then, ensure the status(es) are success
-	// https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref
-	requiredStatusChecks, _, err := client.Repositories.GetRequiredStatusChecks(ctx, r.Owner, r.Name, pr.GetBase().GetRef())
-	if err != nil {
-		if errIsStatusNotFound(err) {
-			// Branch doesn't have "require status checks" configured
-			requiredStatusChecks = &github.RequiredStatusChecks{Contexts: []string{}}
-		} else {
-			return fmt.Errorf("failed to retrieve the required status checks for branch %s: %w", pr.GetBase().GetRef(), err)
-		}
-	}
-	for {
-		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": pr.GetHTMLURL(),
-		}).Trace("Getting Pull Request statuses checks")
-		combinedStatus, _, err := client.Repositories.GetCombinedStatus(ctx, r.Owner, r.Name, pr.GetHead().GetSHA(), &github.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to retrieve combined status of Pull Request %s for ref %s: %w", pr.GetHTMLURL(), pr.GetHead().GetSHA(), err)
-		}
-
-		var (
-			pendingStatuses []string
-			missingStatuses = goset.NewSetFrom(requiredStatusChecks.Contexts)
-		)
-		for _, status := range combinedStatus.Statuses {
-			missingStatuses.Remove(status.GetContext())
-			if status.GetContext() == "tide" {
-				continue
-			}
-			switch status.GetState() {
-			case "error", "failure":
-				return fmt.Errorf("pull request %s can't be merged: status %s is in %s state: %s", pr.GetHTMLURL(), status.GetContext(), status.GetState(), status.GetDescription())
-			case "pending":
-				pendingStatuses = append(pendingStatuses, status.GetContext())
-			case "success":
-			}
-		}
-		if len(pendingStatuses) == 0 && missingStatuses.Len() == 0 {
-			logrus.WithFields(logrus.Fields{
-				"repository":   r.FullName(),
-				"pull-request": pr.GetHTMLURL(),
-			}).Debug("Pull Request can be merged")
-			break
-		}
-
-		if time.Since(startTime) > options.PullRequest.Merge.PollTimeout {
-			return fmt.Errorf("timeout after %s waiting for Pull Request %s statuses checks", options.PullRequest.Merge.PollTimeout.String(), pr.GetHTMLURL())
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"repository":       r.FullName(),
-			"pull-request":     pr.GetHTMLURL(),
-			"pending-statuses": pendingStatuses,
-			"missing-statuses": missingStatuses.ToStrings(),
-		}).Debug("Pull Request has missing or pending statuses")
-		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": pr.GetHTMLURL(),
-		}).Tracef("Waiting %s until next GitHub request...", options.PullRequest.Merge.PollInterval.String())
-		time.Sleep(options.PullRequest.Merge.PollInterval)
-	}
-
-	return nil
 }
 
 func prHasLabels(pr *github.PullRequest, labels []string) bool {
@@ -496,15 +432,6 @@ func prHasLabels(pr *github.PullRequest, labels []string) bool {
 		}
 	}
 	return matchingLabels == len(labels)
-}
-
-func errIsStatusNotFound(err error) bool {
-	var githubErr *github.ErrorResponse
-	if !errors.As(err, &githubErr) {
-		return false
-	}
-
-	return githubErr.Response.StatusCode == http.StatusNotFound
 }
 
 // shouldRetryMerge returns true if we should retry the merge operation at a later time

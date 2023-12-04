@@ -21,7 +21,6 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/writeas/go-strip-markdown v2.0.1+incompatible
 	github.com/ybbus/httpretry v1.0.2
-	github.com/zoumo/goset v0.2.0
 	go.mozilla.org/sops/v3 v3.7.3
 	golang.org/x/oauth2 v0.15.0
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473

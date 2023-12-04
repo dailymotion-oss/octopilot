@@ -563,9 +563,6 @@ github.com/xi2/xz
 # github.com/ybbus/httpretry v1.0.2
 ## explicit; go 1.19
 github.com/ybbus/httpretry
-# github.com/zoumo/goset v0.2.0
-## explicit; go 1.12
-github.com/zoumo/goset
 # go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a
 ## explicit
 go.mozilla.org/gopgagent
