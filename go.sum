@@ -483,8 +483,6 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMx
 github.com/ybbus/httpretry v1.0.2 h1:QIU8dfSF+kZx5xO1bUcLKyxYNEUsLX/hsN6gN6Up1So=
 github.com/ybbus/httpretry v1.0.2/go.mod h1:fwOEa1URVFYikEqgQLCBtLyExFt5danZrxF5xF2qZh8=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-github.com/zoumo/goset v0.2.0 h1:mflvfwZfKiayxR8/7fFBhvWHzhXU+aVP2nOzTEKVTfU=
-github.com/zoumo/goset v0.2.0/go.mod h1:9N4gYaiVAbD/SytgmvFUlacbp1lSItmws1xNdzVslH4=
 go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a h1:N7VD+PwpJME2ZfQT8+ejxwA4Ow10IkGbU0MGf94ll8k=
 go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a/go.mod h1:YDKUvO0b//78PaaEro6CAPH6NqohCmL2Cwju5XI2HoE=
 go.mozilla.org/sops/v3 v3.7.3 h1:CYx02LnWTATWv6NqWJIt4JCKVKSnGV+MsRiDpvwWQhg=
