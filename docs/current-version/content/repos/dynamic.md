@@ -28,6 +28,8 @@ It supports the following parameters:
 - `env` (string): the name of the environment variable to use, to retrieve the list of repositories.
 - `sep` (string): the separator between each repository, default to `" "` (space).
 - `merge` (boolean): if `true`, then the PRs created on the repositories from this env var will be automatically merged - see the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge` flag for the repositories defined in this env var.
+- `mergeauto` (boolean): if `true`, then the PR will merged by Github's auto-merge PR feature. See the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge-auto` flag for these specific repository.
+- `mergeautowait` (boolean): if `true`, then wait until the PR is actually merged. See the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge-auto-wait` flag for these specific repository.
 - `draft` (boolean): if `true`, then the PRs will be created as [draft PRs](https://github.blog/2019-02-14-introducing-draft-pull-requests/) on GitHub. You will need to manually mark them as "ready for review" before being able to merge them. It overrides the value of the `--pr-draft` flag for the repositories defined in this env var.
 - `branch` (string): the name of the base branch to use when cloning the repositories. Default to the `HEAD` branch - which means the default branch configured in GitHub: usually `main` or `master`.
 
@@ -52,6 +54,9 @@ It supports the following parameters:
 - `searchtype` (string): represents the type of github search to be performed. Only `code` and `repositories` are availables. Default to `repositories`.
 - `query` (string): Specifies search criteria for listing repositories, including filters for file contents, location, language, topic, and more.
 - `merge` (boolean): if `true`, then the PRs created on the repositories from this query will be automatically merged - see the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge` flag for the repositories retrieved from this query.
+- `mergeauto` (boolean): if `true`, then the PR will merged by Github's auto-merge PR feature. See the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge-auto` flag for these specific repository.
+- `mergeautowait` (boolean): if `true`, then wait until the PR is actually merged. See the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge-auto-wait` flag for these specific repository.
+- `mergestrategy` (string): if `client`, then the PR will merged by running mergeability logic client-side. If `auto` then Github's auto-merge PR feature will be used. See the [Pull Requests](#pull-request) section for more details. It overrides the value of the `--pr-merge-strategy` flag for these specific repository.
 - `draft` (boolean): if `true`, then the PRs will be created as [draft PRs](https://github.blog/2019-02-14-introducing-draft-pull-requests/) on GitHub. You will need to manually mark them as "ready for review" before being able to merge them. It overrides the value of the `--pr-draft` flag for the repositories retrieved from this query.
 - `branch` (string): the name of the base branch to use when cloning the repositories. Default to the `HEAD` branch - which means the default branch configured in GitHub: usually `main` or `master`.
 

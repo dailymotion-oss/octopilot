@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v36/github"
+	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
 )
 
@@ -275,27 +277,185 @@ func (r Repository) addPullRequestAssignees(ctx context.Context, options GitHubO
 	return nil
 }
 
-func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest, retryCounts ...int) error {
-	var (
-		prURL      = pr.GetHTMLURL()
-		retryCount = 0
-	)
+func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	if options.PullRequest.Merge.Auto {
+		return r.mergePullRequestUsingAutoMerge(ctx, options, pr)
+	}
+
+	return r.mergePullRequestUsingClient(ctx, options, pr, 0)
+}
+
+func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	prURL := pr.GetHTMLURL()
+	mergeStrategy := "auto-merge"
+
 	client, _, err := githubClient(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create github client: %w", err)
 	}
-	if len(retryCounts) > 0 && retryCounts[0] > 0 {
-		retryCount = retryCounts[0]
+
+	gqlClient, _, err := githubGraphqlClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github GraphQL client: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"timeout":        options.PullRequest.Merge.PollTimeout.String(),
+		"merge-strategy": mergeStrategy,
+	}).Trace("Starting Pull Request merge process")
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"merge-strategy": mergeStrategy,
+	}).Trace("Getting Pull Request status")
+
+	pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
+	if err != nil {
+		return fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+	}
+
+	if pr.GetMerged() {
+		logrus.WithFields(logrus.Fields{
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"merge-strategy": mergeStrategy,
+		}).Info("Pull Request is already merged")
+		return nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"merge-strategy": mergeStrategy,
+	}).Trace("Enabling auto-merge for Pull Request")
+
+	var mutation struct {
+		EnablePullPullRequestAutoMergeInput struct {
+			ClientMutationId string
+		} `graphql:"enablePullRequestAutoMerge(input: $input)"`
+	}
+
+	var mergeMethod githubv4.PullRequestMergeMethod
+	switch strings.ToLower(options.PullRequest.Merge.Method) {
+	case "merge":
+		mergeMethod = githubv4.PullRequestMergeMethodMerge
+	case "squash":
+		mergeMethod = githubv4.PullRequestMergeMethodSquash
+	case "rebase":
+		mergeMethod = githubv4.PullRequestMergeMethodRebase
+	default:
+		mergeMethod = githubv4.PullRequestMergeMethodMerge
+		logrus.WithFields(logrus.Fields{
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"merge-strategy": mergeStrategy,
+		}).Warnf(
+			"Unkown Pull Request merge method %v. Falling back to 'merge'",
+			options.PullRequest.Merge.Method,
+		)
+	}
+
+	var expectedHeadOid *githubv4.GitObjectID
+	if options.PullRequest.Merge.SHA != "" {
+		expectedHeadOid = githubv4.NewGitObjectID(githubv4.GitObjectID(options.PullRequest.Merge.SHA))
+	}
+
+	var commitHeadLine *githubv4.String
+	if options.PullRequest.Merge.CommitTitle != "" {
+		commitHeadLine = githubv4.NewString(githubv4.String(options.PullRequest.Merge.CommitTitle))
+	}
+
+	var commitBody *githubv4.String
+	if options.PullRequest.Merge.CommitMessage != "" {
+		commitBody = githubv4.NewString(githubv4.String(options.PullRequest.Merge.CommitMessage))
+	}
+
+	inputs := githubv4.EnablePullRequestAutoMergeInput{
+		PullRequestID:   pr.NodeID,
+		MergeMethod:     &mergeMethod,
+		ExpectedHeadOid: expectedHeadOid,
+		CommitHeadline:  commitHeadLine,
+		CommitBody:      commitBody,
+	}
+
+	attempted := 0
+
+	// Should this be retried?
+	for {
+		err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
+
+		attempted++
+
+		if err == nil {
+			break
+		}
+
+		if attempted > options.PullRequest.Merge.RetryCount {
+			return fmt.Errorf("failed to enable auto-merge for Pull Request: %w", err)
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"attempted":      attempted,
+			"merge-strategy": mergeStrategy,
+		}).WithError(err).Warning("Failed to enable auto-merge for Pull Request - will retry")
+
+		// To wait or not to wait?
+		time.Sleep(options.PullRequest.Merge.PollInterval)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"merge-strategy": mergeStrategy,
+	}).Debug("Enabled auto-merge for Pull Request")
+
+	if !options.PullRequest.Merge.AutoWait {
+		logrus.WithFields(logrus.Fields{
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"merge-strategy": mergeStrategy,
+		}).Debugf("Not waiting until Pull Request %s is merged.", prURL)
+		return nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"merge-strategy": mergeStrategy,
+	}).Debug("Waiting for Pull Request to be merged")
+
+	err = r.waitUntilPullRequestIsMerged(ctx, options, pr)
+	if err != nil {
+		return fmt.Errorf("failed to wait for Pull Request %s to be auto merged: %w", prURL, err)
+	}
+
+	return nil
+}
+
+func (r Repository) mergePullRequestUsingClient(ctx context.Context, options GitHubOptions, pr *github.PullRequest, retryCount int) error {
+	prURL := pr.GetHTMLURL()
+	mergeStrategy := "client"
+
 	if retryCount >= options.PullRequest.Merge.RetryCount {
 		return fmt.Errorf("failed to merge Pull Request %s after %d retries (max retry count is set to %d)", prURL, retryCount, options.PullRequest.Merge.RetryCount)
 	}
 
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
 	logrus.WithFields(logrus.Fields{
-		"repository":   r.FullName(),
-		"pull-request": prURL,
-		"timeout":      options.PullRequest.Merge.PollTimeout.String(),
-		"retry":        retryCount,
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"timeout":        options.PullRequest.Merge.PollTimeout.String(),
+		"retry":          retryCount,
+		"merge-strategy": mergeStrategy,
 	}).Trace("Starting Pull Request merge process")
 
 	err = r.waitUntilPullRequestIsMergeable(ctx, options, pr)
@@ -304,9 +464,10 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository":   r.FullName(),
-		"pull-request": prURL,
-		"retry":        retryCount,
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"retry":          retryCount,
+		"merge-strategy": mergeStrategy,
 	}).Trace("Getting Pull Request status")
 	pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
 	if err != nil {
@@ -314,17 +475,19 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	}
 	if pr.GetMerged() {
 		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": prURL,
-			"retry":        retryCount,
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"retry":          retryCount,
+			"merge-strategy": mergeStrategy,
 		}).Info("Pull Request is already merged")
 		return nil
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository":   r.FullName(),
-		"pull-request": prURL,
-		"retry":        retryCount,
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"retry":          retryCount,
+		"merge-strategy": mergeStrategy,
 	}).Trace("Merging Pull Request")
 	res, resp, err := client.PullRequests.Merge(ctx, r.Owner, r.Name, pr.GetNumber(), options.PullRequest.Merge.CommitMessage, &github.PullRequestOptions{
 		MergeMethod: options.PullRequest.Merge.Method,
@@ -333,12 +496,13 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	})
 	if err != nil && shouldRetryMerge(resp, err) {
 		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": prURL,
-			"retry":        retryCount,
+			"repository":     r.FullName(),
+			"pull-request":   prURL,
+			"retry":          retryCount,
+			"merge-strategy": mergeStrategy,
 		}).WithError(err).Warning("Failed to merge Pull Request - will retry")
 		retryCount++
-		err = r.mergePullRequest(ctx, options, pr, retryCount)
+		err = r.mergePullRequestUsingClient(ctx, options, pr, retryCount)
 		if err == nil {
 			return nil
 		}
@@ -351,11 +515,55 @@ func (r Repository) mergePullRequest(ctx context.Context, options GitHubOptions,
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository":   r.FullName(),
-		"pull-request": prURL,
-		"retry":        retryCount,
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"retry":          retryCount,
+		"merge-strategy": mergeStrategy,
 	}).Info("Pull Request merged")
 	return nil
+}
+
+func (r Repository) waitUntilPullRequestIsMerged(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	var startTime = time.Now()
+
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	for {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Trace("Getting Pull Request status")
+		var (
+			prURL = pr.GetHTMLURL()
+			err   error
+		)
+		pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
+		if err != nil {
+			return fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+		}
+
+		if pr.GetMerged() {
+			logrus.WithFields(logrus.Fields{
+				"repository":   r.FullName(),
+				"pull-request": pr.GetHTMLURL(),
+			}).Debug("Pull Request merged")
+			return nil
+		}
+
+		if time.Since(startTime) > options.PullRequest.Merge.PollTimeout {
+			return fmt.Errorf("timeout after %s waiting for Pull Request %s to be merged", options.PullRequest.Merge.PollTimeout.String(), pr.GetHTMLURL())
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Tracef("Waiting %s until next GitHub request...", options.PullRequest.Merge.PollInterval.String())
+
+		time.Sleep(options.PullRequest.Merge.PollInterval)
+	}
 }
 
 func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {

@@ -85,10 +85,14 @@ Optionally, Octopilot can also automatically merge the Pull Requests it creates.
 
 All the following flags only apply if `--pr-merge` is enabled.
 
+- `--pr-merge-auto` (bool):  merge PRs using Github's [auto-merge PR feature](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request).
+  By default, this will not wait until the PR is merged.
+  Note, this must also be enabled at the [repository level](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-auto-merge-for-pull-requests-in-your-repository) settings manually for it to work.
+- `--pr-merge-auto-wait (bool):  when `--pr-merge-auto` is enabled, wait for the PR to be merged by Github.
 - `--pr-merge-method` (string): the merge method to use. Either `merge`, `squash`, or `rebase`. Default to `merge`.
 - `--pr-merge-commit-title` (string): optional title of the merge commit.
 - `--pr-merge-commit-message` (string): optional body of the merge commit.
 - `--pr-merge-sha` (string): optional SHA that pull request head must match to allow merge.
-- `--pr-merge-poll-timeout` (string/duration): maximum duration to wait for a Pull Request to be mergeable, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `10m` (10 minutes).
-- `--pr-merge-poll-interval` (string/duration): duration to wait for between each GitHub API call to check if a PR is mergeable, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `30s` (30 seconds).
+- `--pr-merge-poll-timeout` (string/duration): maximum duration to wait for a Pull Request to be mergeable/merged, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `10m` (10 minutes).
+- `--pr-merge-poll-interval` (string/duration): duration to wait for between each GitHub API call to check if a PR is mergeable/merged, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `30s` (30 seconds).
 - `--pr-merge-retry-count` (int): number of times to retry the merge operation in case of merge failure. Default to `3`.
