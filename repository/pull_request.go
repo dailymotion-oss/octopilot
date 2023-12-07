@@ -334,7 +334,7 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 
 	var mutation struct {
 		EnablePullPullRequestAutoMergeInput struct {
-			ClientMutationId string
+			ClientMutationID string
 		} `graphql:"enablePullRequestAutoMerge(input: $input)"`
 	}
 
@@ -353,7 +353,7 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 			"pull-request":   prURL,
 			"merge-strategy": mergeStrategy,
 		}).Warnf(
-			"Unkown Pull Request merge method %v. Falling back to 'merge'",
+			"Unknown Pull Request merge method %v. Falling back to 'merge'",
 			options.PullRequest.Merge.Method,
 		)
 	}

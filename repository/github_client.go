@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func githubAuthenticatedHttpClient(ctx context.Context, ghOptions GitHubOptions) (*http.Client, string, error) {
+func githubAuthenticatedHTTPClient(ctx context.Context, ghOptions GitHubOptions) (*http.Client, string, error) {
 	var (
 		httpClient *http.Client
 		token      string
@@ -38,7 +38,7 @@ func githubAuthenticatedHttpClient(ctx context.Context, ghOptions GitHubOptions)
 }
 
 func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client, string, error) {
-	httpClient, token, err := githubAuthenticatedHttpClient(ctx, ghOptions)
+	httpClient, token, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
 
 	if err != nil {
 		return nil, "", err
@@ -58,20 +58,20 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 }
 
 func githubGraphqlClient(ctx context.Context, ghOptions GitHubOptions) (*githubv4.Client, string, error) {
-	httpClient, token, err := githubAuthenticatedHttpClient(ctx, ghOptions)
+	httpClient, token, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
 
 	if err != nil {
 		return nil, "", err
 	}
 
 	if ghOptions.isEnterprise() {
-		apiUrl, err := url.JoinPath(ghOptions.URL, "/api/graphql")
+		apiURL, err := url.JoinPath(ghOptions.URL, "/api/graphql")
 
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to build GraphQL API URL: %w", err)
 		}
 
-		return githubv4.NewEnterpriseClient(apiUrl, httpClient), token, nil
+		return githubv4.NewEnterpriseClient(apiURL, httpClient), token, nil
 	}
 
 	return githubv4.NewClient(httpClient), token, nil
