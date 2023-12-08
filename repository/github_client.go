@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v36/github"
+	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/httpretry"
 	"golang.org/x/oauth2"
 )
 
-func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client, string, error) {
+func githubAuthenticatedHTTPClient(ctx context.Context, ghOptions GitHubOptions) (*http.Client, string, error) {
 	var (
 		httpClient *http.Client
 		token      string
@@ -31,6 +33,17 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 		return nil, "", err
 	}
 	httpClient = httpretry.NewCustomClient(httpClient)
+
+	return httpClient, token, nil
+}
+
+func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client, string, error) {
+	httpClient, token, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
+
+	if err != nil {
+		return nil, "", err
+	}
+
 	var ghc *github.Client
 	if ghOptions.isEnterprise() {
 		var err error
@@ -42,6 +55,26 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 		ghc = github.NewClient(httpClient)
 	}
 	return ghc, token, nil
+}
+
+func githubGraphqlClient(ctx context.Context, ghOptions GitHubOptions) (*githubv4.Client, error) {
+	httpClient, _, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if ghOptions.isEnterprise() {
+		apiURL, err := url.JoinPath(ghOptions.URL, "/api/graphql")
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to build GraphQL API URL: %w", err)
+		}
+
+		return githubv4.NewEnterpriseClient(apiURL, httpClient), nil
+	}
+
+	return githubv4.NewClient(httpClient), nil
 }
 
 func githubTokenClient(ctx context.Context, token string) (*http.Client, string, error) { //nolint: unparam // the returned error is not used, but we need it for the method signature

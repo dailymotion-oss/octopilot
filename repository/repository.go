@@ -228,6 +228,16 @@ func (r Repository) adjustOptionsFromParams(options *UpdateOptions) {
 			options.GitHub.PullRequest.Merge.Enabled = merge
 		}
 	}
+	if mergeAutoStr, found := r.Params["mergeauto"]; found {
+		if mergeAuto, err := strconv.ParseBool(mergeAutoStr); err == nil {
+			options.GitHub.PullRequest.Merge.Auto = mergeAuto
+		}
+	}
+	if mergeAutoWaitStr, found := r.Params["mergeautowait"]; found {
+		if mergeAutoWait, err := strconv.ParseBool(mergeAutoWaitStr); err == nil {
+			options.GitHub.PullRequest.Merge.AutoWait = mergeAutoWait
+		}
+	}
 }
 
 // FullName returns the repository full name.

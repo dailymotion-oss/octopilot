@@ -77,6 +77,8 @@ type PullRequestOptions struct {
 // PullRequestMergeOptions holds all the options required to merge github PRs
 type PullRequestMergeOptions struct {
 	Enabled       bool
+	Auto          bool
+	AutoWait      bool
 	Method        string
 	CommitTitle   string
 	CommitMessage string
