@@ -294,7 +294,7 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 		return fmt.Errorf("failed to create github client: %w", err)
 	}
 
-	gqlClient, _, err := githubGraphqlClient(ctx, options)
+	gqlClient, err := githubGraphqlClient(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create github GraphQL client: %w", err)
 	}
@@ -449,7 +449,7 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 }
 
 func (r Repository) disableAutoMerge(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
-	gqlClient, _, err := githubGraphqlClient(ctx, options)
+	gqlClient, err := githubGraphqlClient(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create github GraphQL client: %w", err)
 	}

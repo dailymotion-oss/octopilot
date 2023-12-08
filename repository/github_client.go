@@ -57,24 +57,24 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 	return ghc, token, nil
 }
 
-func githubGraphqlClient(ctx context.Context, ghOptions GitHubOptions) (*githubv4.Client, string, error) {
-	httpClient, token, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
+func githubGraphqlClient(ctx context.Context, ghOptions GitHubOptions) (*githubv4.Client, error) {
+	httpClient, _, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
 
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	if ghOptions.isEnterprise() {
 		apiURL, err := url.JoinPath(ghOptions.URL, "/api/graphql")
 
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to build GraphQL API URL: %w", err)
+			return nil, fmt.Errorf("failed to build GraphQL API URL: %w", err)
 		}
 
-		return githubv4.NewEnterpriseClient(apiURL, httpClient), token, nil
+		return githubv4.NewEnterpriseClient(apiURL, httpClient), nil
 	}
 
-	return githubv4.NewClient(httpClient), token, nil
+	return githubv4.NewClient(httpClient), nil
 }
 
 func githubTokenClient(ctx context.Context, token string) (*http.Client, string, error) { //nolint: unparam // the returned error is not used, but we need it for the method signature
