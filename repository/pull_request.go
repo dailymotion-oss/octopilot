@@ -383,7 +383,6 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 
 	attempted := 0
 
-	// Should this be retried?
 	for {
 		err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
 
@@ -404,7 +403,6 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 			"merge-strategy": mergeStrategy,
 		}).WithError(err).Warning("Failed to enable auto-merge for Pull Request - will retry")
 
-		// To wait or not to wait?
 		time.Sleep(options.PullRequest.Merge.PollInterval)
 	}
 
@@ -430,9 +428,52 @@ func (r Repository) mergePullRequestUsingAutoMerge(ctx context.Context, options 
 	}).Debug("Waiting for Pull Request to be merged")
 
 	err = r.waitUntilPullRequestIsMerged(ctx, options, pr)
-	if err != nil {
-		return fmt.Errorf("failed to wait for Pull Request %s to be auto merged: %w", prURL, err)
+
+	if err == nil {
+		return nil
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   prURL,
+		"merge-strategy": mergeStrategy,
+	}).WithError(err).Warning("Timed out waiting for PR to be auto merged. Disabling auto-merge.")
+
+	err = r.disableAutoMerge(ctx, options, pr)
+
+	if err != nil {
+		return fmt.Errorf("failed to disable auto-merge for PR %s: %w", prURL, err)
+	}
+
+	return nil
+}
+
+func (r Repository) disableAutoMerge(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	gqlClient, _, err := githubGraphqlClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github GraphQL client: %w", err)
+	}
+
+	var mutation struct {
+		DisablePullRequestAutoMergeInput struct {
+			ClientMutationID string
+		} `graphql:"disablePullRequestAutoMerge(input: $input)"`
+	}
+
+	inputs := githubv4.DisablePullRequestAutoMergeInput{
+		PullRequestID: pr.NodeID,
+	}
+
+	err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
+
+	if err != nil {
+		return fmt.Errorf("GraphQL mutation failed: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":   r.FullName(),
+		"pull-request": pr.GetHTMLURL(),
+	}).Debug("PR auto-merge disabled")
 
 	return nil
 }
