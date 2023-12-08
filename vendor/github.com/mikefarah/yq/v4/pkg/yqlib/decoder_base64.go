@@ -4,9 +4,30 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io"
-
-	yaml "gopkg.in/yaml.v3"
+	"strings"
 )
+
+type base64Padder struct {
+	count uint64
+	io.Reader
+}
+
+func (c *base64Padder) pad(buf []byte) (int, error) {
+	pad := strings.Repeat("=", int(4-c.count%4))
+	n, err := strings.NewReader(pad).Read(buf)
+	c.count += uint64(n)
+	return n, err
+}
+
+func (c *base64Padder) Read(buf []byte) (int, error) {
+	n, err := c.Reader.Read(buf)
+	c.count += uint64(n)
+
+	if err == io.EOF && c.count%4 != 0 {
+		return c.pad(buf)
+	}
+	return n, err
+}
 
 type base64Decoder struct {
 	reader       io.Reader
@@ -19,21 +40,22 @@ func NewBase64Decoder() Decoder {
 	return &base64Decoder{finished: false, encoding: *base64.StdEncoding}
 }
 
-func (dec *base64Decoder) Init(reader io.Reader) {
-	dec.reader = reader
+func (dec *base64Decoder) Init(reader io.Reader) error {
+	dec.reader = &base64Padder{Reader: reader}
 	dec.readAnything = false
 	dec.finished = false
+	return nil
 }
 
-func (dec *base64Decoder) Decode(rootYamlNode *yaml.Node) error {
+func (dec *base64Decoder) Decode() (*CandidateNode, error) {
 	if dec.finished {
-		return io.EOF
+		return nil, io.EOF
 	}
 	base64Reader := base64.NewDecoder(&dec.encoding, dec.reader)
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.ReadFrom(base64Reader); err != nil {
-		return err
+		return nil, err
 	}
 	if buf.Len() == 0 {
 		dec.finished = true
@@ -42,12 +64,9 @@ func (dec *base64Decoder) Decode(rootYamlNode *yaml.Node) error {
 		// otherwise if we've already read some bytes, and now we get
 		// an empty string, then we are done.
 		if dec.readAnything {
-			return io.EOF
+			return nil, io.EOF
 		}
 	}
 	dec.readAnything = true
-	rootYamlNode.Kind = yaml.ScalarNode
-	rootYamlNode.Tag = "!!str"
-	rootYamlNode.Value = buf.String()
-	return nil
+	return createStringScalarNode(buf.String()), nil
 }
