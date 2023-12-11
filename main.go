@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ var options struct {
 	logLevel           string
 	failOnError        bool
 	maxConcurrentRepos int
+	outputResults      string
 }
 
 func init() {
@@ -94,6 +96,7 @@ func init() {
 
 	pflag.BoolVar(&options.failOnError, "fail-on-error", false, "Exit with error code 1 if any repository update fails.")
 	pflag.IntVar(&options.maxConcurrentRepos, "max-concurrent-repos", 0, "Maximum number of repositories to handle in parallel. Default to unlimited")
+	pflag.StringVar(&options.outputResults, "output-results", "", "Optional file to write JSON encoded execution results to. This may be useful to other tools for further processing.")
 	pflag.BoolP("help", "h", false, "Display this help message.")
 	pflag.Bool("version", false, "Display the version and exit.")
 
@@ -134,7 +137,7 @@ func main() {
 
 	logrus.WithField("repositories-count", len(repositories)).Trace("Starting updates")
 	var wg sync.WaitGroup
-	errors := make(chan error, len(repositories))
+	results := make(chan repository.RepoUpdateResult, len(repositories))
 	var workers chan struct{}
 	if options.maxConcurrentRepos > 0 {
 		workers = make(chan struct{}, options.maxConcurrentRepos)
@@ -152,13 +155,34 @@ func main() {
 				wg.Done()
 			}()
 			logrus.WithField("repository", repo.FullName()).Trace("Starting repository update")
-			updated, err := repo.Update(ctx, updaters, options.UpdateOptions)
+
+			updated, pr, err := repo.Update(ctx, updaters, options.UpdateOptions)
+
+			result := repository.RepoUpdateResult{
+				Owner: repo.Owner,
+				Repo:  repo.Name,
+			}
+
+			if err != nil {
+				errMsg := err.Error()
+				result.Error = &errMsg
+			}
+
+			if pr != nil {
+				result.PullRequest = &repository.PullRequestResult{
+					Number: pr.GetNumber(),
+					NodeID: pr.GetNodeID(),
+					URL:    pr.GetHTMLURL(),
+				}
+			}
+
+			results <- result
+
 			if err != nil {
 				logrus.
 					WithError(err).
 					WithField("repository", repo.FullName()).
 					Error("Repository update failed")
-				errors <- err
 				return
 			}
 			if !updated {
@@ -169,12 +193,42 @@ func main() {
 		}(repo)
 	}
 	wg.Wait()
-	close(errors)
+	close(results)
+
 	logrus.WithField("repositories-count", len(repositories)).Info("Updates finished")
 
-	if options.failOnError && len(errors) > 0 {
+	resultFile := repository.ResultFile{}
+	hadError := false
+
+	for r := range results {
+		resultFile.Repos = append(resultFile.Repos, r)
+
+		if r.Error != nil {
+			hadError = true
+		}
+	}
+
+	if options.outputResults != "" {
+		err := writeResults(&resultFile, options.outputResults)
+
+		if err != nil {
+			logrus.Fatalf("Failed to write results: %s", err)
+		}
+	}
+
+	if options.failOnError && hadError {
 		logrus.Fatal("Some repository updates failed")
 	}
+}
+
+func writeResults(results *repository.ResultFile, file string) error {
+	jsonBytes, err := json.MarshalIndent(results, "", "  ")
+
+	if err != nil {
+		return fmt.Errorf("failed to marshall results: %w", err)
+	}
+
+	return os.WriteFile(file, jsonBytes, 0644)
 }
 
 func checkMandatoryFlags() {
