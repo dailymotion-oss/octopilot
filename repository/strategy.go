@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/google/go-github/v36/github"
+	"github.com/google/go-github/v57/github"
 )
 
 // Strategy defines how the pull request will be created or updated if one already exists.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/google/go-github/v36/github"
+	"github.com/google/go-github/v57/github"
 )
 
 // removeDuplicate removes duplicate repositories from the input list and returns a new slice of unique repositories.

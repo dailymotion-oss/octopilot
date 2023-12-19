@@ -37,6 +37,9 @@ var options struct {
 }
 
 func init() {
+	// defaults
+	options.GitHub.PullRequest.Merge.BranchProtection = repository.BranchProtectionKindStatusChecks
+
 	// required flags
 	pflag.StringArrayVarP(&options.updates, "update", "u", nil, `An update operation, such as "yaml(file=config.yaml,path='version')=file(path=VERSION)" - see the online documentation for all available updaters.`)
 	assert(pflag.CommandLine.SetAnnotation("update", "mandatory", []string{"true"}))
@@ -73,6 +76,7 @@ func init() {
 	pflag.DurationVar(&options.GitHub.PullRequest.Merge.PollTimeout, "pr-merge-poll-timeout", 10*time.Minute, "If pr-merge is enabled, this is the maximum duration to wait for a Pull Request to be mergeable/merged.")
 	pflag.DurationVar(&options.GitHub.PullRequest.Merge.PollInterval, "pr-merge-poll-interval", 30*time.Second, "If pr-merge is enabled, this is the duration to wait for between each GitHub API call to check if a PR is mergeable/merged.")
 	pflag.IntVar(&options.GitHub.PullRequest.Merge.RetryCount, "pr-merge-retry-count", 3, "If pr-merge is enabled, this is the number of times to retry the merge operation in case of merge failure.")
+	pflag.Var(&options.GitHub.PullRequest.Merge.BranchProtection, "pr-merge-branch-protection", `If pr-merge is enabled, then wait for the specified kind of branch protection rules to be satisfied before attempting to merge. "statusChecks" waits only for status checks to be passing. "all" waits for every rule (approvals, commit signature, etc). "bypass" will bypass branch protection rules when possible.`)
 
 	// git-related flags
 	pflag.StringVar(&options.UpdateOptions.Git.CloneDir, "git-clone-dir", temporaryDirectory(), "Directory used to clone the repositories.")

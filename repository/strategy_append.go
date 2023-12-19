@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/dailymotion-oss/octopilot/update"
-	"github.com/google/go-github/v36/github"
+	"github.com/google/go-github/v57/github"
 	"github.com/sirupsen/logrus"
 )
 
