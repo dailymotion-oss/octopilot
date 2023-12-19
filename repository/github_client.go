@@ -47,7 +47,7 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 	var ghc *github.Client
 	if ghOptions.isEnterprise() {
 		var err error
-		ghc, err = github.NewEnterpriseClient(ghOptions.URL, ghOptions.URL, httpClient)
+		ghc, err = github.NewClient(httpClient).WithEnterpriseURLs(ghOptions.URL, ghOptions.URL)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to create an enterprise client: %w", err)
 		}

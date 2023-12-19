@@ -732,14 +732,14 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 	}
 
 	if pr.GetBase().Ref == nil {
-		return false, errors.New("Failed to get PR base ref")
+		return false, errors.New("failed to get PR base ref")
 	}
 
 	requiredContexts := goset.NewSetFromStrings(statusQuery.Repository.PullRequest.BaseRef.RefUpdateRule.RequiredStatusCheckContexts)
 
 	rules, _, err := client.Repositories.GetRulesForBranch(ctx, r.Owner, r.Name, pr.GetBase().GetRef())
 	if err != nil {
-		return false, fmt.Errorf("Failed to fetch Rules for base ref: %w", err)
+		return false, fmt.Errorf("failed to fetch Rules for base ref: %w", err)
 	}
 
 	for _, rule := range rules {
@@ -753,7 +753,10 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 		}
 
 		for _, c := range params.RequiredStatusChecks {
-			requiredContexts.Add(c.Context)
+			err := requiredContexts.Add(c.Context)
+			if err != nil {
+				return false, fmt.Errorf("failed to add rule context to required set: %w", err)
+			}
 		}
 	}
 
@@ -773,7 +776,10 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 		}
 
 		if c.State == githubv4.StatusStateSuccess {
-			passingContexts.Add(c.Context)
+			err := passingContexts.Add(c.Context)
+			if err != nil {
+				return false, fmt.Errorf("failed to add status context to passing set: %w", err)
+			}
 		} else {
 			logrus.WithFields(logrus.Fields{
 				"repository":     r.FullName(),
@@ -795,7 +801,6 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 					!(*c.Conclusion == githubv4.CheckConclusionStateSuccess ||
 						*c.Conclusion == githubv4.CheckConclusionStateNeutral ||
 						*c.Conclusion == githubv4.CheckConclusionStateSkipped) {
-
 				logrus.WithFields(logrus.Fields{
 					"repository":       r.FullName(),
 					"pull-request":     pr.GetHTMLURL(),
@@ -803,9 +808,11 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 					"check-status":     c.Status,
 					"check-conclusion": c.Conclusion,
 				}).Trace("Waiting for check")
-
 			} else {
-				passingContexts.Add(c.Name)
+				err := passingContexts.Add(c.Name)
+				if err != nil {
+					return false, fmt.Errorf("failed to add check context to passing set: %w", err)
+				}
 			}
 		}
 	}
@@ -830,7 +837,7 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 	// Github's API is not race-free apparently.
 	// Sometime the merge fails if done too quickly, even if the status/checks report success.
 	// So wait a little.
-	time.Sleep(5)
+	time.Sleep(5 * time.Second)
 
 	return true, nil
 }
