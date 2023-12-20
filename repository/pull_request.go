@@ -765,12 +765,6 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 	passingContexts := goset.NewSet()
 
 	for _, c := range commit.Status.Contexts {
-		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": pr.GetHTMLURL(),
-			"context":      c,
-		}).Trace("test")
-
 		if !requiredContexts.Contains(c.Context) {
 			continue
 		}
@@ -796,11 +790,7 @@ func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *gith
 				continue
 			}
 
-			if c.Status != githubv4.CheckStatusStateCompleted ||
-				c.Conclusion != nil &&
-					!(*c.Conclusion == githubv4.CheckConclusionStateSuccess ||
-						*c.Conclusion == githubv4.CheckConclusionStateNeutral ||
-						*c.Conclusion == githubv4.CheckConclusionStateSkipped) {
+			if c.Status != githubv4.CheckStatusStateCompleted || !isCheckConclusionPassing(c.Conclusion) {
 				logrus.WithFields(logrus.Fields{
 					"repository":       r.FullName(),
 					"pull-request":     pr.GetHTMLURL(),
@@ -909,4 +899,16 @@ func shouldRetryMerge(resp *github.Response, err error) bool {
 	}
 
 	return resp.StatusCode == 405 && githubErr.Message == "Base branch was modified. Review and try the merge again."
+}
+
+func isCheckConclusionPassing(c *githubv4.CheckConclusionState) bool {
+	if c == nil {
+		return false
+	}
+	switch *c {
+	case githubv4.CheckConclusionStateSuccess, githubv4.CheckConclusionStateNeutral, githubv4.CheckConclusionStateSkipped:
+		return true
+	default:
+		return false
+	}
 }
