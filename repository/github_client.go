@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/bradleyfalzon/ghinstallation"
-	"github.com/google/go-github/v36/github"
+	"github.com/google/go-github/v57/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/httpretry"
@@ -47,7 +47,7 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 	var ghc *github.Client
 	if ghOptions.isEnterprise() {
 		var err error
-		ghc, err = github.NewEnterpriseClient(ghOptions.URL, ghOptions.URL, httpClient)
+		ghc, err = github.NewClient(httpClient).WithEnterpriseURLs(ghOptions.URL, ghOptions.URL)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to create an enterprise client: %w", err)
 		}
@@ -57,8 +57,21 @@ func githubClient(ctx context.Context, ghOptions GitHubOptions) (*github.Client,
 	return ghc, token, nil
 }
 
+type graphqlTransport struct {
+	base http.RoundTripper
+}
+
+func (t *graphqlTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Enable PullRequest.mergeStateStatus
+	req.Header.Add("accept", "application/vnd.github.merge-info-preview+json")
+
+	return t.base.RoundTrip(req)
+}
+
 func githubGraphqlClient(ctx context.Context, ghOptions GitHubOptions) (*githubv4.Client, error) {
 	httpClient, _, err := githubAuthenticatedHTTPClient(ctx, ghOptions)
+
+	httpClient.Transport = &graphqlTransport{base: httpClient.Transport}
 
 	if err != nil {
 		return nil, err

@@ -96,3 +96,7 @@ All the following flags only apply if `--pr-merge` is enabled.
 - `--pr-merge-poll-timeout` (string/duration): maximum duration to wait for a Pull Request to be mergeable/merged, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `10m` (10 minutes).
 - `--pr-merge-poll-interval` (string/duration): duration to wait for between each GitHub API call to check if a PR is mergeable/merged, using the [Golang syntax](https://golang.org/pkg/time/#ParseDuration). Default to `30s` (30 seconds).
 - `--pr-merge-retry-count` (int): number of times to retry the merge operation in case of merge failure. Default to `3`.
+- `--pr-merge-branch-protection` (string): One of `statusChecks`, `all`, `bypass`. Wait for the specified kind of branch protection rules to be satisfied before attempting to merge.
+  - `statusChecks` waits only for status checks to be passing. This is the default.
+  - `all` waits for every rule (approvals, commit signature, etc).
+  - `bypass` will bypass branch protection rules when possible (i.e. the authenticated user/app have permissions to do so).

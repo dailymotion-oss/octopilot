@@ -2,14 +2,16 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v36/github"
+	"github.com/google/go-github/v57/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
+	"github.com/zoumo/goset"
 )
 
 func (r Repository) findMatchingPullRequest(ctx context.Context, options GitHubOptions) (*github.PullRequest, error) {
@@ -607,6 +609,229 @@ func (r Repository) waitUntilPullRequestIsMerged(ctx context.Context, options Gi
 	}
 }
 
+func (r Repository) pollPullRequestIsMergeable(ctx context.Context, client *github.Client, gqlClient *githubv4.Client, options GitHubOptions, pr *github.PullRequest) (bool, error) {
+	logrus.WithFields(logrus.Fields{
+		"repository":   r.FullName(),
+		"pull-request": pr.GetHTMLURL(),
+	}).Trace("Getting Pull Request status")
+
+	var (
+		prURL = pr.GetHTMLURL()
+		err   error
+	)
+
+	var statusQuery struct {
+		Repository struct {
+			PullRequest struct {
+				Mergeable             githubv4.MergeableState
+				Merged                githubv4.Boolean
+				MergeStateStatus      githubv4.String
+				ViewerCanMergeAsAdmin githubv4.Boolean
+				BaseRef               struct {
+					RefUpdateRule struct {
+						RequiredStatusCheckContexts []string
+					}
+				}
+				HeadRef struct {
+					Target struct {
+						Commit struct {
+							Status struct {
+								Contexts []struct {
+									Context string
+									State   githubv4.StatusState
+								}
+							}
+							CheckSuites struct {
+								Nodes []struct {
+									CheckRuns struct {
+										Nodes []struct {
+											Name       string
+											Status     githubv4.CheckStatusState
+											Conclusion *githubv4.CheckConclusionState
+										}
+									} `graphql:"checkRuns(last: 100)"`
+								}
+							} `graphql:"checkSuites(last:100)"`
+						} `graphql:"... on Commit"`
+					}
+				}
+			} `graphql:"pullRequest(number: $prNumber)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	statusQueryVars := map[string]interface{}{
+		"owner":    githubv4.String(r.Owner),
+		"name":     githubv4.String(r.Name),
+		"prNumber": githubv4.Int(pr.GetNumber()),
+	}
+
+	err = gqlClient.Query(ctx, &statusQuery, statusQueryVars)
+	if err != nil {
+		return false, fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+	}
+
+	if statusQuery.Repository.PullRequest.Merged {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Trace("Pull Request is already merged")
+
+		return true, nil
+	}
+
+	if s := statusQuery.Repository.PullRequest.Mergeable; s == githubv4.MergeableStateConflicting {
+		return false, fmt.Errorf("pull request %s is not mergeable: %s", pr.GetHTMLURL(), s)
+	}
+
+	if s := statusQuery.Repository.PullRequest.Mergeable; s == githubv4.MergeableStateUnknown {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Trace("Pull Request mergeability is still being calculated")
+		return false, nil
+	}
+
+	switch options.PullRequest.Merge.BranchProtection {
+	case BranchProtectionKindBypass:
+		{
+			if statusQuery.Repository.PullRequest.ViewerCanMergeAsAdmin {
+				logrus.WithFields(logrus.Fields{
+					"repository":   r.FullName(),
+					"pull-request": pr.GetHTMLURL(),
+				}).Trace("Bypassing branch protection rules")
+				return true, nil
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"repository":   r.FullName(),
+				"pull-request": pr.GetHTMLURL(),
+			}).Trace("Not able to bypass branch protection rules yet")
+
+			// it's possible that the viewer could bypass protection rules at some later point, so don't return an error
+			return false, nil
+		}
+	case BranchProtectionKindAll:
+		{
+			if statusQuery.Repository.PullRequest.MergeStateStatus == "CLEAN" {
+				logrus.WithFields(logrus.Fields{
+					"repository":   r.FullName(),
+					"pull-request": pr.GetHTMLURL(),
+				}).Trace("All branch protection rules satisfied")
+				return true, nil
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"repository":   r.FullName(),
+				"pull-request": pr.GetHTMLURL(),
+			}).Trace("All branch protection rules not satisfied")
+			return false, nil
+		}
+	case BranchProtectionKindStatusChecks:
+		fallthrough
+	default:
+	}
+
+	if pr.GetBase().Ref == nil {
+		return false, errors.New("failed to get PR base ref")
+	}
+
+	requiredContexts := goset.NewSetFromStrings(statusQuery.Repository.PullRequest.BaseRef.RefUpdateRule.RequiredStatusCheckContexts)
+
+	rules, _, err := client.Repositories.GetRulesForBranch(ctx, r.Owner, r.Name, pr.GetBase().GetRef())
+	if err != nil {
+		return false, fmt.Errorf("failed to fetch Rules for base ref: %w", err)
+	}
+
+	for _, rule := range rules {
+		if rule.Type != "required_status_checks" {
+			continue
+		}
+
+		params := github.RequiredStatusChecksRuleParameters{}
+		if err := json.Unmarshal(*rule.Parameters, &params); err != nil {
+			return false, fmt.Errorf("failed to parse rule: %w", err)
+		}
+
+		for _, c := range params.RequiredStatusChecks {
+			err := requiredContexts.Add(c.Context)
+			if err != nil {
+				return false, fmt.Errorf("failed to add rule context to required set: %w", err)
+			}
+		}
+	}
+
+	commit := statusQuery.Repository.PullRequest.HeadRef.Target.Commit
+
+	passingContexts := goset.NewSet()
+
+	for _, c := range commit.Status.Contexts {
+		if !requiredContexts.Contains(c.Context) {
+			continue
+		}
+
+		if c.State == githubv4.StatusStateSuccess {
+			err := passingContexts.Add(c.Context)
+			if err != nil {
+				return false, fmt.Errorf("failed to add status context to passing set: %w", err)
+			}
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"repository":     r.FullName(),
+				"pull-request":   pr.GetHTMLURL(),
+				"status-context": c.Context,
+				"status-state":   c.State,
+			}).Trace("Waiting for status")
+		}
+	}
+
+	for _, cs := range commit.CheckSuites.Nodes {
+		for _, c := range cs.CheckRuns.Nodes {
+			if !requiredContexts.Contains(c.Name) {
+				continue
+			}
+
+			if c.Status != githubv4.CheckStatusStateCompleted || !isCheckConclusionPassing(c.Conclusion) {
+				logrus.WithFields(logrus.Fields{
+					"repository":       r.FullName(),
+					"pull-request":     pr.GetHTMLURL(),
+					"check-name":       c.Name,
+					"check-status":     c.Status,
+					"check-conclusion": c.Conclusion,
+				}).Trace("Waiting for check")
+			} else {
+				err := passingContexts.Add(c.Name)
+				if err != nil {
+					return false, fmt.Errorf("failed to add check context to passing set: %w", err)
+				}
+			}
+		}
+	}
+
+	if !passingContexts.IsSupersetOf(requiredContexts) {
+		logrus.WithFields(logrus.Fields{
+			"repository":        r.FullName(),
+			"pull-request":      pr.GetHTMLURL(),
+			"required-contexts": requiredContexts,
+			"passing-contexts":  passingContexts,
+		}).Trace("Required status checks not passing")
+		return false, nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":        r.FullName(),
+		"pull-request":      pr.GetHTMLURL(),
+		"required-contexts": requiredContexts,
+		"passing-contexts":  passingContexts,
+	}).Trace("All status checks passing")
+
+	// Github's API is not race-free apparently.
+	// Sometime the merge fails if done too quickly, even if the status/checks report success.
+	// So wait a little.
+	time.Sleep(5 * time.Second)
+
+	return true, nil
+}
+
 func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
 	var startTime = time.Now()
 
@@ -615,40 +840,23 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 		return fmt.Errorf("failed to create github client: %w", err)
 	}
 
-	// wait until PR is mergeable
-	// i.e. no conflicts with target branch & all checks from statuses API, checks API & other branch protection rules are satisfied
+	gqlClient, err := githubGraphqlClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github GraphQL client: %w", err)
+	}
+
 	for {
-		logrus.WithFields(logrus.Fields{
-			"repository":   r.FullName(),
-			"pull-request": pr.GetHTMLURL(),
-		}).Trace("Getting Pull Request status")
-		var (
-			prURL = pr.GetHTMLURL()
-			err   error
-		)
-		pr, _, err = client.PullRequests.Get(ctx, r.Owner, r.Name, pr.GetNumber())
+		mergeable, err := r.pollPullRequestIsMergeable(ctx, client, gqlClient, options, pr)
+
 		if err != nil {
-			return fmt.Errorf("failed to retrieve status of Pull Request %s: %w", prURL, err)
+			return err
 		}
 
-		if pr.GetMerged() {
-			logrus.WithFields(logrus.Fields{
-				"repository":   r.FullName(),
-				"pull-request": pr.GetHTMLURL(),
-			}).Debug("Pull Request is already merged")
-			return nil
-		}
-
-		if pr.Mergeable != nil && !pr.GetMergeable() {
-			return fmt.Errorf("pull request %s is not mergeable: %s", pr.GetHTMLURL(), pr.GetMergeableState())
-		}
-
-		if pr.GetMergeableState() == "clean" {
+		if mergeable {
 			logrus.WithFields(logrus.Fields{
 				"repository":   r.FullName(),
 				"pull-request": pr.GetHTMLURL(),
 			}).Debug("Pull Request is mergeable")
-
 			return nil
 		}
 
@@ -657,9 +865,8 @@ func (r Repository) waitUntilPullRequestIsMergeable(ctx context.Context, options
 		}
 
 		logrus.WithFields(logrus.Fields{
-			"repository":      r.FullName(),
-			"pull-request":    pr.GetHTMLURL(),
-			"mergeable-state": pr.GetMergeableState(),
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
 		}).Debug("Pull Request is not mergeable yet")
 
 		logrus.WithFields(logrus.Fields{
@@ -692,4 +899,16 @@ func shouldRetryMerge(resp *github.Response, err error) bool {
 	}
 
 	return resp.StatusCode == 405 && githubErr.Message == "Base branch was modified. Review and try the merge again."
+}
+
+func isCheckConclusionPassing(c *githubv4.CheckConclusionState) bool {
+	if c == nil {
+		return false
+	}
+	switch *c { //nolint: exhaustive // default should catch the rest
+	case githubv4.CheckConclusionStateSuccess, githubv4.CheckConclusionStateNeutral, githubv4.CheckConclusionStateSkipped:
+		return true
+	default:
+		return false
+	}
 }

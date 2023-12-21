@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -74,18 +75,58 @@ type PullRequestOptions struct {
 	Merge                PullRequestMergeOptions
 }
 
+// BranchProtectionKind enumerates possible branch protections to wait for before attempting a PR merge.
+type BranchProtectionKind string
+
+const (
+	// BranchProtectionKindStatusChecks waits for all required statues & checksuite runs to be passing ("success", "neutral", "skipped")
+	BranchProtectionKindStatusChecks BranchProtectionKind = "statusChecks"
+
+	// BranchProtectionKindAll wait for all protection rules
+	BranchProtectionKindAll BranchProtectionKind = "all"
+
+	// BranchProtectionKindBypass waits until the user can bypass branch protection rules
+	BranchProtectionKindBypass BranchProtectionKind = "bypass"
+)
+
+func (b *BranchProtectionKind) String() string {
+	return string(*b)
+}
+
+func (b *BranchProtectionKind) Set(s string) error {
+	switch s {
+	case string(BranchProtectionKindStatusChecks), string(BranchProtectionKindAll), string(BranchProtectionKindBypass):
+		*b = BranchProtectionKind(s)
+		return nil
+	default:
+		return errors.New("invalid value")
+	}
+}
+
+func (b *BranchProtectionKind) Type() string {
+	return strings.Join(
+		[]string{
+			string(BranchProtectionKindStatusChecks),
+			string(BranchProtectionKindAll),
+			string(BranchProtectionKindBypass),
+		},
+		"|",
+	)
+}
+
 // PullRequestMergeOptions holds all the options required to merge github PRs
 type PullRequestMergeOptions struct {
-	Enabled       bool
-	Auto          bool
-	AutoWait      bool
-	Method        string
-	CommitTitle   string
-	CommitMessage string
-	SHA           string
-	PollInterval  time.Duration
-	PollTimeout   time.Duration
-	RetryCount    int
+	Enabled          bool
+	Auto             bool
+	AutoWait         bool
+	Method           string
+	CommitTitle      string
+	CommitMessage    string
+	SHA              string
+	PollInterval     time.Duration
+	PollTimeout      time.Duration
+	RetryCount       int
+	BranchProtection BranchProtectionKind
 }
 
 func (o *GitOptions) setDefaultValues(updaters []update.Updater, tplExecutorFunc templateExecutor) error {

@@ -302,9 +302,9 @@ github.com/golang/snappy
 # github.com/google/go-github/v29 v29.0.3
 ## explicit; go 1.13
 github.com/google/go-github/v29/github
-# github.com/google/go-github/v36 v36.0.0
-## explicit; go 1.16
-github.com/google/go-github/v36/github
+# github.com/google/go-github/v57 v57.0.0
+## explicit; go 1.17
+github.com/google/go-github/v57/github
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
 github.com/google/go-querystring/query
@@ -571,6 +571,9 @@ github.com/xi2/xz
 # github.com/ybbus/httpretry v1.0.2
 ## explicit; go 1.19
 github.com/ybbus/httpretry
+# github.com/zoumo/goset v0.2.0
+## explicit; go 1.12
+github.com/zoumo/goset
 # go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a
 ## explicit
 go.mozilla.org/gopgagent
