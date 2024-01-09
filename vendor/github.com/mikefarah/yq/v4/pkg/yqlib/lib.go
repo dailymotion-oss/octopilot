@@ -2,7 +2,6 @@
 package yqlib
 
 import (
-	"bytes"
 	"container/list"
 	"fmt"
 	"math"
@@ -10,7 +9,6 @@ import (
 	"strings"
 
 	logging "gopkg.in/op/go-logging.v1"
-	yaml "gopkg.in/yaml.v3"
 )
 
 var ExpressionParser ExpressionParserInterface
@@ -19,14 +17,6 @@ func InitExpressionParser() {
 	if ExpressionParser == nil {
 		ExpressionParser = newExpressionParser()
 	}
-}
-
-type xmlPreferences struct {
-	AttributePrefix string
-	ContentName     string
-	StrictMode      bool
-	KeepNamespace   bool
-	UseRawToken     bool
 }
 
 var log = logging.MustGetLogger("yq-lib")
@@ -61,7 +51,7 @@ var subtractAssignOpType = &operationType{Type: "SUBTRACT_ASSIGN", NumArgs: 2, P
 
 var assignAttributesOpType = &operationType{Type: "ASSIGN_ATTRIBUTES", NumArgs: 2, Precedence: 40, Handler: assignAttributesOperator}
 var assignStyleOpType = &operationType{Type: "ASSIGN_STYLE", NumArgs: 2, Precedence: 40, Handler: assignStyleOperator}
-var assignVariableOpType = &operationType{Type: "ASSIGN_VARIABLE", NumArgs: 2, Precedence: 40, Handler: assignVariableOperator}
+var assignVariableOpType = &operationType{Type: "ASSIGN_VARIABLE", NumArgs: 2, Precedence: 40, Handler: useWithPipe}
 var assignTagOpType = &operationType{Type: "ASSIGN_TAG", NumArgs: 2, Precedence: 40, Handler: assignTagOperator}
 var assignCommentOpType = &operationType{Type: "ASSIGN_COMMENT", NumArgs: 2, Precedence: 40, Handler: assignCommentsOperator}
 var assignAnchorOpType = &operationType{Type: "ASSIGN_ANCHOR", NumArgs: 2, Precedence: 40, Handler: assignAnchorOperator}
@@ -69,6 +59,10 @@ var assignAliasOpType = &operationType{Type: "ASSIGN_ALIAS", NumArgs: 2, Precede
 
 var multiplyOpType = &operationType{Type: "MULTIPLY", NumArgs: 2, Precedence: 42, Handler: multiplyOperator}
 var multiplyAssignOpType = &operationType{Type: "MULTIPLY_ASSIGN", NumArgs: 2, Precedence: 42, Handler: multiplyAssignOperator}
+
+var divideOpType = &operationType{Type: "DIVIDE", NumArgs: 2, Precedence: 42, Handler: divideOperator}
+
+var moduloOpType = &operationType{Type: "MODULO", NumArgs: 2, Precedence: 42, Handler: moduloOperator}
 
 var addOpType = &operationType{Type: "ADD", NumArgs: 2, Precedence: 42, Handler: addOperator}
 var subtractOpType = &operationType{Type: "SUBTRACT", NumArgs: 2, Precedence: 42, Handler: subtractOperator}
@@ -88,8 +82,11 @@ var lengthOpType = &operationType{Type: "LENGTH", NumArgs: 0, Precedence: 50, Ha
 var lineOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: lineOperator}
 var columnOpType = &operationType{Type: "LINE", NumArgs: 0, Precedence: 50, Handler: columnOperator}
 
+var expressionOpType = &operationType{Type: "EXP", NumArgs: 0, Precedence: 50, Handler: expressionOperator}
+
 var collectOpType = &operationType{Type: "COLLECT", NumArgs: 1, Precedence: 50, Handler: collectOperator}
 var mapOpType = &operationType{Type: "MAP", NumArgs: 1, Precedence: 50, Handler: mapOperator}
+var filterOpType = &operationType{Type: "FILTER", NumArgs: 1, Precedence: 50, Handler: filterOperator}
 var errorOpType = &operationType{Type: "ERROR", NumArgs: 1, Precedence: 50, Handler: errorOperator}
 var pickOpType = &operationType{Type: "PICK", NumArgs: 1, Precedence: 50, Handler: pickOperator}
 var evalOpType = &operationType{Type: "EVAL", NumArgs: 1, Precedence: 50, Handler: evalOperator}
@@ -99,6 +96,8 @@ var formatDateTimeOpType = &operationType{Type: "FORMAT_DATE_TIME", NumArgs: 1, 
 var withDtFormatOpType = &operationType{Type: "WITH_DATE_TIME_FORMAT", NumArgs: 1, Precedence: 50, Handler: withDateTimeFormat}
 var nowOpType = &operationType{Type: "NOW", NumArgs: 0, Precedence: 50, Handler: nowOp}
 var tzOpType = &operationType{Type: "TIMEZONE", NumArgs: 1, Precedence: 50, Handler: tzOp}
+var fromUnixOpType = &operationType{Type: "FROM_UNIX", NumArgs: 0, Precedence: 50, Handler: fromUnixOp}
+var toUnixOpType = &operationType{Type: "TO_UNIX", NumArgs: 0, Precedence: 50, Handler: toUnixOp}
 
 var encodeOpType = &operationType{Type: "ENCODE", NumArgs: 0, Precedence: 50, Handler: encodeOperator}
 var decodeOpType = &operationType{Type: "DECODE", NumArgs: 0, Precedence: 50, Handler: decodeOperator}
@@ -119,6 +118,7 @@ var splitDocumentOpType = &operationType{Type: "SPLIT_DOC", NumArgs: 0, Preceden
 var getVariableOpType = &operationType{Type: "GET_VARIABLE", NumArgs: 0, Precedence: 55, Handler: getVariableOperator}
 var getStyleOpType = &operationType{Type: "GET_STYLE", NumArgs: 0, Precedence: 50, Handler: getStyleOperator}
 var getTagOpType = &operationType{Type: "GET_TAG", NumArgs: 0, Precedence: 50, Handler: getTagOperator}
+var getKindOpType = &operationType{Type: "GET_KIND", NumArgs: 0, Precedence: 50, Handler: getKindOperator}
 
 var getKeyOpType = &operationType{Type: "GET_KEY", NumArgs: 0, Precedence: 50, Handler: getKeyOperator}
 var isKeyOpType = &operationType{Type: "IS_KEY", NumArgs: 0, Precedence: 50, Handler: isKeyOperator}
@@ -139,6 +139,7 @@ var explodeOpType = &operationType{Type: "EXPLODE", NumArgs: 1, Precedence: 50, 
 var sortByOpType = &operationType{Type: "SORT_BY", NumArgs: 1, Precedence: 50, Handler: sortByOperator}
 var reverseOpType = &operationType{Type: "REVERSE", NumArgs: 0, Precedence: 50, Handler: reverseOperator}
 var sortOpType = &operationType{Type: "SORT", NumArgs: 0, Precedence: 50, Handler: sortOperator}
+var shuffleOpType = &operationType{Type: "SHUFFLE", NumArgs: 0, Precedence: 50, Handler: shuffleOperator}
 
 var sortKeysOpType = &operationType{Type: "SORT_KEYS", NumArgs: 1, Precedence: 50, Handler: sortKeysOperator}
 
@@ -161,8 +162,10 @@ var traverseArrayOpType = &operationType{Type: "TRAVERSE_ARRAY", NumArgs: 2, Pre
 
 var selfReferenceOpType = &operationType{Type: "SELF", NumArgs: 0, Precedence: 55, Handler: selfOperator}
 var valueOpType = &operationType{Type: "VALUE", NumArgs: 0, Precedence: 50, Handler: valueOperator}
+var referenceOpType = &operationType{Type: "REF", NumArgs: 0, Precedence: 50, Handler: referenceOperator}
 var envOpType = &operationType{Type: "ENV", NumArgs: 0, Precedence: 50, Handler: envOperator}
 var notOpType = &operationType{Type: "NOT", NumArgs: 0, Precedence: 50, Handler: notOperator}
+var toNumberOpType = &operationType{Type: "TO_NUMBER", NumArgs: 0, Precedence: 50, Handler: toNumberOperator}
 var emptyOpType = &operationType{Type: "EMPTY", Precedence: 50, Handler: emptyOperator}
 
 var envsubstOpType = &operationType{Type: "ENVSUBST", NumArgs: 0, Precedence: 50, Handler: envsubstOperator}
@@ -186,7 +189,7 @@ type Operation struct {
 	UpdateAssign  bool // used for assign ops, when true it means we evaluate the rhs given the lhs
 }
 
-func recurseNodeArrayEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
+func recurseNodeArrayEqual(lhs *CandidateNode, rhs *CandidateNode) bool {
 	if len(lhs.Content) != len(rhs.Content) {
 		return false
 	}
@@ -199,7 +202,7 @@ func recurseNodeArrayEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
 	return true
 }
 
-func findInArray(array *yaml.Node, item *yaml.Node) int {
+func findInArray(array *CandidateNode, item *CandidateNode) int {
 
 	for index := 0; index < len(array.Content); index = index + 1 {
 		if recursiveNodeEqual(array.Content[index], item) {
@@ -209,7 +212,7 @@ func findInArray(array *yaml.Node, item *yaml.Node) int {
 	return -1
 }
 
-func findKeyInMap(dataMap *yaml.Node, item *yaml.Node) int {
+func findKeyInMap(dataMap *CandidateNode, item *CandidateNode) int {
 
 	for index := 0; index < len(dataMap.Content); index = index + 2 {
 		if recursiveNodeEqual(dataMap.Content[index], item) {
@@ -219,7 +222,7 @@ func findKeyInMap(dataMap *yaml.Node, item *yaml.Node) int {
 	return -1
 }
 
-func recurseNodeObjectEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
+func recurseNodeObjectEqual(lhs *CandidateNode, rhs *CandidateNode) bool {
 	if len(lhs.Content) != len(rhs.Content) {
 		return false
 	}
@@ -237,46 +240,38 @@ func recurseNodeObjectEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
 	return true
 }
 
-func guessTagFromCustomType(node *yaml.Node) string {
-	if strings.HasPrefix(node.Tag, "!!") {
-		return node.Tag
-	} else if node.Value == "" {
-		log.Warning("node has no value to guess the type with")
-		return node.Tag
+func parseSnippet(value string) (*CandidateNode, error) {
+	if value == "" {
+		return &CandidateNode{
+			Kind: ScalarNode,
+			Tag:  "!!null",
+		}, nil
 	}
-	dataBucket, errorReading := parseSnippet(node.Value)
-
-	if errorReading != nil {
-		log.Warning("could not guess underlying tag type %v", errorReading)
-		return node.Tag
+	decoder := NewYamlDecoder(ConfiguredYamlPreferences)
+	err := decoder.Init(strings.NewReader(value))
+	if err != nil {
+		return nil, err
 	}
-	guessedTag := unwrapDoc(dataBucket).Tag
-	log.Info("im guessing the tag %v is a %v", node.Tag, guessedTag)
-	return guessedTag
+	result, err := decoder.Decode()
+	if err != nil {
+		return nil, err
+	}
+	result.Line = 0
+	result.Column = 0
+	return result, err
 }
 
-func parseSnippet(value string) (*yaml.Node, error) {
-	decoder := NewYamlDecoder()
-	decoder.Init(strings.NewReader(value))
-	var dataBucket yaml.Node
-	err := decoder.Decode(&dataBucket)
-	if len(dataBucket.Content) == 0 {
-		return nil, fmt.Errorf("bad data")
-	}
-	return dataBucket.Content[0], err
-}
-
-func recursiveNodeEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
+func recursiveNodeEqual(lhs *CandidateNode, rhs *CandidateNode) bool {
 	if lhs.Kind != rhs.Kind {
 		return false
 	}
 
-	if lhs.Kind == yaml.ScalarNode {
+	if lhs.Kind == ScalarNode {
 		//process custom tags of scalar nodes.
 		//dont worry about matching tags of maps or arrays.
 
-		lhsTag := guessTagFromCustomType(lhs)
-		rhsTag := guessTagFromCustomType(rhs)
+		lhsTag := lhs.guessTagFromCustomType()
+		rhsTag := rhs.guessTagFromCustomType()
 
 		if lhsTag != rhsTag {
 			return false
@@ -286,135 +281,67 @@ func recursiveNodeEqual(lhs *yaml.Node, rhs *yaml.Node) bool {
 	if lhs.Tag == "!!null" {
 		return true
 
-	} else if lhs.Kind == yaml.ScalarNode {
+	} else if lhs.Kind == ScalarNode {
 		return lhs.Value == rhs.Value
-	} else if lhs.Kind == yaml.SequenceNode {
+	} else if lhs.Kind == SequenceNode {
 		return recurseNodeArrayEqual(lhs, rhs)
-	} else if lhs.Kind == yaml.MappingNode {
+	} else if lhs.Kind == MappingNode {
 		return recurseNodeObjectEqual(lhs, rhs)
 	}
 	return false
 }
 
-func deepCloneContent(content []*yaml.Node) []*yaml.Node {
-	clonedContent := make([]*yaml.Node, len(content))
-	for i, child := range content {
-		clonedContent[i] = deepClone(child)
-	}
-	return clonedContent
-}
-
-func deepCloneNoContent(node *yaml.Node) *yaml.Node {
-	return deepCloneWithOptions(node, false)
-}
-func deepClone(node *yaml.Node) *yaml.Node {
-	return deepCloneWithOptions(node, true)
-}
-
-func deepCloneWithOptions(node *yaml.Node, cloneContent bool) *yaml.Node {
-	if node == nil {
-		return nil
-	}
-	var clonedContent []*yaml.Node
-	if cloneContent {
-		clonedContent = deepCloneContent(node.Content)
-	}
-	return &yaml.Node{
-		Content:     clonedContent,
-		Kind:        node.Kind,
-		Style:       node.Style,
-		Tag:         node.Tag,
-		Value:       node.Value,
-		Anchor:      node.Anchor,
-		Alias:       deepClone(node.Alias),
-		HeadComment: node.HeadComment,
-		LineComment: node.LineComment,
-		FootComment: node.FootComment,
-		Line:        node.Line,
-		Column:      node.Column,
-	}
-}
-
-// yaml numbers can be hex encoded...
+// yaml numbers can be hex and octal encoded...
 func parseInt64(numberString string) (string, int64, error) {
 	if strings.HasPrefix(numberString, "0x") ||
 		strings.HasPrefix(numberString, "0X") {
 		num, err := strconv.ParseInt(numberString[2:], 16, 64)
 		return "0x%X", num, err
+	} else if strings.HasPrefix(numberString, "0o") {
+		num, err := strconv.ParseInt(numberString[2:], 8, 64)
+		return "0o%o", num, err
 	}
 	num, err := strconv.ParseInt(numberString, 10, 64)
 	return "%v", num, err
 }
 
 func parseInt(numberString string) (int, error) {
-	var err error
-	var parsed int64
-	if strings.HasPrefix(numberString, "0x") ||
-		strings.HasPrefix(numberString, "0X") {
-		parsed, err = strconv.ParseInt(numberString[2:], 16, 64)
-	} else {
-		parsed, err = strconv.ParseInt(numberString, 10, 64)
-	}
+	_, parsed, err := parseInt64(numberString)
 
 	if err != nil {
 		return 0, err
-	} else if parsed > math.MaxInt {
-		return 0, fmt.Errorf("%v is too big (larger than %v)", parsed, math.MaxInt)
+	} else if parsed > math.MaxInt || parsed < math.MinInt {
+		return 0, fmt.Errorf("%v is not within [%v, %v]", parsed, math.MinInt, math.MaxInt)
 	}
 
 	return int(parsed), err
 }
 
-func createStringScalarNode(stringValue string) *yaml.Node {
-	var node = &yaml.Node{Kind: yaml.ScalarNode}
-	node.Value = stringValue
-	node.Tag = "!!str"
-	return node
-}
-
-func createScalarNode(value interface{}, stringValue string) *yaml.Node {
-	var node = &yaml.Node{Kind: yaml.ScalarNode}
-	node.Value = stringValue
-
-	switch value.(type) {
-	case float32, float64:
-		node.Tag = "!!float"
-	case int, int64, int32:
-		node.Tag = "!!int"
-	case bool:
-		node.Tag = "!!bool"
-	case string:
-		node.Tag = "!!str"
-	case nil:
-		node.Tag = "!!null"
-	}
-	return node
-}
-
-func headAndLineComment(node *yaml.Node) string {
+func headAndLineComment(node *CandidateNode) string {
 	return headComment(node) + lineComment(node)
 }
 
-func headComment(node *yaml.Node) string {
+func headComment(node *CandidateNode) string {
 	return strings.Replace(node.HeadComment, "#", "", 1)
 }
 
-func lineComment(node *yaml.Node) string {
+func lineComment(node *CandidateNode) string {
 	return strings.Replace(node.LineComment, "#", "", 1)
 }
 
-func footComment(node *yaml.Node) string {
+func footComment(node *CandidateNode) string {
 	return strings.Replace(node.FootComment, "#", "", 1)
 }
 
 func createValueOperation(value interface{}, stringValue string) *Operation {
+	log.Debug("creating value op for string %v", stringValue)
 	var node = createScalarNode(value, stringValue)
 
 	return &Operation{
 		OperationType: valueOpType,
 		Value:         value,
 		StringValue:   stringValue,
-		CandidateNode: &CandidateNode{Node: node},
+		CandidateNode: node,
 	}
 }
 
@@ -451,40 +378,46 @@ func NodeToString(node *CandidateNode) string {
 	if !log.IsEnabledFor(logging.DEBUG) {
 		return ""
 	}
-	value := node.Node
-	if value == nil {
+	if node == nil {
 		return "-- nil --"
 	}
-	buf := new(bytes.Buffer)
-	encoder := yaml.NewEncoder(buf)
-	errorEncoding := encoder.Encode(value)
-	if errorEncoding != nil {
-		log.Error("Error debugging node, %v", errorEncoding.Error())
-	}
-	errorClosingEncoder := encoder.Close()
-	if errorClosingEncoder != nil {
-		log.Error("Error closing encoder: ", errorClosingEncoder.Error())
-	}
-	tag := value.Tag
-	if value.Kind == yaml.DocumentNode {
-		tag = "doc"
-	} else if value.Kind == yaml.AliasNode {
+	tag := node.Tag
+	if node.Kind == AliasNode {
 		tag = "alias"
 	}
-	return fmt.Sprintf(`D%v, P%v, (%v)::%v`, node.Document, node.Path, tag, buf.String())
+	valueToUse := node.Value
+	if valueToUse == "" {
+		valueToUse = fmt.Sprintf("%v kids", len(node.Content))
+	}
+	return fmt.Sprintf(`D%v, P%v, %v (%v)::%v`, node.GetDocument(), node.GetNicePath(), KindString(node.Kind), tag, valueToUse)
 }
 
-func KindString(kind yaml.Kind) string {
+func NodeContentToString(node *CandidateNode, depth int) string {
+	if !log.IsEnabledFor(logging.DEBUG) {
+		return ""
+	}
+	var sb strings.Builder
+	for _, child := range node.Content {
+		for i := 0; i < depth; i++ {
+			sb.WriteString(" ")
+		}
+		sb.WriteString("- ")
+		sb.WriteString(NodeToString(child))
+		sb.WriteString("\n")
+		sb.WriteString(NodeContentToString(child, depth+1))
+	}
+	return sb.String()
+}
+
+func KindString(kind Kind) string {
 	switch kind {
-	case yaml.ScalarNode:
+	case ScalarNode:
 		return "ScalarNode"
-	case yaml.SequenceNode:
+	case SequenceNode:
 		return "SequenceNode"
-	case yaml.MappingNode:
+	case MappingNode:
 		return "MappingNode"
-	case yaml.DocumentNode:
-		return "DocumentNode"
-	case yaml.AliasNode:
+	case AliasNode:
 		return "AliasNode"
 	default:
 		return "unknown!"
