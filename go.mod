@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371
+	github.com/ProtonMail/go-crypto v1.0.0
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/cosiner/argv v0.1.1-0.20200416041250-86e3c689263e
 	github.com/go-git/go-git/v5 v5.11.0
