@@ -8,6 +8,7 @@ import (
 )
 
 func discoverRepositoriesFromQuery(ctx context.Context, searchType SearchType, query string, params map[string]string, githubOpts GitHubOptions) ([]Repository, error) {
+	var pageRepos []Repository
 	var repos []Repository
 	var resp *github.Response
 
@@ -25,14 +26,15 @@ func discoverRepositoriesFromQuery(ctx context.Context, searchType SearchType, q
 			},
 		}
 		if searchType == Code {
-			repos, resp, err = searchCodeRepositories(ctx, ghClient, query, opts, params)
+			pageRepos, resp, err = searchCodeRepositories(ctx, ghClient, query, opts, params)
 		} else {
-			repos, resp, err = searchRepositories(ctx, ghClient, query, opts, params)
+			pageRepos, resp, err = searchRepositories(ctx, ghClient, query, opts, params)
 		}
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all repositories matching query %s on GitHub (page %d): %w", query, page, err)
 		}
+
+		repos = append(repos, pageRepos...)
 
 		page = resp.NextPage
 		if resp.NextPage == 0 {
