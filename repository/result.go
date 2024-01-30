@@ -9,6 +9,7 @@ type RepoUpdateResult struct {
 	Repo        string             `json:"repo"`
 	Error       *string            `json:"error"`
 	PullRequest *PullRequestResult `json:"pr"`
+	IsUpdated   bool
 }
 
 type PullRequestResult struct {
