@@ -64,7 +64,7 @@ func init() {
 	pflag.StringArrayVar(&options.GitHub.PullRequest.Comments, "pr-comment", []string{}, "List of comments to add to the Pull Request.")
 	pflag.StringSliceVar(&options.GitHub.PullRequest.Assignees, "pr-assignees", []string{}, "List of users to assign PR to.")
 	pflag.StringSliceVar(&options.GitHub.PullRequest.Labels, "pr-labels", []string{"octopilot-update"}, "List of labels set on the pull requests, and used to find existing pull requests to update.")
-	pflag.StringVar(&options.GitHub.PullRequest.BaseBranch, "pr-base-branch", "master", "Name of the branch used as a base when creating pull requests.")
+	pflag.StringVar(&options.GitHub.PullRequest.BaseBranch, "pr-base-branch", "master", "Name of the branch used as a base when creating pull requests. If empty, the branch used will be the one referenced by the HEAD of each cloned repository.")
 	pflag.BoolVar(&options.GitHub.PullRequest.Draft, "pr-draft", false, `Create "draft" Pull Requests, instead of regular ones. It means that the PRs can't be merged until marked as "ready for review".`)
 	pflag.BoolVar(&options.GitHub.PullRequest.Merge.Enabled, "pr-merge", false, `Merge the Pull Requests created. It will wait until the PRs are "mergeable" before merging them.`)
 	pflag.BoolVar(&options.GitHub.PullRequest.Merge.Auto, "pr-merge-auto", false, "If pr-merge is enabled, then merge the PR using Github's auto-merge feature. Note, this must also be enabled in the repository settings manually for it to work.")

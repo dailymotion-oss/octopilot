@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dailymotion-oss/octopilot/update"
+	"github.com/go-git/go-git/v5"
 )
 
 // definition of the different kind of Pull Request update operations
@@ -205,4 +206,18 @@ func (o *GitHubOptions) setDefaultUpdateOperation(defaultUpdateOperation string)
 	if len(o.PullRequest.BodyUpdateOperation) == 0 {
 		o.PullRequest.BodyUpdateOperation = defaultUpdateOperation
 	}
+}
+
+func (o *GitHubOptions) adjustOptionsFromGitRepository(gitRepo *git.Repository) error {
+	if len(o.PullRequest.BaseBranch) == 0 {
+		if gitRepo == nil {
+			return errors.New("failed to resolve repository branch referenced by HEAD: repository is null")
+		}
+		head, err := gitRepo.Head()
+		if err != nil {
+			return fmt.Errorf("failed to resolve repository branch referenced by HEAD: %w", err)
+		}
+		o.PullRequest.BaseBranch = head.Name().Short()
+	}
+	return nil
 }
