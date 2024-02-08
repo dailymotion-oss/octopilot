@@ -26,17 +26,19 @@ var participleYqRules = []*participleYqRule{
 	{"RecursiveDecent", `\.\.`, recursiveDecentOpToken(false), 0},
 
 	{"GetVariable", `\$[a-zA-Z_\-0-9]+`, getVariableOpToken(), 0},
-	{"AsignAsVariable", `as`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{}), 0},
-	{"AsignRefVariable", `ref`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{IsReference: true}), 0},
+	{"AssignAsVariable", `as`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{}), 0},
+	{"AssignRefVariable", `ref`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{IsReference: true}), 0},
 
 	{"CreateMap", `:\s*`, opToken(createMapOpType), 0},
 	simpleOp("length", lengthOpType),
 	simpleOp("line", lineOpType),
 	simpleOp("column", columnOpType),
 	simpleOp("eval", evalOpType),
+	simpleOp("to_?number", toNumberOpType),
 
 	{"MapValues", `map_?values`, opToken(mapValuesOpType), 0},
 	simpleOp("map", mapOpType),
+	simpleOp("filter", filterOpType),
 	simpleOp("pick", pickOpType),
 
 	{"FlattenWithDepth", `flatten\([0-9]+\)`, flattenWithDepth(), 0},
@@ -45,10 +47,15 @@ var participleYqRules = []*participleYqRule{
 	simpleOp("format_datetime", formatDateTimeOpType),
 	simpleOp("now", nowOpType),
 	simpleOp("tz", tzOpType),
+	simpleOp("from_?unix", fromUnixOpType),
+	simpleOp("to_?unix", toUnixOpType),
 	simpleOp("with_dtf", withDtFormatOpType),
 	simpleOp("error", errorOpType),
+	simpleOp("shuffle", shuffleOpType),
 	simpleOp("sortKeys", sortKeysOpType),
 	simpleOp("sort_?keys", sortKeysOpType),
+
+	{"ArrayToMap", "array_?to_?map", expressionOpToken(`(.[] | select(. != null) ) as $i ireduce({}; .[$i | key] = $i)`), 0},
 
 	{"YamlEncodeWithIndent", `to_?yaml\([0-9]+\)`, encodeParseIndent(YamlOutputFormat), 0},
 	{"XMLEncodeWithIndent", `to_?xml\([0-9]+\)`, encodeParseIndent(XMLOutputFormat), 0},
@@ -76,7 +83,11 @@ var participleYqRules = []*participleYqRule{
 	{"Base64d", `@base64d`, decodeOp(Base64InputFormat), 0},
 	{"Base64", `@base64`, encodeWithIndent(Base64OutputFormat, 0), 0},
 
-	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(XMLPreferences.AttributePrefix, XMLPreferences.ContentName, XMLPreferences.StrictMode, XMLPreferences.KeepNamespace, XMLPreferences.UseRawToken), false), 0},
+	{"Urid", `@urid`, decodeOp(UriInputFormat), 0},
+	{"Uri", `@uri`, encodeWithIndent(UriOutputFormat, 0), 0},
+	{"SH", `@sh`, encodeWithIndent(ShOutputFormat, 0), 0},
+
+	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(ConfiguredXMLPreferences), false), 0},
 
 	{"LoadBase64", `load_?base64`, loadOp(NewBase64Decoder(), false), 0},
 
@@ -84,7 +95,7 @@ var participleYqRules = []*participleYqRule{
 
 	{"LoadString", `load_?str|str_?load`, loadOp(nil, true), 0},
 
-	{"LoadYaml", `load`, loadOp(NewYamlDecoder(), false), 0},
+	{"LoadYaml", `load`, loadOp(NewYamlDecoder(LoadYamlPreferences), false), 0},
 
 	{"SplitDocument", `splitDoc|split_?doc`, opToken(splitDocumentOpType), 0},
 
@@ -142,6 +153,7 @@ var participleYqRules = []*participleYqRule{
 
 	assignableOp("style", getStyleOpType, assignStyleOpType),
 	assignableOp("tag|type", getTagOpType, assignTagOpType),
+	simpleOp("kind", getKindOpType),
 	assignableOp("anchor", getAnchorOpType, assignAnchorOpType),
 	assignableOp("alias", getAliasOpType, assignAliasOpType),
 
@@ -191,7 +203,7 @@ var participleYqRules = []*participleYqRule{
 	{`whitespace`, `[ \t\n]+`, nil, 0},
 
 	{"WrappedPathElement", `\."[^ "]+"\??`, pathToken(true), 0},
-	{"PathElement", `\.[^ ;\}\{\:\[\],\|\.\[\(\)=\n]+\??`, pathToken(false), 0},
+	{"PathElement", `\.[^ ;\}\{\:\[\],\|\.\[\(\)=\n!]+\??`, pathToken(false), 0},
 	{"Pipe", `\|`, opToken(pipeOpType), 0},
 	{"Self", `\.`, opToken(selfReferenceOpType), 0},
 
@@ -199,6 +211,10 @@ var participleYqRules = []*participleYqRule{
 
 	{"MultiplyAssign", `\*=[\+|\?cdn]*`, multiplyWithPrefs(multiplyAssignOpType), 0},
 	{"Multiply", `\*[\+|\?cdn]*`, multiplyWithPrefs(multiplyOpType), 0},
+
+	{"Divide", `\/`, opToken(divideOpType), 0},
+
+	{"Modulo", `%`, opToken(moduloOpType), 0},
 
 	{"AddAssign", `\+=`, opToken(addAssignOpType), 0},
 	{"Add", `\+`, opToken(addOpType), 0},
@@ -282,7 +298,15 @@ func opTokenWithPrefs(opType *operationType, assignOpType *operationType, prefer
 		if assignOpType != nil {
 			assign = &Operation{OperationType: assignOpType, Value: assignOpType.Type, StringValue: value, Preferences: preferences}
 		}
-		return &token{TokenType: operationToken, Operation: op, AssignOperation: assign}, nil
+		return &token{TokenType: operationToken, Operation: op, AssignOperation: assign, CheckForPostTraverse: op.OperationType.CheckForPostTraverse}, nil
+	}
+}
+
+func expressionOpToken(expression string) yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		prefs := expressionOpPreferences{expression: expression}
+		expressionOp := &Operation{OperationType: expressionOpType, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: expressionOp}, nil
 	}
 }
 
@@ -342,8 +366,12 @@ func nullValue() yqAction {
 
 func stringValue() yqAction {
 	return func(rawToken lexer.Token) (*token, error) {
+		log.Debug("rawTokenvalue: %v", rawToken.Value)
 		value := unwrap(rawToken.Value)
+		log.Debug("unwrapped: %v", value)
 		value = strings.ReplaceAll(value, "\\\"", "\"")
+		value = strings.ReplaceAll(value, "\\n", "\n")
+		log.Debug("replaced: %v", value)
 		return &token{TokenType: operationToken, Operation: createValueOperation(value, value)}, nil
 	}
 }

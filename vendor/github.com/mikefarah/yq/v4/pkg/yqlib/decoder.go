@@ -3,8 +3,7 @@ package yqlib
 import (
 	"fmt"
 	"io"
-
-	yaml "gopkg.in/yaml.v3"
+	"strings"
 )
 
 type InputFormat uint
@@ -17,20 +16,23 @@ const (
 	JsonInputFormat
 	CSVObjectInputFormat
 	TSVObjectInputFormat
+	TomlInputFormat
+	UriInputFormat
+	LuaInputFormat
 )
 
 type Decoder interface {
-	Init(reader io.Reader)
-	Decode(node *yaml.Node) error
+	Init(reader io.Reader) error
+	Decode() (*CandidateNode, error)
 }
 
 func InputFormatFromString(format string) (InputFormat, error) {
 	switch format {
-	case "yaml", "y":
+	case "yaml", "yml", "y":
 		return YamlInputFormat, nil
 	case "xml", "x":
 		return XMLInputFormat, nil
-	case "props", "p":
+	case "properties", "props", "p":
 		return PropertiesInputFormat, nil
 	case "json", "ndjson", "j":
 		return JsonInputFormat, nil
@@ -38,7 +40,27 @@ func InputFormatFromString(format string) (InputFormat, error) {
 		return CSVObjectInputFormat, nil
 	case "tsv", "t":
 		return TSVObjectInputFormat, nil
+	case "toml":
+		return TomlInputFormat, nil
+	case "lua", "l":
+		return LuaInputFormat, nil
 	default:
-		return 0, fmt.Errorf("unknown format '%v' please use [yaml|xml|props]", format)
+		return 0, fmt.Errorf("unknown format '%v' please use [yaml|json|props|csv|tsv|xml|toml]", format)
 	}
+}
+
+func FormatFromFilename(filename string) string {
+
+	if filename != "" {
+		GetLogger().Debugf("checking file extension '%s' for auto format detection", filename)
+		nPos := strings.LastIndex(filename, ".")
+		if nPos > -1 {
+			format := filename[nPos+1:]
+			GetLogger().Debugf("detected format '%s'", format)
+			return format
+		}
+	}
+
+	GetLogger().Debugf("using default inputFormat 'yaml'")
+	return "yaml"
 }
