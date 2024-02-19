@@ -25,6 +25,11 @@ func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, er
 		return false, nil, fmt.Errorf("failed to clone repository %s: %w", s.Repository.FullName(), err)
 	}
 
+	err = s.Options.GitHub.adjustOptionsFromGitRepository(gitRepo)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to adjust options for repository %s: %w", s.Repository.FullName(), err)
+	}
+
 	existingPR, err := s.Repository.findMatchingPullRequest(ctx, s.Options.GitHub)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to find matching pull request for repository %s: %w", s.Repository.FullName(), err)
