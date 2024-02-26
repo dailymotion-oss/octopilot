@@ -26,17 +26,19 @@ var participleYqRules = []*participleYqRule{
 	{"RecursiveDecent", `\.\.`, recursiveDecentOpToken(false), 0},
 
 	{"GetVariable", `\$[a-zA-Z_\-0-9]+`, getVariableOpToken(), 0},
-	{"AsignAsVariable", `as`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{}), 0},
-	{"AsignRefVariable", `ref`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{IsReference: true}), 0},
+	{"AssignAsVariable", `as`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{}), 0},
+	{"AssignRefVariable", `ref`, opTokenWithPrefs(assignVariableOpType, nil, assignVarPreferences{IsReference: true}), 0},
 
 	{"CreateMap", `:\s*`, opToken(createMapOpType), 0},
 	simpleOp("length", lengthOpType),
 	simpleOp("line", lineOpType),
 	simpleOp("column", columnOpType),
 	simpleOp("eval", evalOpType),
+	simpleOp("to_?number", toNumberOpType),
 
 	{"MapValues", `map_?values`, opToken(mapValuesOpType), 0},
 	simpleOp("map", mapOpType),
+	simpleOp("filter", filterOpType),
 	simpleOp("pick", pickOpType),
 
 	{"FlattenWithDepth", `flatten\([0-9]+\)`, flattenWithDepth(), 0},
@@ -45,38 +47,47 @@ var participleYqRules = []*participleYqRule{
 	simpleOp("format_datetime", formatDateTimeOpType),
 	simpleOp("now", nowOpType),
 	simpleOp("tz", tzOpType),
+	simpleOp("from_?unix", fromUnixOpType),
+	simpleOp("to_?unix", toUnixOpType),
 	simpleOp("with_dtf", withDtFormatOpType),
 	simpleOp("error", errorOpType),
+	simpleOp("shuffle", shuffleOpType),
 	simpleOp("sortKeys", sortKeysOpType),
 	simpleOp("sort_?keys", sortKeysOpType),
 
-	{"YamlEncodeWithIndent", `to_?yaml\([0-9]+\)`, encodeParseIndent(YamlOutputFormat), 0},
-	{"XMLEncodeWithIndent", `to_?xml\([0-9]+\)`, encodeParseIndent(XMLOutputFormat), 0},
-	{"JSONEncodeWithIndent", `to_?json\([0-9]+\)`, encodeParseIndent(JSONOutputFormat), 0},
+	{"ArrayToMap", "array_?to_?map", expressionOpToken(`(.[] | select(. != null) ) as $i ireduce({}; .[$i | key] = $i)`), 0},
 
-	{"YamlDecode", `from_?yaml|@yamld|from_?json|@jsond`, decodeOp(YamlInputFormat), 0},
-	{"YamlEncode", `to_?yaml|@yaml`, encodeWithIndent(YamlOutputFormat, 2), 0},
+	{"YamlEncodeWithIndent", `to_?yaml\([0-9]+\)`, encodeParseIndent(YamlFormat), 0},
+	{"XMLEncodeWithIndent", `to_?xml\([0-9]+\)`, encodeParseIndent(XMLFormat), 0},
+	{"JSONEncodeWithIndent", `to_?json\([0-9]+\)`, encodeParseIndent(JSONFormat), 0},
 
-	{"JSONEncode", `to_?json`, encodeWithIndent(JSONOutputFormat, 2), 0},
-	{"JSONEncodeNoIndent", `@json`, encodeWithIndent(JSONOutputFormat, 0), 0},
+	{"YamlDecode", `from_?yaml|@yamld|from_?json|@jsond`, decodeOp(YamlFormat), 0},
+	{"YamlEncode", `to_?yaml|@yaml`, encodeWithIndent(YamlFormat, 2), 0},
 
-	{"PropertiesDecode", `from_?props|@propsd`, decodeOp(PropertiesInputFormat), 0},
-	{"PropsEncode", `to_?props|@props`, encodeWithIndent(PropsOutputFormat, 2), 0},
+	{"JSONEncode", `to_?json`, encodeWithIndent(JSONFormat, 2), 0},
+	{"JSONEncodeNoIndent", `@json`, encodeWithIndent(JSONFormat, 0), 0},
 
-	{"XmlDecode", `from_?xml|@xmld`, decodeOp(XMLInputFormat), 0},
-	{"XMLEncode", `to_?xml`, encodeWithIndent(XMLOutputFormat, 2), 0},
-	{"XMLEncodeNoIndent", `@xml`, encodeWithIndent(XMLOutputFormat, 0), 0},
+	{"PropertiesDecode", `from_?props|@propsd`, decodeOp(PropertiesFormat), 0},
+	{"PropsEncode", `to_?props|@props`, encodeWithIndent(PropertiesFormat, 2), 0},
 
-	{"CSVDecode", `from_?csv|@csvd`, decodeOp(CSVObjectInputFormat), 0},
-	{"CSVEncode", `to_?csv|@csv`, encodeWithIndent(CSVOutputFormat, 0), 0},
+	{"XmlDecode", `from_?xml|@xmld`, decodeOp(XMLFormat), 0},
+	{"XMLEncode", `to_?xml`, encodeWithIndent(XMLFormat, 2), 0},
+	{"XMLEncodeNoIndent", `@xml`, encodeWithIndent(XMLFormat, 0), 0},
 
-	{"TSVDecode", `from_?tsv|@tsvd`, decodeOp(TSVObjectInputFormat), 0},
-	{"TSVEncode", `to_?tsv|@tsv`, encodeWithIndent(TSVOutputFormat, 0), 0},
+	{"CSVDecode", `from_?csv|@csvd`, decodeOp(CSVFormat), 0},
+	{"CSVEncode", `to_?csv|@csv`, encodeWithIndent(CSVFormat, 0), 0},
 
-	{"Base64d", `@base64d`, decodeOp(Base64InputFormat), 0},
-	{"Base64", `@base64`, encodeWithIndent(Base64OutputFormat, 0), 0},
+	{"TSVDecode", `from_?tsv|@tsvd`, decodeOp(TSVFormat), 0},
+	{"TSVEncode", `to_?tsv|@tsv`, encodeWithIndent(TSVFormat, 0), 0},
 
-	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(XMLPreferences.AttributePrefix, XMLPreferences.ContentName, XMLPreferences.StrictMode, XMLPreferences.KeepNamespace, XMLPreferences.UseRawToken), false), 0},
+	{"Base64d", `@base64d`, decodeOp(Base64Format), 0},
+	{"Base64", `@base64`, encodeWithIndent(Base64Format, 0), 0},
+
+	{"Urid", `@urid`, decodeOp(UriFormat), 0},
+	{"Uri", `@uri`, encodeWithIndent(UriFormat, 0), 0},
+	{"SH", `@sh`, encodeWithIndent(ShFormat, 0), 0},
+
+	{"LoadXML", `load_?xml|xml_?load`, loadOp(NewXMLDecoder(ConfiguredXMLPreferences), false), 0},
 
 	{"LoadBase64", `load_?base64`, loadOp(NewBase64Decoder(), false), 0},
 
@@ -84,7 +95,7 @@ var participleYqRules = []*participleYqRule{
 
 	{"LoadString", `load_?str|str_?load`, loadOp(nil, true), 0},
 
-	{"LoadYaml", `load`, loadOp(NewYamlDecoder(), false), 0},
+	{"LoadYaml", `load`, loadOp(NewYamlDecoder(LoadYamlPreferences), false), 0},
 
 	{"SplitDocument", `splitDoc|split_?doc`, opToken(splitDocumentOpType), 0},
 
@@ -142,6 +153,7 @@ var participleYqRules = []*participleYqRule{
 
 	assignableOp("style", getStyleOpType, assignStyleOpType),
 	assignableOp("tag|type", getTagOpType, assignTagOpType),
+	simpleOp("kind", getKindOpType),
 	assignableOp("anchor", getAnchorOpType, assignAnchorOpType),
 	assignableOp("alias", getAliasOpType, assignAliasOpType),
 
@@ -191,7 +203,7 @@ var participleYqRules = []*participleYqRule{
 	{`whitespace`, `[ \t\n]+`, nil, 0},
 
 	{"WrappedPathElement", `\."[^ "]+"\??`, pathToken(true), 0},
-	{"PathElement", `\.[^ ;\}\{\:\[\],\|\.\[\(\)=\n]+\??`, pathToken(false), 0},
+	{"PathElement", `\.[^ ;\}\{\:\[\],\|\.\[\(\)=\n!]+\??`, pathToken(false), 0},
 	{"Pipe", `\|`, opToken(pipeOpType), 0},
 	{"Self", `\.`, opToken(selfReferenceOpType), 0},
 
@@ -200,11 +212,16 @@ var participleYqRules = []*participleYqRule{
 	{"MultiplyAssign", `\*=[\+|\?cdn]*`, multiplyWithPrefs(multiplyAssignOpType), 0},
 	{"Multiply", `\*[\+|\?cdn]*`, multiplyWithPrefs(multiplyOpType), 0},
 
+	{"Divide", `\/`, opToken(divideOpType), 0},
+
+	{"Modulo", `%`, opToken(moduloOpType), 0},
+
 	{"AddAssign", `\+=`, opToken(addAssignOpType), 0},
 	{"Add", `\+`, opToken(addOpType), 0},
 
 	{"SubtractAssign", `\-=`, opToken(subtractAssignOpType), 0},
 	{"Subtract", `\-`, opToken(subtractOpType), 0},
+	{"Comment", `#.*`, nil, 0},
 }
 
 type yqAction func(lexer.Token) (*token, error)
@@ -282,7 +299,15 @@ func opTokenWithPrefs(opType *operationType, assignOpType *operationType, prefer
 		if assignOpType != nil {
 			assign = &Operation{OperationType: assignOpType, Value: assignOpType.Type, StringValue: value, Preferences: preferences}
 		}
-		return &token{TokenType: operationToken, Operation: op, AssignOperation: assign}, nil
+		return &token{TokenType: operationToken, Operation: op, AssignOperation: assign, CheckForPostTraverse: op.OperationType.CheckForPostTraverse}, nil
+	}
+}
+
+func expressionOpToken(expression string) yqAction {
+	return func(rawToken lexer.Token) (*token, error) {
+		prefs := expressionOpPreferences{expression: expression}
+		expressionOp := &Operation{OperationType: expressionOpType, Preferences: prefs}
+		return &token{TokenType: operationToken, Operation: expressionOp}, nil
 	}
 }
 
@@ -342,8 +367,12 @@ func nullValue() yqAction {
 
 func stringValue() yqAction {
 	return func(rawToken lexer.Token) (*token, error) {
+		log.Debug("rawTokenvalue: %v", rawToken.Value)
 		value := unwrap(rawToken.Value)
+		log.Debug("unwrapped: %v", value)
 		value = strings.ReplaceAll(value, "\\\"", "\"")
+		value = strings.ReplaceAll(value, "\\n", "\n")
+		log.Debug("replaced: %v", value)
 		return &token{TokenType: operationToken, Operation: createValueOperation(value, value)}, nil
 	}
 }
@@ -467,7 +496,7 @@ func numberValue() yqAction {
 	}
 }
 
-func encodeParseIndent(outputFormat PrinterOutputFormat) yqAction {
+func encodeParseIndent(outputFormat *Format) yqAction {
 	return func(rawToken lexer.Token) (*token, error) {
 		value := rawToken.Value
 		var indent, errParsingInt = extractNumberParameter(value)
@@ -481,13 +510,13 @@ func encodeParseIndent(outputFormat PrinterOutputFormat) yqAction {
 	}
 }
 
-func encodeWithIndent(outputFormat PrinterOutputFormat, indent int) yqAction {
+func encodeWithIndent(outputFormat *Format, indent int) yqAction {
 	prefs := encoderPreferences{format: outputFormat, indent: indent}
 	return opTokenWithPrefs(encodeOpType, nil, prefs)
 }
 
-func decodeOp(inputFormat InputFormat) yqAction {
-	prefs := decoderPreferences{format: inputFormat}
+func decodeOp(format *Format) yqAction {
+	prefs := decoderPreferences{format: format}
 	return opTokenWithPrefs(decodeOpType, nil, prefs)
 }
 
