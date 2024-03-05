@@ -24,7 +24,7 @@ require (
 	github.com/ybbus/httpretry v1.0.2
 	github.com/zoumo/goset v0.2.0
 	go.mozilla.org/sops/v3 v3.7.3
-	golang.org/x/oauth2 v0.16.0
+	golang.org/x/oauth2 v0.18.0
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -131,12 +131,12 @@ require (
 	go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.13.0 // indirect
