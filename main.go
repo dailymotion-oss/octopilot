@@ -163,8 +163,9 @@ func main() {
 			updated, pr, err := repo.Update(ctx, updaters, options.UpdateOptions)
 
 			result := repository.RepoUpdateResult{
-				Owner: repo.Owner,
-				Repo:  repo.Name,
+				Owner:     repo.Owner,
+				Repo:      repo.Name,
+				IsUpdated: updated,
 			}
 
 			if err != nil {
@@ -201,20 +202,12 @@ func main() {
 
 	logrus.WithField("repositories-count", len(repositories)).Info("Updates finished")
 
-	resultFile := repository.ResultFile{}
-	hadError := false
+	updatedPRURLs, notUpdatedPRURLs, resultFile, hadError := processResults(results)
 
-	for r := range results {
-		resultFile.Repos = append(resultFile.Repos, r)
-
-		if r.Error != nil {
-			hadError = true
-		}
-	}
+	logUpdatesSummary(updatedPRURLs, notUpdatedPRURLs)
 
 	if options.outputResults != "" {
 		err := writeResults(&resultFile, options.outputResults)
-
 		if err != nil {
 			logrus.Fatalf("Failed to write results: %s", err)
 		}
@@ -222,6 +215,42 @@ func main() {
 
 	if options.failOnError && hadError {
 		logrus.Fatal("Some repository updates failed")
+	}
+}
+
+func processResults(results chan repository.RepoUpdateResult) (updatedPRURLs []string, notUpdatedPRURLs []string, resultFile repository.ResultFile, hadError bool) {
+	for r := range results {
+		if r.PullRequest != nil && r.PullRequest.URL != "" {
+			if r.IsUpdated {
+				updatedPRURLs = append(updatedPRURLs, r.PullRequest.URL)
+			} else {
+				notUpdatedPRURLs = append(notUpdatedPRURLs, r.PullRequest.URL)
+			}
+		}
+
+		resultFile.Repos = append(resultFile.Repos, r)
+
+		if r.Error != nil {
+			hadError = true
+		}
+	}
+
+	return updatedPRURLs, notUpdatedPRURLs, resultFile, hadError
+}
+
+func logUpdatesSummary(updatedPRURLs, notUpdatedPRURLs []string) {
+	if len(notUpdatedPRURLs) > 0 {
+		logrus.WithField("unrevised-repository-count", len(notUpdatedPRURLs)).Info("Update summary (Unrevised)")
+		for _, url := range notUpdatedPRURLs {
+			logrus.WithField("unrevised-repository-pr-url", url).Info("Update summary (Unrevised)")
+		}
+	}
+
+	if len(updatedPRURLs) > 0 {
+		logrus.WithField("updated-repository-count", len(updatedPRURLs)).Info("Update summary (Updated)")
+		for _, url := range updatedPRURLs {
+			logrus.WithField("updated-repository-pr-url", url).Info("Update summary (Updated)")
+		}
 	}
 }
 
