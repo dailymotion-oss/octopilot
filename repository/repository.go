@@ -122,38 +122,23 @@ func (r Repository) Update(ctx context.Context, updaters []update.Updater, optio
 		}()
 	}
 
-	var strategy Strategy
+	var strategy *Strategy
 	switch options.Strategy {
 	case "recreate":
 		logrus.WithFields(logrus.Fields{
 			"repository": r.FullName(),
 		}).Debug("Using 'recreate' strategy")
-		strategy = &RecreateStrategy{
-			Repository: r,
-			RepoPath:   repoPath,
-			Updaters:   updaters,
-			Options:    options,
-		}
+		strategy = NewRecreateStrategy(r, repoPath, updaters, options)
 	case "append":
 		logrus.WithFields(logrus.Fields{
 			"repository": r.FullName(),
 		}).Debug("Using 'append' strategy")
-		strategy = &AppendStrategy{
-			Repository: r,
-			RepoPath:   repoPath,
-			Updaters:   updaters,
-			Options:    options,
-		}
+		strategy = NewAppendStrategy(r, repoPath, updaters, options)
 	default:
 		logrus.WithFields(logrus.Fields{
 			"repository": r.FullName(),
 		}).Debug("Using 'reset' strategy")
-		strategy = &ResetStrategy{
-			Repository: r,
-			RepoPath:   repoPath,
-			Updaters:   updaters,
-			Options:    options,
-		}
+		strategy = NewResetStrategy(r, repoPath, updaters, options)
 	}
 
 	repoUpdated, pr, err := strategy.Run(ctx)
