@@ -136,22 +136,15 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOption
 		}
 	}
 
-	now := time.Now()
-	commitMsg := new(strings.Builder)
-	commitMsg.WriteString(opts.GitOpts.CommitTitle)
-	if len(opts.GitOpts.CommitBody) > 0 {
-		commitMsg.WriteString("\n\n")
-		commitMsg.WriteString(opts.GitOpts.CommitBody)
-	}
-	if len(opts.GitOpts.CommitFooter) > 0 {
-		commitMsg.WriteString("\n\n-- \n")
-		commitMsg.WriteString(opts.GitOpts.CommitFooter)
-	}
-
 	signingKey, err := parseSigningKey(opts.GitOpts.SigningKeyPath, opts.GitOpts.SigningKeyPassphrase)
 	if err != nil {
 		return false, err
 	}
+
+	var (
+		now = time.Now()
+		commitMsg = NewCommitMessage(opts.GitOpts.CommitTitle, opts.GitOpts.CommitBody, opts.GitOpts.CommitFooter)
+	)
 
 	commit, err := workTree.Commit(commitMsg.String(),
 		&git.CommitOptions{
