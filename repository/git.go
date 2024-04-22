@@ -107,7 +107,12 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	return nil
 }
 
-func commitChanges(_ context.Context, repository Repository, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
+type commitOptions struct {
+	Repository Repository
+	GitOpts    GitOptions
+}
+
+func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)
@@ -121,11 +126,11 @@ func commitChanges(_ context.Context, repository Repository, gitRepo *git.Reposi
 		return false, nil
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository": repository.FullName(),
+		"repository": opts.Repository.FullName(),
 		"status":     status.String(),
 	}).Debug("Git status")
 
-	for _, pattern := range options.Git.StagePatterns {
+	for _, pattern := range opts.GitOpts.StagePatterns {
 		err = workTree.AddGlob(pattern)
 		if err != nil {
 			return false, fmt.Errorf("failed to stage files using pattern %s: %w", pattern, err)
@@ -134,32 +139,32 @@ func commitChanges(_ context.Context, repository Repository, gitRepo *git.Reposi
 
 	now := time.Now()
 	commitMsg := new(strings.Builder)
-	commitMsg.WriteString(options.Git.CommitTitle)
-	if len(options.Git.CommitBody) > 0 {
+	commitMsg.WriteString(opts.GitOpts.CommitTitle)
+	if len(opts.GitOpts.CommitBody) > 0 {
 		commitMsg.WriteString("\n\n")
-		commitMsg.WriteString(options.Git.CommitBody)
+		commitMsg.WriteString(opts.GitOpts.CommitBody)
 	}
-	if len(options.Git.CommitFooter) > 0 {
+	if len(opts.GitOpts.CommitFooter) > 0 {
 		commitMsg.WriteString("\n\n-- \n")
-		commitMsg.WriteString(options.Git.CommitFooter)
+		commitMsg.WriteString(opts.GitOpts.CommitFooter)
 	}
 
-	signingKey, err := parseSigningKey(options.Git.SigningKeyPath, options.Git.SigningKeyPassphrase)
+	signingKey, err := parseSigningKey(opts.GitOpts.SigningKeyPath, opts.GitOpts.SigningKeyPassphrase)
 	if err != nil {
 		return false, err
 	}
 
 	commit, err := workTree.Commit(commitMsg.String(),
 		&git.CommitOptions{
-			All: options.Git.StageAllChanged,
+			All: opts.GitOpts.StageAllChanged,
 			Author: &object.Signature{
-				Name:  options.Git.AuthorName,
-				Email: options.Git.AuthorEmail,
+				Name:  opts.GitOpts.AuthorName,
+				Email: opts.GitOpts.AuthorEmail,
 				When:  now,
 			},
 			Committer: &object.Signature{
-				Name:  options.Git.CommitterName,
-				Email: options.Git.CommitterEmail,
+				Name:  opts.GitOpts.CommitterName,
+				Email: opts.GitOpts.CommitterEmail,
 				When:  now,
 			},
 			SignKey: signingKey,
@@ -169,7 +174,7 @@ func commitChanges(_ context.Context, repository Repository, gitRepo *git.Reposi
 		return false, fmt.Errorf("failed to commit: %w", err)
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository": repository.FullName(),
+		"repository": opts.Repository.FullName(),
 		"commit":     commit.String(),
 	}).Debug("Git commit")
 
