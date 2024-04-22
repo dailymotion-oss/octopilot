@@ -65,21 +65,13 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 }
 
 type switchBranchOptions struct {
+	Repository   Repository
 	BranchName   string
 	CreateBranch bool
 }
 
 func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchOptions) error {
-	workTree, err := gitRepo.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to open worktree: %w", err)
-	}
-
-	var (
-		rootPath      = workTree.Filesystem.Root()
-		repoName      = filepath.Base(rootPath)
-		branchRefName = plumbing.NewBranchReferenceName(opts.BranchName)
-	)
+	branchRefName := plumbing.NewBranchReferenceName(opts.BranchName)
 
 	if !opts.CreateBranch {
 		// for an existing branch, we need to create a local reference to the remote branch
@@ -96,6 +88,11 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 		}
 	}
 
+	workTree, err := gitRepo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to open worktree: %w", err)
+	}
+
 	if err := workTree.Checkout(&git.CheckoutOptions{
 		Branch: branchRefName,
 		Create: opts.CreateBranch,
@@ -104,8 +101,8 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
 	}).Debug("Switched Git branch")
 	return nil
 }

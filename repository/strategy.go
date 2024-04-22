@@ -50,6 +50,7 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 		branchName = s.Repository.newBranchName(s.Options.Git.BranchPrefix)
 	}
 	err = switchBranch(ctx, gitRepo, switchBranchOptions{
+		Repository:   s.Repository,
 		BranchName:   branchName,
 		CreateBranch: s.ForceBranchCreation || existingPR == nil,
 	})
