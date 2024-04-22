@@ -107,14 +107,11 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	return nil
 }
 
-func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
+func commitChanges(_ context.Context, repository Repository, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)
 	}
-
-	rootPath := workTree.Filesystem.Root()
-	repoName := filepath.Base(rootPath)
 
 	status, err := workTree.Status()
 	if err != nil {
@@ -124,8 +121,8 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 		return false, nil
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"status":          status.String(),
+		"repository": repository.FullName(),
+		"status":     status.String(),
 	}).Debug("Git status")
 
 	for _, pattern := range options.Git.StagePatterns {
@@ -172,8 +169,8 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 		return false, fmt.Errorf("failed to commit: %w", err)
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"commit":          commit.String(),
+		"repository": repository.FullName(),
+		"commit":     commit.String(),
 	}).Debug("Git commit")
 
 	return true, nil

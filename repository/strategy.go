@@ -76,7 +76,7 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 		s.Options.GitHub.setDefaultUpdateOperation(IgnoreUpdateOperation)
 	}
 
-	changesCommitted, err := commitChanges(ctx, gitRepo, s.Options)
+	changesCommitted, err := commitChanges(ctx, s.Repository, gitRepo, s.Options)
 	if err != nil {
 		return false, existingPR, fmt.Errorf("failed to commit changes to git repository %s: %w", s.Repository.FullName(), err)
 	}
