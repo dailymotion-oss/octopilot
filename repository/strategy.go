@@ -94,6 +94,7 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 
 	err = pushChanges(ctx, gitRepo, pushOptions{
 		GitHubOpts: s.Options.GitHub,
+		Repository: s.Repository,
 		BranchName: branchName,
 		ForcePush:  s.ForcePush,
 	})

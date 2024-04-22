@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -210,19 +209,12 @@ func parseSigningKey(signingKeyPath, signingKeyPassphrase string) (*openpgp.Enti
 
 type pushOptions struct {
 	GitHubOpts GitHubOptions
+	Repository Repository
 	BranchName string
 	ForcePush  bool
 }
 
 func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
-	workTree, err := gitRepo.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to open worktree: %w", err)
-	}
-
-	rootPath := workTree.Filesystem.Root()
-	repoName := filepath.Base(rootPath)
-
 	refSpec := fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", opts.BranchName)
 	if opts.ForcePush {
 		// https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
@@ -236,9 +228,9 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
-		"force":           opts.ForcePush,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
+		"force":      opts.ForcePush,
 	}).Trace("Pushing git changes")
 	err = gitRepo.PushContext(ctx, &git.PushOptions{
 		RefSpecs: []config.RefSpec{
@@ -250,12 +242,12 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, repoName, err)
+		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, opts.Repository.FullName(), err)
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
 	}).Debug("Git changes pushed")
 	return nil
 }
