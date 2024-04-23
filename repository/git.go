@@ -107,8 +107,9 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 }
 
 type commitOptions struct {
-	Repository Repository
-	GitOpts    GitOptions
+	Repository    Repository
+	CommitMessage CommitMessage
+	GitOpts       GitOptions
 }
 
 func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
@@ -141,12 +142,9 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOption
 		return false, err
 	}
 
-	var (
-		now = time.Now()
-		commitMsg = NewCommitMessage(opts.GitOpts.CommitTitle, opts.GitOpts.CommitBody, opts.GitOpts.CommitFooter)
-	)
+	now := time.Now()
 
-	commit, err := workTree.Commit(commitMsg.String(),
+	commit, err := workTree.Commit(opts.CommitMessage.String(),
 		&git.CommitOptions{
 			All: opts.GitOpts.StageAllChanged,
 			Author: &object.Signature{
