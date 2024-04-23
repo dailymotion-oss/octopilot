@@ -13,7 +13,6 @@ func NewRecreateStrategy(repository Repository, repoPath string, updaters []upda
 		Options:                 options,
 		FindMatchingPullRequest: false,
 		DefaultUpdateOperation:  "",
-		ForcePush:               false,
-		ForceBranchCreation:     false,
+		ResetFromBase:           false,
 	}
 }

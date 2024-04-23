@@ -199,15 +199,15 @@ func parseSigningKey(signingKeyPath, signingKeyPassphrase string) (*openpgp.Enti
 }
 
 type pushOptions struct {
-	GitHubOpts GitHubOptions
-	Repository Repository
-	BranchName string
-	ForcePush  bool
+	GitHubOpts    GitHubOptions
+	Repository    Repository
+	BranchName    string
+	ResetFromBase bool
 }
 
 func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
 	refSpec := fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", opts.BranchName)
-	if opts.ForcePush {
+	if opts.ResetFromBase {
 		// https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 		// The + tells Git to update the reference even if it isn’t a fast-forward.
 		refSpec = fmt.Sprintf("+%s", refSpec)
@@ -221,7 +221,7 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 	logrus.WithFields(logrus.Fields{
 		"repository": opts.Repository.FullName(),
 		"branch":     opts.BranchName,
-		"force":      opts.ForcePush,
+		"force":      opts.ResetFromBase,
 	}).Trace("Pushing git changes")
 	err = gitRepo.PushContext(ctx, &git.PushOptions{
 		RefSpecs: []config.RefSpec{

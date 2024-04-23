@@ -14,7 +14,6 @@ func NewResetStrategy(repository Repository, repoPath string, updaters []update.
 		Options:                 options,
 		FindMatchingPullRequest: true,
 		DefaultUpdateOperation:  ReplaceUpdateOperation,
-		ForcePush:               true,
-		ForceBranchCreation:     true,
+		ResetFromBase:           true,
 	}
 }

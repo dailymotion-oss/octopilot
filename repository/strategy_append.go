@@ -14,7 +14,6 @@ func NewAppendStrategy(repository Repository, repoPath string, updaters []update
 		Options:                 options,
 		FindMatchingPullRequest: true,
 		DefaultUpdateOperation:  IgnoreUpdateOperation,
-		ForcePush:               false,
-		ForceBranchCreation:     false,
+		ResetFromBase:           false,
 	}
 }

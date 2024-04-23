@@ -17,8 +17,7 @@ type Strategy struct {
 	Options                 UpdateOptions
 	FindMatchingPullRequest bool
 	DefaultUpdateOperation  string
-	ForcePush               bool
-	ForceBranchCreation     bool
+	ResetFromBase           bool
 }
 
 // Run executes the strategy. It returns:
@@ -52,7 +51,7 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 	err = switchBranch(ctx, gitRepo, switchBranchOptions{
 		Repository:   s.Repository,
 		BranchName:   branchName,
-		CreateBranch: s.ForceBranchCreation || existingPR == nil,
+		CreateBranch: s.ResetFromBase || existingPR == nil,
 	})
 	if err != nil {
 		return false, existingPR, fmt.Errorf("failed to switch to branch %s: %w", branchName, err)
@@ -96,10 +95,10 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 	}
 
 	err = pushChanges(ctx, gitRepo, pushOptions{
-		GitHubOpts: s.Options.GitHub,
-		Repository: s.Repository,
-		BranchName: branchName,
-		ForcePush:  s.ForcePush,
+		GitHubOpts:    s.Options.GitHub,
+		Repository:    s.Repository,
+		BranchName:    branchName,
+		ResetFromBase: s.ResetFromBase,
 	})
 	if err != nil {
 		return false, existingPR, fmt.Errorf("failed to push changes to git repository %s: %w", s.Repository.FullName(), err)
