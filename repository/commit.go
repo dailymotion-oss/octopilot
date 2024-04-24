@@ -37,3 +37,8 @@ func NewCommitMessage(title, body, footer string) CommitMessage {
 		Body:     bodyWithFooter.String(),
 	}
 }
+
+type CommitFileChanges struct {
+	Upserted []string
+	Deleted  []string
+}

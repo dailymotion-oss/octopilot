@@ -96,9 +96,12 @@ func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
 
 	err = pushChanges(ctx, gitRepo, pushOptions{
 		GitHubOpts:    s.Options.GitHub,
+		GitCloneDir:   s.Options.Git.CloneDir,
 		Repository:    s.Repository,
 		BranchName:    branchName,
+		CreateBranch:  existingPR == nil,
 		ResetFromBase: s.ResetFromBase,
+		CommitMessage: commitMessage,
 	})
 	if err != nil {
 		return false, existingPR, fmt.Errorf("failed to push changes to git repository %s: %w", s.Repository.FullName(), err)

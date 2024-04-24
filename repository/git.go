@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/utils/merkletrie"
+	"github.com/google/go-github/v57/github"
+	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
 )
 
@@ -61,6 +65,81 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	}).Debug("Git repository cloned")
 
 	return gitRepo, nil
+}
+
+type createBranchOptions struct {
+	GitHubOpts GitHubOptions
+	Repository Repository
+	BranchName string
+	CommitSHA  string
+}
+
+func createBranchWithAPI(ctx context.Context, opts createBranchOptions) error {
+	client, _, err := githubClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	repository, _, err := client.Repositories.Get(ctx, opts.Repository.Owner, opts.Repository.Name)
+	if err != nil {
+		return fmt.Errorf("failed to fetch repository: %w", err)
+	}
+
+	gqlClient, err := githubGraphqlClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github GraphQL client: %w", err)
+	}
+
+	inputs := githubv4.CreateRefInput{
+		RepositoryID: githubv4.ID(repository.NodeID),
+		Name:         githubv4.String(fmt.Sprintf("refs/heads/%s", opts.BranchName)),
+		Oid:          githubv4.GitObjectID(opts.CommitSHA),
+	}
+
+	var mutation struct {
+		CreateRefInput struct {
+			ClientMutationID string
+		} `graphql:"createRef(input: $input)"`
+	}
+
+	err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create branch: %w", err)
+	}
+	return nil
+}
+
+type resetBranchOptions struct {
+	GitHubOpts GitHubOptions
+	Repository Repository
+	BranchName string
+	CommitSHA  string
+}
+
+func resetBranchWithAPI(ctx context.Context, opts resetBranchOptions) error {
+	client, _, err := githubClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	branchRef := fmt.Sprintf("refs/heads/%s", opts.BranchName)
+
+	_, _, err = client.Git.UpdateRef(
+		ctx,
+		opts.Repository.Owner,
+		opts.Repository.Name,
+		&github.Reference{
+			Ref: &branchRef,
+			Object: &github.GitObject{
+				SHA: &opts.CommitSHA,
+			},
+		},
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update branch ref: %w", err)
+	}
+	return nil
 }
 
 type switchBranchOptions struct {
@@ -198,14 +277,146 @@ func parseSigningKey(signingKeyPath, signingKeyPassphrase string) (*openpgp.Enti
 	return signingKey, nil
 }
 
-type pushOptions struct {
-	GitHubOpts    GitHubOptions
-	Repository    Repository
-	BranchName    string
-	ResetFromBase bool
+func getLatestCommit(_ context.Context, gitRepo *git.Repository) (*object.Commit, error) {
+	headCommitRef, err := gitRepo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch head: %w", err)
+	}
+
+	latestCommit, err := gitRepo.CommitObject(headCommitRef.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch commit: %w", err)
+	}
+	return latestCommit, nil
 }
 
-func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
+func compareCommits(base, head *object.Commit) (*CommitFileChanges, error) {
+	baseTree, err := base.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get base commit tree: %w", err)
+	}
+
+	headTree, err := head.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get head commit tree: %w", err)
+	}
+
+	changes, err := baseTree.Diff(headTree)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare commit trees: %w", err)
+	}
+
+	commitFileChanges := CommitFileChanges{}
+	for _, change := range changes {
+		action, err := change.Action()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get commit change action: %w", err)
+		}
+
+		if action == merkletrie.Delete {
+			commitFileChanges.Deleted = append(commitFileChanges.Deleted, change.From.Name)
+		} else {
+			commitFileChanges.Upserted = append(commitFileChanges.Upserted, change.To.Name)
+		}
+	}
+	return &commitFileChanges, nil
+}
+
+func pushChangesWithAPI(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
+	commit, err := getLatestCommit(ctx, gitRepo)
+	if err != nil {
+		return fmt.Errorf("failed to fetch latest commit: %w", err)
+	}
+
+	parentCommit, err := commit.Parent(0)
+	if err != nil {
+		return fmt.Errorf("failed to fetch parent of latest commit: %w", err)
+	}
+
+	parentCommitSHA := parentCommit.Hash.String()
+
+	if opts.CreateBranch {
+		err = createBranchWithAPI(ctx, createBranchOptions{
+			GitHubOpts: opts.GitHubOpts,
+			Repository: opts.Repository,
+			BranchName: opts.BranchName,
+			CommitSHA:  parentCommitSHA,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create branch: %w", err)
+		}
+	} else if opts.ResetFromBase {
+		err = resetBranchWithAPI(ctx, resetBranchOptions{
+			GitHubOpts: opts.GitHubOpts,
+			Repository: opts.Repository,
+			BranchName: opts.BranchName,
+			CommitSHA:  parentCommitSHA,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to reset branch: %w", err)
+		}
+	}
+
+	changes, err := compareCommits(parentCommit, commit)
+	if err != nil {
+		return fmt.Errorf("failed to compare commits: %w", err)
+	}
+
+	deletions := make([]githubv4.FileDeletion, 0, len(changes.Deleted))
+	for _, path := range changes.Deleted {
+		deletions = append(deletions, githubv4.FileDeletion{
+			Path: githubv4.String(path),
+		})
+	}
+
+	additions := make([]githubv4.FileAddition, 0, len(changes.Upserted))
+	repoDirPath := filepath.Join(opts.GitCloneDir, opts.Repository.Owner, opts.Repository.Name)
+	for _, path := range changes.Upserted {
+		base64FileContent, err := base64EncodeFile(filepath.Join(repoDirPath, path))
+		if err != nil {
+			return fmt.Errorf("failed to encode file to base64: %w", err)
+		}
+		additions = append(additions, githubv4.FileAddition{
+			Path:     githubv4.String(path),
+			Contents: githubv4.Base64String(base64FileContent),
+		})
+	}
+
+	inputs := githubv4.CreateCommitOnBranchInput{
+		Branch: githubv4.CommittableBranch{
+			RepositoryNameWithOwner: githubv4.NewString(githubv4.String(opts.Repository.FullName())),
+			BranchName:              githubv4.NewString(githubv4.String(opts.BranchName)),
+		},
+		Message: githubv4.CommitMessage{
+			Headline: githubv4.String(opts.CommitMessage.Headline),
+			Body:     githubv4.NewString(githubv4.String(opts.CommitMessage.Body)),
+		},
+		FileChanges: &githubv4.FileChanges{
+			Additions: &additions,
+			Deletions: &deletions,
+		},
+		ExpectedHeadOid: githubv4.GitObjectID(parentCommitSHA),
+	}
+
+	var mutation struct {
+		CreateCommitOnBranchInput struct {
+			ClientMutationID string
+		} `graphql:"createCommitOnBranch(input: $input)"`
+	}
+
+	gqlClient, err := githubGraphqlClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github GraphQL client: %w", err)
+	}
+
+	err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
+	if err != nil {
+		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, opts.Repository.FullName(), err)
+	}
+	return nil
+}
+
+func pushChangesWithGit(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
 	refSpec := fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", opts.BranchName)
 	if opts.ResetFromBase {
 		// https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
@@ -241,4 +452,25 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 		"branch":     opts.BranchName,
 	}).Debug("Git changes pushed")
 	return nil
+}
+
+type pushOptions struct {
+	GitHubOpts    GitHubOptions
+	GitCloneDir   string
+	Repository    Repository
+	BranchName    string
+	CreateBranch  bool
+	ResetFromBase bool
+	CommitMessage CommitMessage
+}
+
+func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
+	switch opts.GitHubOpts.AuthMethod {
+	case "token":
+		return pushChangesWithGit(ctx, gitRepo, opts)
+	case "app":
+		return pushChangesWithAPI(ctx, gitRepo, opts)
+	default:
+		return fmt.Errorf("GitHub auth method unrecognized (allowed values: app, token): %s", opts.GitHubOpts.AuthMethod)
+	}
 }
