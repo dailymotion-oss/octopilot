@@ -1,103 +1,19 @@
 package repository
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/dailymotion-oss/octopilot/update"
-	"github.com/google/go-github/v57/github"
-	"github.com/sirupsen/logrus"
 )
 
-// AppendStrategy is a strategy implementation that appends new commits to any existing Pull Request.
+// AppendStrategy is a strategy that appends new commits to any existing Pull Request.
 // So it will try to find a matching PR first, and use it (its branch). Then it will commit on this branch, and update the existing PR - or create a new one if there is no matching PR.
-type AppendStrategy struct {
-	Repository Repository
-	RepoPath   string
-	Updaters   []update.Updater
-	Options    UpdateOptions
-}
-
-// Run executes the strategy, and returns true if the repo was updated, and the created/updated PR.
-func (s *AppendStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
-	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to clone repository %s: %w", s.Repository.FullName(), err)
+func NewAppendStrategy(repository Repository, repoPath string, updaters []update.Updater, options UpdateOptions) *Strategy {
+	return &Strategy{
+		Repository:              repository,
+		RepoPath:                repoPath,
+		Updaters:                updaters,
+		Options:                 options,
+		FindMatchingPullRequest: true,
+		DefaultUpdateOperation:  IgnoreUpdateOperation,
+		ResetFromBase:           false,
 	}
-
-	err = s.Options.GitHub.adjustOptionsFromGitRepository(gitRepo)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to adjust options for repository %s: %w", s.Repository.FullName(), err)
-	}
-
-	existingPR, err := s.Repository.findMatchingPullRequest(ctx, s.Options.GitHub)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to find matching pull request for repository %s: %w", s.Repository.FullName(), err)
-	}
-
-	var branchName string
-	if existingPR != nil {
-		branchName = existingPR.Head.GetRef()
-		err = switchBranch(ctx, gitRepo, switchBranchOptions{
-			BranchName: branchName,
-		})
-	} else {
-		branchName = s.Repository.newBranchName(s.Options.Git.BranchPrefix)
-		err = switchBranch(ctx, gitRepo, switchBranchOptions{
-			BranchName:   branchName,
-			CreateBranch: true,
-		})
-	}
-	if err != nil {
-		return false, existingPR, fmt.Errorf("failed to switch to branch %s: %w", branchName, err)
-	}
-
-	repoUpdated, err := s.Repository.runUpdaters(ctx, s.Updaters, s.RepoPath)
-	if err != nil {
-		return false, existingPR, fmt.Errorf("failed to update repository %s: %w", s.Repository.FullName(), err)
-	}
-	if !repoUpdated {
-		return false, existingPR, nil
-	}
-
-	if err = s.Options.Git.setDefaultValues(s.Updaters, templateExecutorFor(s.Options, s.Repository, s.RepoPath)); err != nil {
-		return false, existingPR, fmt.Errorf("failed to set default git values: %w", err)
-	}
-	if err = s.Options.GitHub.setDefaultValues(s.Options.Git, templateExecutorFor(s.Options, s.Repository, s.RepoPath)); err != nil {
-		return false, existingPR, fmt.Errorf("failed to set default github values: %w", err)
-	}
-	s.Options.GitHub.setDefaultUpdateOperation(IgnoreUpdateOperation)
-
-	changesCommitted, err := commitChanges(ctx, gitRepo, s.Options)
-	if err != nil {
-		return false, existingPR, fmt.Errorf("failed to commit changes to git repository %s: %w", s.Repository.FullName(), err)
-	}
-	if !changesCommitted {
-		logrus.WithField("repository", s.Repository.FullName()).Debug("No changes recorded, nothing to push")
-		return false, existingPR, nil
-	}
-	if s.Options.DryRun {
-		logrus.WithField("repository", s.Repository.FullName()).Warning("Running in dry-run mode, not pushing changes")
-		return false, existingPR, nil
-	}
-
-	err = pushChanges(ctx, gitRepo, pushOptions{
-		GitHubOpts: s.Options.GitHub,
-		BranchName: branchName,
-	})
-	if err != nil {
-		return false, existingPR, fmt.Errorf("failed to push changes to git repository %s: %w", s.Repository.FullName(), err)
-	}
-
-	var pr *github.PullRequest
-	if existingPR != nil {
-		pr, err = s.Repository.updatePullRequest(ctx, s.Options.GitHub, existingPR)
-	} else {
-		pr, err = s.Repository.createPullRequest(ctx, s.Options.GitHub, branchName)
-	}
-	if err != nil {
-		return false, existingPR, fmt.Errorf("failed to create or update Pull Request: %w", err)
-	}
-
-	return true, pr, nil
 }

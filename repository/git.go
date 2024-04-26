@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -65,21 +64,13 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 }
 
 type switchBranchOptions struct {
+	Repository   Repository
 	BranchName   string
 	CreateBranch bool
 }
 
 func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchOptions) error {
-	workTree, err := gitRepo.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to open worktree: %w", err)
-	}
-
-	var (
-		rootPath      = workTree.Filesystem.Root()
-		repoName      = filepath.Base(rootPath)
-		branchRefName = plumbing.NewBranchReferenceName(opts.BranchName)
-	)
+	branchRefName := plumbing.NewBranchReferenceName(opts.BranchName)
 
 	if !opts.CreateBranch {
 		// for an existing branch, we need to create a local reference to the remote branch
@@ -96,6 +87,11 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 		}
 	}
 
+	workTree, err := gitRepo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to open worktree: %w", err)
+	}
+
 	if err := workTree.Checkout(&git.CheckoutOptions{
 		Branch: branchRefName,
 		Create: opts.CreateBranch,
@@ -104,20 +100,23 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
 	}).Debug("Switched Git branch")
 	return nil
 }
 
-func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOptions) (bool, error) {
+type commitOptions struct {
+	Repository    Repository
+	CommitMessage CommitMessage
+	GitOpts       GitOptions
+}
+
+func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)
 	}
-
-	rootPath := workTree.Filesystem.Root()
-	repoName := filepath.Base(rootPath)
 
 	status, err := workTree.Status()
 	if err != nil {
@@ -127,45 +126,35 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 		return false, nil
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"status":          status.String(),
+		"repository": opts.Repository.FullName(),
+		"status":     status.String(),
 	}).Debug("Git status")
 
-	for _, pattern := range options.Git.StagePatterns {
+	for _, pattern := range opts.GitOpts.StagePatterns {
 		err = workTree.AddGlob(pattern)
 		if err != nil {
 			return false, fmt.Errorf("failed to stage files using pattern %s: %w", pattern, err)
 		}
 	}
 
-	now := time.Now()
-	commitMsg := new(strings.Builder)
-	commitMsg.WriteString(options.Git.CommitTitle)
-	if len(options.Git.CommitBody) > 0 {
-		commitMsg.WriteString("\n\n")
-		commitMsg.WriteString(options.Git.CommitBody)
-	}
-	if len(options.Git.CommitFooter) > 0 {
-		commitMsg.WriteString("\n\n-- \n")
-		commitMsg.WriteString(options.Git.CommitFooter)
-	}
-
-	signingKey, err := parseSigningKey(options.Git.SigningKeyPath, options.Git.SigningKeyPassphrase)
+	signingKey, err := parseSigningKey(opts.GitOpts.SigningKeyPath, opts.GitOpts.SigningKeyPassphrase)
 	if err != nil {
 		return false, err
 	}
 
-	commit, err := workTree.Commit(commitMsg.String(),
+	now := time.Now()
+
+	commit, err := workTree.Commit(opts.CommitMessage.String(),
 		&git.CommitOptions{
-			All: options.Git.StageAllChanged,
+			All: opts.GitOpts.StageAllChanged,
 			Author: &object.Signature{
-				Name:  options.Git.AuthorName,
-				Email: options.Git.AuthorEmail,
+				Name:  opts.GitOpts.AuthorName,
+				Email: opts.GitOpts.AuthorEmail,
 				When:  now,
 			},
 			Committer: &object.Signature{
-				Name:  options.Git.CommitterName,
-				Email: options.Git.CommitterEmail,
+				Name:  opts.GitOpts.CommitterName,
+				Email: opts.GitOpts.CommitterEmail,
 				When:  now,
 			},
 			SignKey: signingKey,
@@ -175,8 +164,8 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, options UpdateOpt
 		return false, fmt.Errorf("failed to commit: %w", err)
 	}
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"commit":          commit.String(),
+		"repository": opts.Repository.FullName(),
+		"commit":     commit.String(),
 	}).Debug("Git commit")
 
 	return true, nil
@@ -210,22 +199,15 @@ func parseSigningKey(signingKeyPath, signingKeyPassphrase string) (*openpgp.Enti
 }
 
 type pushOptions struct {
-	GitHubOpts GitHubOptions
-	BranchName string
-	ForcePush  bool
+	GitHubOpts    GitHubOptions
+	Repository    Repository
+	BranchName    string
+	ResetFromBase bool
 }
 
 func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
-	workTree, err := gitRepo.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to open worktree: %w", err)
-	}
-
-	rootPath := workTree.Filesystem.Root()
-	repoName := filepath.Base(rootPath)
-
 	refSpec := fmt.Sprintf("refs/heads/%[1]s:refs/heads/%[1]s", opts.BranchName)
-	if opts.ForcePush {
+	if opts.ResetFromBase {
 		// https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 		// The + tells Git to update the reference even if it isn’t a fast-forward.
 		refSpec = fmt.Sprintf("+%s", refSpec)
@@ -237,9 +219,9 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
-		"force":           opts.ForcePush,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
+		"force":      opts.ResetFromBase,
 	}).Trace("Pushing git changes")
 	err = gitRepo.PushContext(ctx, &git.PushOptions{
 		RefSpecs: []config.RefSpec{
@@ -251,12 +233,12 @@ func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions)
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, repoName, err)
+		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, opts.Repository.FullName(), err)
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"repository-name": repoName,
-		"branch":          opts.BranchName,
+		"repository": opts.Repository.FullName(),
+		"branch":     opts.BranchName,
 	}).Debug("Git changes pushed")
 	return nil
 }
