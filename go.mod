@@ -24,14 +24,13 @@ require (
 	github.com/ybbus/httpretry v1.0.2
 	github.com/zoumo/goset v0.2.0
 	go.mozilla.org/sops/v3 v3.7.3
-	golang.org/x/oauth2 v0.16.0
+	golang.org/x/oauth2 v0.20.0
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloud.google.com/go/compute v1.20.1 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/age v1.0.0 // indirect
 	github.com/Azure/azure-sdk-for-go v63.3.0+incompatible // indirect
