@@ -2,15 +2,15 @@ package yqlib
 
 func pipeOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 
-	//lhs may update the variable context, we should pass that into the RHS
-	// BUT we still return the original context back (see jq)
-	// https://stedolan.github.io/jq/manual/#Variable/SymbolicBindingOperator:...as$identifier|...
-
+	if expressionNode.LHS.Operation.OperationType == assignVariableOpType {
+		return variableLoop(d, context, expressionNode)
+	}
 	lhs, err := d.GetMatchingNodes(context, expressionNode.LHS)
 	if err != nil {
 		return Context{}, err
 	}
-	rhs, err := d.GetMatchingNodes(lhs, expressionNode.RHS)
+	rhsContext := context.ChildContext(lhs.MatchingNodes)
+	rhs, err := d.GetMatchingNodes(rhsContext, expressionNode.RHS)
 	if err != nil {
 		return Context{}, err
 	}
