@@ -23,21 +23,34 @@ func (r Repository) findMatchingPullRequest(ctx context.Context, options GitHubO
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github client: %w", err)
 	}
-	prs, _, err := client.PullRequests.List(ctx, r.Owner, r.Name, &github.PullRequestListOptions{
-		Base: options.PullRequest.BaseBranch,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list opened Pull Requests for repository %s: %w", r.FullName(), err)
-	}
 
-	for _, pr := range prs {
-		if prHasLabels(pr, options.PullRequest.Labels) {
-			logrus.WithFields(logrus.Fields{
-				"repository":   r.FullName(),
-				"labels":       options.PullRequest.Labels,
-				"pull-request": pr.GetHTMLURL(),
-			}).Info("Found existing Pull Request")
-			return pr, nil
+	page := 1
+	for {
+		prs, resp, err := client.PullRequests.List(ctx, r.Owner, r.Name, &github.PullRequestListOptions{
+			Base: options.PullRequest.BaseBranch,
+			ListOptions: github.ListOptions{
+				Page:    page,
+				PerPage: 100,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list opened Pull Requests for repository %s: %w", r.FullName(), err)
+		}
+
+		for _, pr := range prs {
+			if prHasLabels(pr, options.PullRequest.Labels) {
+				logrus.WithFields(logrus.Fields{
+					"repository":   r.FullName(),
+					"labels":       options.PullRequest.Labels,
+					"pull-request": pr.GetHTMLURL(),
+				}).Info("Found existing Pull Request")
+				return pr, nil
+			}
+		}
+
+		page = resp.NextPage
+		if resp.NextPage == 0 {
+			break
 		}
 	}
 
