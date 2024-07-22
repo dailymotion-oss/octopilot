@@ -21,7 +21,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --snapshot --skip-publish --rm-dist
+          args: release --snapshot --skip=publish --clean
 
   docs:
     runs-on: ubuntu-20.04

@@ -38,7 +38,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --rm-dist --release-notes .chglog/CHANGELOG.md
+          args: release --clean --release-notes .chglog/CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
