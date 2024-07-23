@@ -75,7 +75,7 @@ func TestAdjustOptionsFromGitRepository(t *testing.T) {
 		{
 			name:                  "resolved-null-repository",
 			pullRequestBaseBranch: "",
-			repositoryLoader: func(testName string) (*git.Repository, error) {
+			repositoryLoader: func(_ string) (*git.Repository, error) {
 				return nil, nil
 			},
 			validateFunc: func(t *testing.T, result error, options GitHubOptions) {
@@ -88,7 +88,7 @@ func TestAdjustOptionsFromGitRepository(t *testing.T) {
 		{
 			name:                  "resolved-head-error",
 			pullRequestBaseBranch: "",
-			repositoryLoader: func(testName string) (*git.Repository, error) {
+			repositoryLoader: func(_ string) (*git.Repository, error) {
 				return git.Init(memory.NewStorage(), nil)
 			},
 			validateFunc: func(t *testing.T, result error, options GitHubOptions) {
