@@ -19,7 +19,7 @@ type RecreateStrategy struct {
 
 // Run executes the strategy, and returns true if the repo was updated, and the created PR.
 func (s *RecreateStrategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
-	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
+	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to clone repository %s: %w", s.Repository.FullName(), err)
 	}

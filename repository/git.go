@@ -20,8 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options GitHubOptions) (*git.Repository, error) {
-	gitURL, err := url.JoinPath(options.URL, repo.GitFullName())
+func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options UpdateOptions) (*git.Repository, error) {
+	gitURL, err := url.JoinPath(options.GitHub.URL, repo.GitFullName())
 	if err != nil {
 		// likely the Url passed is malformed
 		return nil, fmt.Errorf("invalid github url format: %w", err)
@@ -38,9 +38,14 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 		"local-path":    localPath,
 	}).Trace("Cloning git repository")
 
-	_, token, err := githubClient(ctx, options)
+	_, token, err := githubClient(ctx, options.GitHub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	recurseSubmodules := git.NoRecurseSubmodules
+	if options.Git.RecurseSubmodules {
+		recurseSubmodules = git.DefaultSubmoduleRecursionDepth
 	}
 
 	gitRepo, err := git.PlainCloneContext(ctx, localPath, false, &git.CloneOptions{
@@ -50,6 +55,7 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 			Username: "x-access-token", // For GitHub Apps, the username must be `x-access-token`. For Personal Tokens, it doesn't matter.
 			Password: token,
 		},
+		RecurseSubmodules: recurseSubmodules,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone git repository from %s to %s: %w", gitURL, localPath, err)

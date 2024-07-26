@@ -43,6 +43,7 @@ type GitOptions struct {
 	BranchPrefix         string
 	SigningKeyPath       string
 	SigningKeyPassphrase string
+	RecurseSubmodules    bool
 }
 
 // GitHubOptions holds all the options required to perform github operations: auth, PRs, ...

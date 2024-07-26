@@ -82,6 +82,7 @@ func init() {
 	pflag.StringVar(&options.UpdateOptions.Git.CloneDir, "git-clone-dir", temporaryDirectory(), "Directory used to clone the repositories.")
 	pflag.StringArrayVar(&options.UpdateOptions.Git.StagePatterns, "git-stage-pattern", nil, "List of path patterns that will be added to the git index and committed.")
 	pflag.BoolVar(&options.UpdateOptions.Git.StageAllChanged, "git-stage-all-changed", true, "Commit all files changed.")
+	pflag.BoolVar(&options.UpdateOptions.Git.RecurseSubmodules, "git-recurse-submodules", false, "Recursively initialize all submodules.")
 	pflag.StringVar(&options.UpdateOptions.Git.AuthorName, "git-author-name", firstNonEmpyValue(os.Getenv("GIT_AUTHOR_NAME"), git.ConfigValue("user.name")), `Name of the author of the git commit. Default to the GIT_AUTHOR_NAME env var, or the "user.name" git config value.`)
 	pflag.StringVar(&options.UpdateOptions.Git.AuthorEmail, "git-author-email", firstNonEmpyValue(os.Getenv("GIT_AUTHOR_EMAIL"), git.ConfigValue("user.email")), `Email of the author of the git commit. Default to the GIT_AUTHOR_EMAIL env var, or the "user.email" git config value.`)
 	pflag.StringVar(&options.UpdateOptions.Git.CommitterName, "git-committer-name", firstNonEmpyValue(os.Getenv("GIT_COMMITTER_NAME"), git.ConfigValue("user.name")), `Name of the committer. Default to the GIT_COMMITTER_NAME env var, or the "user.name" git config value.`)
