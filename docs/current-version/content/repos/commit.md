@@ -12,6 +12,8 @@ Flags related to the `git clone` operation:
 
 - `--git-clone-dir` (string): optional path to a directory used to clone the git repositories. Default to a newly created directory in the system temporary directory (defined by the `TMPDIR` environment variable, defaulting to `/tmp`). Note that by default all files created inside this directory will be deleted at the end of the process, unless the `--keep-files` flag is set.
 
+- `--git-recurse-submodules` (bool): recursively initialize all submodules. Disabled by default.
+
 ## Git index/stage
 
 By default, all files changed by the [updaters](#updaters) will be added to the git "index" - so that they can be added to the git commit. This is configurable through the following flags:
