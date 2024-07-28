@@ -82,6 +82,7 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 	if recurseSubmodules == git.NoRecurseSubmodules {
 		return nil
 	}
+	recurseSubmodules--
 
 	wt, err := repo.Worktree()
 	if err != nil {
@@ -129,7 +130,6 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 			return fmt.Errorf("failed to get submodule repo: %w", err)
 		}
 
-		recurseSubmodules--
 		initSubmodules(ctx, sRepo, token, recurseSubmodules)
 	}
 
