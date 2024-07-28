@@ -130,7 +130,10 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 			return fmt.Errorf("failed to get submodule repo: %w", err)
 		}
 
-		initSubmodules(ctx, sRepo, token, recurseSubmodules)
+		err = initSubmodules(ctx, sRepo, token, recurseSubmodules)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
