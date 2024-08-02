@@ -73,6 +73,8 @@ You can control how the Pull Requests will be created or updated using the follo
 - `--pr-body-update-operation` (string): the type of operation when updating a Pull Request's body: either `ignore` (keep old value), `replace`, `prepend` or `append`. Default is: `ignore` for "append" strategy, `replace` for "reset" strategy, and not applicable for "recreate" strategy.
 - `--pr-comment` (array of string): optional list of comments to add to the Pull Request.
 - `--pr-assignees` (array of string): optional list of assignees (Github usernames) to add to the Pull Request.
+- `--pr-reviewers` (array of string): optional list of reviewers (Github usernames) for the Pull Request.
+- `--pr-team-reviewers` (array of string): optional list of team reviewers (Github team names) for the Pull Request.
 - `--pr-labels` (array of string): optional list of labels to set on the pull requests, and used to find existing pull requests to update. Default to `["octopilot-update"]`.
 - `--pr-base-branch` (string): name of the branch used as a base when creating pull requests. Default to `master`.
 - `--pr-draft` (bool): if enabled, the Pull Request will be created as a draft - instead of regular ones. It means that the PRs can't be merged until marked as "ready for review". Default to `false`.
