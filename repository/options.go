@@ -196,6 +196,20 @@ func (o *GitHubOptions) setDefaultValues(git GitOptions, tplExecutorFunc templat
 	}
 	o.PullRequest.Body = prBody
 
+	prMergeCommitTitle, err := tplExecutorFunc(o.PullRequest.Merge.CommitTitle)
+	if err != nil {
+		return fmt.Errorf("failed to run template for pull request merge commit title %s: %w", o.PullRequest.Merge.CommitTitle, err)
+
+	}
+	o.PullRequest.Merge.CommitTitle = prMergeCommitTitle
+
+	prMergeCommitMessage, err := tplExecutorFunc(o.PullRequest.Merge.CommitMessage)
+	if err != nil {
+		return fmt.Errorf("failed to run template for pull request merge commit message %s: %w", o.PullRequest.Merge.CommitMessage, err)
+
+	}
+	o.PullRequest.Merge.CommitMessage = prMergeCommitMessage
+
 	return nil
 }
 

@@ -162,7 +162,7 @@ func (r Repository) Update(ctx context.Context, updaters []update.Updater, optio
 		return true, pr, nil
 	}
 
-	err = r.mergePullRequest(ctx, options.GitHub, pr)
+	err = r.mergePullRequest(ctx, strategy.Options.GitHub, pr)
 	if err != nil {
 		return true, pr, fmt.Errorf("failed to merge Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
