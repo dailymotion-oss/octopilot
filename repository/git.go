@@ -64,7 +64,12 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 		recurseSubmodules = git.DefaultSubmoduleRecursionDepth
 	}
 
-	err = initSubmodules(ctx, gitRepo, token, recurseSubmodules)
+	githubURL, err := url.Parse(options.GitHub.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Github URL: %w", err)
+	}
+
+	err = initSubmodules(ctx, gitRepo, token, recurseSubmodules, githubURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize submodules for git repository %s: %w", gitURL, err)
 	}
@@ -78,7 +83,7 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	return gitRepo, nil
 }
 
-func initSubmodules(ctx context.Context, repo *git.Repository, token string, recurseSubmodules git.SubmoduleRescursivity) error {
+func initSubmodules(ctx context.Context, repo *git.Repository, token string, recurseSubmodules git.SubmoduleRescursivity, githubURL *url.URL) error {
 	if recurseSubmodules == git.NoRecurseSubmodules {
 		return nil
 	}
@@ -97,11 +102,11 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 	for _, s := range subModules {
 		// Hack: rewrite Github hosted submodule SSH URLs to use HTTPS because token auth only works with that
 		// go-git does not expose a way of doing insteadOf type rewrites for submodules, so this will have to do for now
-		s.Config().URL = strings.Replace(s.Config().URL, "git@github.com:", "https://github.com/", 1)
+		s.Config().URL = strings.Replace(s.Config().URL, fmt.Sprintf("git@%s:", githubURL.Hostname()), githubURL.String(), 1)
 
 		// Only use basic auth for Github. This lets us use any public Git repo not hosted on Github.
 		var auth transport.AuthMethod
-		if strings.HasPrefix(s.Config().URL, "https://github.com/") {
+		if strings.HasPrefix(s.Config().URL, githubURL.String()) {
 			auth = &http.BasicAuth{
 				Username: "x-access-token",
 				Password: token,
@@ -130,7 +135,7 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 			return fmt.Errorf("failed to get submodule repo: %w", err)
 		}
 
-		err = initSubmodules(ctx, sRepo, token, recurseSubmodules)
+		err = initSubmodules(ctx, sRepo, token, recurseSubmodules, githubURL)
 		if err != nil {
 			return err
 		}
