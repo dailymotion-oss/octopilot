@@ -35,10 +35,10 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v5.0.0
+        uses: goreleaser/goreleaser-action@v6
         with:
-          version: v1.10.2
-          args: release --rm-dist --release-notes .chglog/CHANGELOG.md
+          version: "~> v2"
+          args: release --clean --release-notes .chglog/CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

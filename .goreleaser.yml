@@ -1,4 +1,5 @@
 # Configuration file for http://goreleaser.com
+version: 2
 
 builds:
   - goos:
