@@ -3,21 +3,19 @@ package yqlib
 import (
 	"container/list"
 	"fmt"
-
-	yaml "gopkg.in/yaml.v3"
 )
 
-func createPathNodeFor(pathElement interface{}) *yaml.Node {
+func createPathNodeFor(pathElement interface{}) *CandidateNode {
 	switch pathElement := pathElement.(type) {
 	case string:
-		return &yaml.Node{Kind: yaml.ScalarNode, Value: pathElement, Tag: "!!str"}
+		return &CandidateNode{Kind: ScalarNode, Value: pathElement, Tag: "!!str"}
 	default:
-		return &yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%v", pathElement), Tag: "!!int"}
+		return &CandidateNode{Kind: ScalarNode, Value: fmt.Sprintf("%v", pathElement), Tag: "!!int"}
 	}
 }
 
-func getPathArrayFromNode(funcName string, node *yaml.Node) ([]interface{}, error) {
-	if node.Kind != yaml.SequenceNode {
+func getPathArrayFromNode(funcName string, node *CandidateNode) ([]interface{}, error) {
+	if node.Kind != SequenceNode {
 		return nil, fmt.Errorf("%v: expected path array, but got %v instead", funcName, node.Tag)
 	}
 
@@ -59,7 +57,7 @@ func setPathOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 	}
 	lhsValue := lhsPathContext.MatchingNodes.Front().Value.(*CandidateNode)
 
-	lhsPath, err := getPathArrayFromNode("SETPATH", lhsValue.Node)
+	lhsPath, err := getPathArrayFromNode("SETPATH", lhsValue)
 
 	if err != nil {
 		return Context{}, err
@@ -81,7 +79,7 @@ func setPathOperator(d *dataTreeNavigator, context Context, expressionNode *Expr
 			return Context{}, fmt.Errorf("SETPATH: expected single value on RHS but found %v", targetContextValue.MatchingNodes.Len())
 		}
 
-		rhsOp := &Operation{OperationType: valueOpType, CandidateNode: targetContextValue.MatchingNodes.Front().Value.(*CandidateNode)}
+		rhsOp := &Operation{OperationType: referenceOpType, CandidateNode: targetContextValue.MatchingNodes.Front().Value.(*CandidateNode)}
 
 		assignmentOpNode := &ExpressionNode{
 			Operation: assignmentOp,
@@ -110,7 +108,7 @@ func delPathsOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	if pathArraysContext.MatchingNodes.Len() != 1 {
 		return Context{}, fmt.Errorf("DELPATHS: expected single value but found %v", pathArraysContext.MatchingNodes.Len())
 	}
-	pathArraysNode := pathArraysContext.MatchingNodes.Front().Value.(*CandidateNode).Node
+	pathArraysNode := pathArraysContext.MatchingNodes.Front().Value.(*CandidateNode)
 
 	if pathArraysNode.Tag != "!!seq" {
 		return Context{}, fmt.Errorf("DELPATHS: expected a sequence of sequences, but found %v", pathArraysNode.Tag)
@@ -149,23 +147,24 @@ func delPathsOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 
 }
 
-func getPathOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+func getPathOperator(_ *dataTreeNavigator, context Context, _ *ExpressionNode) (Context, error) {
 	log.Debugf("GetPath")
 
 	var results = list.New()
 
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
-		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		node := candidate.CreateReplacement(SequenceNode, "!!seq", "")
 
-		content := make([]*yaml.Node, len(candidate.Path))
-		for pathIndex := 0; pathIndex < len(candidate.Path); pathIndex++ {
-			path := candidate.Path[pathIndex]
+		path := candidate.GetPath()
+
+		content := make([]*CandidateNode, len(path))
+		for pathIndex := 0; pathIndex < len(path); pathIndex++ {
+			path := path[pathIndex]
 			content[pathIndex] = createPathNodeFor(path)
 		}
-		node.Content = content
-		result := candidate.CreateReplacement(node)
-		results.PushBack(result)
+		node.AddChildren(content)
+		results.PushBack(node)
 	}
 
 	return context.ChildContext(results), nil
