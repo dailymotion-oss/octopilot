@@ -24,7 +24,7 @@ type Strategy struct {
 // - a boolean indicating whether changes have been made to the repository
 // - a pull request if one has been created (or updated)
 func (s *Strategy) Run(ctx context.Context) (bool, *github.PullRequest, error) {
-	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options.GitHub)
+	gitRepo, err := cloneGitRepository(ctx, s.Repository, s.RepoPath, s.Options)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to clone repository %s: %w", s.Repository.FullName(), err)
 	}

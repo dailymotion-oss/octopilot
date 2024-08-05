@@ -16,6 +16,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/utils/merkletrie"
 	"github.com/google/go-github/v57/github"
@@ -23,8 +24,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options GitHubOptions) (*git.Repository, error) {
-	gitURL, err := url.JoinPath(options.URL, repo.GitFullName())
+func cloneGitRepository(ctx context.Context, repo Repository, localPath string, options UpdateOptions) (*git.Repository, error) {
+	gitURL, err := url.JoinPath(options.GitHub.URL, repo.GitFullName())
 	if err != nil {
 		// likely the Url passed is malformed
 		return nil, fmt.Errorf("invalid github url format: %w", err)
@@ -41,7 +42,7 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 		"local-path":    localPath,
 	}).Trace("Cloning git repository")
 
-	_, token, err := githubClient(ctx, options)
+	_, token, err := githubClient(ctx, options.GitHub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github client: %w", err)
 	}
@@ -58,6 +59,21 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 		return nil, fmt.Errorf("failed to clone git repository from %s to %s: %w", gitURL, localPath, err)
 	}
 
+	recurseSubmodules := git.NoRecurseSubmodules
+	if options.Git.RecurseSubmodules {
+		recurseSubmodules = git.DefaultSubmoduleRecursionDepth
+	}
+
+	githubURL, err := url.Parse(options.GitHub.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Github URL: %w", err)
+	}
+
+	err = initSubmodules(ctx, gitRepo, token, recurseSubmodules, githubURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize submodules for git repository %s: %w", gitURL, err)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"git-url":       gitURL,
 		"git-reference": referenceName.String(),
@@ -65,6 +81,67 @@ func cloneGitRepository(ctx context.Context, repo Repository, localPath string, 
 	}).Debug("Git repository cloned")
 
 	return gitRepo, nil
+}
+
+func initSubmodules(ctx context.Context, repo *git.Repository, token string, recurseSubmodules git.SubmoduleRescursivity, githubURL *url.URL) error {
+	if recurseSubmodules == git.NoRecurseSubmodules {
+		return nil
+	}
+	recurseSubmodules--
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	subModules, err := wt.Submodules()
+	if err != nil {
+		return fmt.Errorf("failed to get submodules: %w", err)
+	}
+
+	for _, s := range subModules {
+		// Hack: rewrite Github hosted submodule SSH URLs to use HTTPS because token auth only works with that
+		// go-git does not expose a way of doing insteadOf type rewrites for submodules, so this will have to do for now
+		s.Config().URL = strings.Replace(s.Config().URL, fmt.Sprintf("git@%s:", githubURL.Hostname()), githubURL.String(), 1)
+
+		// Only use basic auth for Github. This lets us use any public Git repo not hosted on Github.
+		var auth transport.AuthMethod
+		if strings.HasPrefix(s.Config().URL, githubURL.String()) {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: token,
+			}
+		} else {
+			auth = nil
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"submodule-name":   s.Config().Name,
+			"submodule-url":    s.Config().URL,
+			"submodule-branch": s.Config().Branch,
+			"submodule-path":   s.Config().Path,
+		}).Trace("Initializing submodule")
+
+		err = s.UpdateContext(ctx, &git.SubmoduleUpdateOptions{
+			Init: true,
+			Auth: auth,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize submodule: %w", err)
+		}
+
+		sRepo, err := s.Repository()
+		if err != nil {
+			return fmt.Errorf("failed to get submodule repo: %w", err)
+		}
+
+		err = initSubmodules(ctx, sRepo, token, recurseSubmodules, githubURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type createBranchOptions struct {
