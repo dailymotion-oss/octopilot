@@ -3,7 +3,6 @@ package yqlib
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 )
 
 type expressionTokeniser interface {
@@ -52,9 +51,8 @@ func (t *token) toString(detail bool) string {
 	} else if t.TokenType == traverseArrayCollect {
 		return ".["
 
-	} else {
-		return "NFI"
 	}
+	return "NFI"
 }
 
 func unwrap(value string) string {
@@ -64,11 +62,11 @@ func unwrap(value string) string {
 func extractNumberParameter(value string) (int, error) {
 	parameterParser := regexp.MustCompile(`.*\(([0-9]+)\)`)
 	matches := parameterParser.FindStringSubmatch(value)
-	var indent, errParsingInt = strconv.ParseInt(matches[1], 10, 32)
+	var indent, errParsingInt = parseInt(matches[1])
 	if errParsingInt != nil {
 		return 0, errParsingInt
 	}
-	return int(indent), nil
+	return indent, nil
 }
 
 func hasOptionParameter(value string, option string) bool {
@@ -98,6 +96,10 @@ func postProcessTokens(tokens []*token) []*token {
 	return postProcessedTokens
 }
 
+func tokenIsOpType(token *token, opType *operationType) bool {
+	return token.TokenType == operationToken && token.Operation.OperationType == opType
+}
+
 func handleToken(tokens []*token, index int, postProcessedTokens []*token) (tokensAccum []*token, skipNextToken bool) {
 	skipNextToken = false
 	currentToken := tokens[index]
@@ -109,11 +111,11 @@ func handleToken(tokens []*token, index int, postProcessedTokens []*token) (toke
 		//need to put a traverse array then a collect currentToken
 		// do this by adding traverse then converting currentToken to collect
 
-		log.Debug("  adding self")
+		log.Debug("adding self")
 		op := &Operation{OperationType: selfReferenceOpType, StringValue: "SELF"}
 		postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: op})
 
-		log.Debug("  adding traverse array")
+		log.Debug("adding traverse array")
 		op = &Operation{OperationType: traverseArrayOpType, StringValue: "TRAVERSE_ARRAY"}
 		postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: op})
 
@@ -121,37 +123,58 @@ func handleToken(tokens []*token, index int, postProcessedTokens []*token) (toke
 
 	}
 
+	if tokenIsOpType(currentToken, createMapOpType) {
+		log.Debugf("tokenIsOpType: createMapOpType")
+		// check the previous token is '[', means we are slice, but dont have a first number
+		if tokens[index-1].TokenType == traverseArrayCollect {
+			log.Debugf("previous token is : traverseArrayOpType")
+			// need to put the number 0 before this token, as that is implied
+			postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: createValueOperation(0, "0")})
+		}
+	}
+
 	if index != len(tokens)-1 && currentToken.AssignOperation != nil &&
-		tokens[index+1].TokenType == operationToken &&
-		tokens[index+1].Operation.OperationType == assignOpType {
-		log.Debug("  its an update assign")
+		tokenIsOpType(tokens[index+1], assignOpType) {
+		log.Debug("its an update assign")
 		currentToken.Operation = currentToken.AssignOperation
 		currentToken.Operation.UpdateAssign = tokens[index+1].Operation.UpdateAssign
 		skipNextToken = true
 	}
 
-	log.Debug("  adding token to the fixed list")
+	log.Debug("adding token to the fixed list")
 	postProcessedTokens = append(postProcessedTokens, currentToken)
+
+	if tokenIsOpType(currentToken, createMapOpType) {
+		log.Debugf("tokenIsOpType: createMapOpType")
+		// check the next token is ']', means we are slice, but dont have a second number
+		if index != len(tokens)-1 && tokens[index+1].TokenType == closeCollect {
+			log.Debugf("next token is : closeCollect")
+			// need to put the number 0 before this token, as that is implied
+			lengthOp := &Operation{OperationType: lengthOpType}
+			postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: lengthOp})
+		}
+	}
 
 	if index != len(tokens)-1 &&
 		((currentToken.TokenType == openCollect && tokens[index+1].TokenType == closeCollect) ||
 			(currentToken.TokenType == openCollectObject && tokens[index+1].TokenType == closeCollectObject)) {
-		log.Debug("  adding empty")
+		log.Debug("adding empty")
 		op := &Operation{OperationType: emptyOpType, StringValue: "EMPTY"}
 		postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: op})
 	}
 
 	if index != len(tokens)-1 && currentToken.CheckForPostTraverse &&
-		((tokens[index+1].TokenType == operationToken && (tokens[index+1].Operation.OperationType == traversePathOpType)) ||
+
+		(tokenIsOpType(tokens[index+1], traversePathOpType) ||
 			(tokens[index+1].TokenType == traverseArrayCollect)) {
-		log.Debug("  adding pipe because the next thing is traverse")
+		log.Debug("adding pipe because the next thing is traverse")
 		op := &Operation{OperationType: shortPipeOpType, Value: "PIPE", StringValue: "."}
 		postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: op})
 	}
 	if index != len(tokens)-1 && currentToken.CheckForPostTraverse &&
 		tokens[index+1].TokenType == openCollect {
 
-		log.Debug("  adding traverArray because next is opencollect")
+		log.Debug("adding traverseArray because next is opencollect")
 		op := &Operation{OperationType: traverseArrayOpType}
 		postProcessedTokens = append(postProcessedTokens, &token{TokenType: operationToken, Operation: op})
 	}
