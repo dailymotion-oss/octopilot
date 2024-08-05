@@ -102,6 +102,11 @@ func (r Repository) createPullRequest(ctx context.Context, options GitHubOptions
 		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
+	err = r.addPullRequestReviewers(ctx, options, pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add reviewers for Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
 	return pr, nil
 }
 
@@ -288,6 +293,47 @@ func (r Repository) addPullRequestAssignees(ctx context.Context, options GitHubO
 		"pull-request": pr.GetHTMLURL(),
 		"assignees":    options.PullRequest.Assignees,
 	}).Debug("Assignees added to the Pull Request")
+
+	return nil
+}
+
+func (r Repository) addPullRequestReviewers(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	if len(options.PullRequest.Reviewers) == 0 && len(options.PullRequest.TeamReviewers) == 0 {
+		logrus.WithFields(logrus.Fields{
+			"repository":   r.FullName(),
+			"pull-request": pr.GetHTMLURL(),
+		}).Debug("No reviewers to add to the Pull Request")
+		return nil
+	}
+
+	client, _, err := githubClient(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   pr.GetHTMLURL(),
+		"reviewers":      options.PullRequest.Reviewers,
+		"team-reviewers": options.PullRequest.TeamReviewers,
+	}).Trace("Adding reviewers to the Pull Request")
+
+	reviewers := github.ReviewersRequest{
+		Reviewers:     options.PullRequest.Reviewers,
+		TeamReviewers: options.PullRequest.TeamReviewers,
+	}
+	_, _, err = client.PullRequests.RequestReviewers(ctx, r.Owner, r.Name, pr.GetNumber(), reviewers)
+
+	if err != nil {
+		return fmt.Errorf("failed to add reviewers to PR %s: %w", pr.GetHTMLURL(), err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"repository":     r.FullName(),
+		"pull-request":   pr.GetHTMLURL(),
+		"reviewers":      options.PullRequest.Reviewers,
+		"team-reviewers": options.PullRequest.TeamReviewers,
+	}).Debug("Reviewers added to the Pull Request")
 
 	return nil
 }
