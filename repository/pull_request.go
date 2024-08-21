@@ -184,6 +184,11 @@ func (r Repository) updatePullRequest(ctx context.Context, options GitHubOptions
 		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
+	err = r.addPullRequestReviewers(ctx, options, pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add reviewers for Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
 	return pr, nil
 }
 
