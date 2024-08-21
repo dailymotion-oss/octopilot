@@ -87,24 +87,9 @@ func (r Repository) createPullRequest(ctx context.Context, options GitHubOptions
 		"pull-request": pr.GetHTMLURL(),
 	}).Info("New Pull Request created")
 
-	err = r.ensurePullRequestLabels(ctx, options, pr)
+	err = r.enrichPullRequestWithContextualData(ctx, options, pr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ensure that Pull Request %s has the right labels: %w", pr.GetHTMLURL(), err)
-	}
-
-	err = r.addPullRequestComments(ctx, options, pr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add comments to Pull Request %s: %w", pr.GetHTMLURL(), err)
-	}
-
-	err = r.addPullRequestAssignees(ctx, options, pr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
-	}
-
-	err = r.addPullRequestReviewers(ctx, options, pr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add reviewers for Pull Request %s: %w", pr.GetHTMLURL(), err)
+		return nil, fmt.Errorf("failed to enrich the Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
 	return pr, nil
@@ -169,19 +154,9 @@ func (r Repository) updatePullRequest(ctx context.Context, options GitHubOptions
 		}).Debug("No need to update the Pull Request")
 	}
 
-	err = r.ensurePullRequestLabels(ctx, options, pr)
+	err = r.enrichPullRequestWithContextualData(ctx, options, pr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ensure that Pull Request %s has the right labels: %w", pr.GetHTMLURL(), err)
-	}
-
-	err = r.addPullRequestComments(ctx, options, pr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add comments to Pull Request %s: %w", pr.GetHTMLURL(), err)
-	}
-
-	err = r.addPullRequestAssignees(ctx, options, pr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
+		return nil, fmt.Errorf("failed to enrich the Pull Request %s: %w", pr.GetHTMLURL(), err)
 	}
 
 	return pr, nil
@@ -334,6 +309,32 @@ func (r Repository) addPullRequestReviewers(ctx context.Context, options GitHubO
 		"reviewers":      options.PullRequest.Reviewers,
 		"team-reviewers": options.PullRequest.TeamReviewers,
 	}).Debug("Reviewers added to the Pull Request")
+
+	return nil
+}
+
+func (r Repository) enrichPullRequestWithContextualData(ctx context.Context, options GitHubOptions, pr *github.PullRequest) error {
+	var err error
+
+	err = r.ensurePullRequestLabels(ctx, options, pr)
+	if err != nil {
+		return fmt.Errorf("failed to ensure that Pull Request %s has the right labels: %w", pr.GetHTMLURL(), err)
+	}
+
+	err = r.addPullRequestComments(ctx, options, pr)
+	if err != nil {
+		return fmt.Errorf("failed to add comments to Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
+	err = r.addPullRequestAssignees(ctx, options, pr)
+	if err != nil {
+		return fmt.Errorf("failed to add assignees to Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
+
+	err = r.addPullRequestReviewers(ctx, options, pr)
+	if err != nil {
+		return fmt.Errorf("failed to add reviewers for Pull Request %s: %w", pr.GetHTMLURL(), err)
+	}
 
 	return nil
 }
