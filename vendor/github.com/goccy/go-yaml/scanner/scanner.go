@@ -4,8 +4,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
+
+	"github.com/goccy/go-yaml/token"
 )
 
 // IndentState state for indent
@@ -61,13 +62,25 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		s.savedPos = nil
 		return tk
 	}
-	size := len(ctx.buf)
+	line := s.line
+	column := s.column - len(ctx.buf)
+	level := s.indentLevel
+	if ctx.isSaveIndentMode() {
+		line -= s.newLineCount(ctx.buf)
+		column = strings.Index(string(ctx.obuf), string(ctx.buf)) + 1
+		// Since we are in a literal, folded or raw folded
+		// we can use the indent level from the last token.
+		last := ctx.lastToken()
+		if last != nil { // The last token should never be nil here.
+			level = last.Position.IndentLevel + 1
+		}
+	}
 	return ctx.bufferedToken(&token.Position{
-		Line:        s.line,
-		Column:      s.column - size,
-		Offset:      s.offset - size,
+		Line:        line,
+		Column:      column,
+		Offset:      s.offset - len(ctx.buf),
 		IndentNum:   s.indentNum,
-		IndentLevel: s.indentLevel,
+		IndentLevel: level,
 	})
 }
 
@@ -304,95 +317,93 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false
-			if idx+1 < size {
-				nextChar := src[idx+1]
-				switch nextChar {
-				case 'b':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, '\b')
-					idx++
-					continue
-				case 'e':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, '\x1B')
-					idx++
-					continue
-				case 'f':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, '\f')
-					idx++
-					continue
-				case 'n':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, '\n')
-					idx++
-					continue
-				case 'v':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, '\v')
-					idx++
-					continue
-				case 'L': // LS (#x2028)
-					ctx.addOriginBuf(nextChar)
-					value = append(value, []rune{'\xE2', '\x80', '\xA8'}...)
-					idx++
-					continue
-				case 'N': // NEL (#x85)
-					ctx.addOriginBuf(nextChar)
-					value = append(value, []rune{'\xC2', '\x85'}...)
-					idx++
-					continue
-				case 'P': // PS (#x2029)
-					ctx.addOriginBuf(nextChar)
-					value = append(value, []rune{'\xE2', '\x80', '\xA9'}...)
-					idx++
-					continue
-				case '_': // #xA0
-					ctx.addOriginBuf(nextChar)
-					value = append(value, []rune{'\xC2', '\xA0'}...)
-					idx++
-					continue
-				case '"':
-					ctx.addOriginBuf(nextChar)
-					value = append(value, nextChar)
-					idx++
-					continue
-				case 'x':
-					if idx+3 >= size {
-						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\x")
-						return
-					}
-					codeNum := hexRunesToInt(src[idx+2 : idx+4])
-					value = append(value, rune(codeNum))
-					idx += 3
-					continue
-				case 'u':
-					if idx+5 >= size {
-						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\u")
-						return
-					}
-					codeNum := hexRunesToInt(src[idx+2 : idx+6])
-					value = append(value, rune(codeNum))
-					idx += 5
-					continue
-				case 'U':
-					if idx+9 >= size {
-						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\U")
-						return
-					}
-					codeNum := hexRunesToInt(src[idx+2 : idx+10])
-					value = append(value, rune(codeNum))
-					idx += 9
-					continue
-				case '\\':
-					ctx.addOriginBuf(nextChar)
-					idx++
-				}
+			if idx+1 >= size {
+				value = append(value, c)
+				continue
 			}
-			value = append(value, c)
+			nextChar := src[idx+1]
+			progress := 0
+			switch nextChar {
+			case 'b':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\b')
+			case 'e':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\x1B')
+			case 'f':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\f')
+			case 'n':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\n')
+			case 'r':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\r')
+			case 'v':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\v')
+			case 'L': // LS (#x2028)
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, []rune{'\xE2', '\x80', '\xA8'}...)
+			case 'N': // NEL (#x85)
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, []rune{'\xC2', '\x85'}...)
+			case 'P': // PS (#x2029)
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, []rune{'\xE2', '\x80', '\xA9'}...)
+			case '_': // #xA0
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, []rune{'\xC2', '\xA0'}...)
+			case '"':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, nextChar)
+			case 'x':
+				progress = 3
+				if idx+progress >= size {
+					// TODO: need to return error
+					//err = xerrors.New("invalid escape character \\x")
+					return
+				}
+				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
+				value = append(value, rune(codeNum))
+			case 'u':
+				progress = 5
+				if idx+progress >= size {
+					// TODO: need to return error
+					//err = xerrors.New("invalid escape character \\u")
+					return
+				}
+				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
+				value = append(value, rune(codeNum))
+			case 'U':
+				progress = 9
+				if idx+progress >= size {
+					// TODO: need to return error
+					//err = xerrors.New("invalid escape character \\U")
+					return
+				}
+				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
+				value = append(value, rune(codeNum))
+			case '\\':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, c)
+			default:
+				value = append(value, c)
+			}
+			idx += progress
+			s.progressColumn(ctx, progress)
 			continue
 		} else if c != '"' {
 			value = append(value, c)
@@ -472,6 +483,10 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 			return
 		}
 	}
+	// document ends with comment.
+	value := string(ctx.src[ctx.idx:])
+	tk = token.Comment(value, string(ctx.obuf), s.pos())
+	pos = len([]rune(value)) + 1
 	return
 }
 
@@ -598,6 +613,16 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 		if s.savedPos != nil {
 			s.savedPos.Column -= removedNum
 		}
+	}
+
+	// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.
+	// > Line breaks inside scalar content must be normalized by the YAML processor. Each such line break must be parsed into a single line feed character.
+	// > Outside scalar content, YAML allows any line break to be used to terminate lines.
+	// > -- https://yaml.org/spec/1.2/spec.html
+	if c == '\r' && ctx.nextChar() == '\n' {
+		ctx.addOriginBuf('\r')
+		ctx.progress(1)
+		c = '\n'
 	}
 
 	if ctx.isEOS() {
@@ -733,6 +758,12 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				if tk != nil {
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
+				} else if tk := ctx.lastToken(); tk != nil {
+					// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
+					// Therefore, we need to check the last token.
+					if tk.Indicator == token.QuotedScalarIndicator {
+						s.prevIndentColumn = tk.Position.Column
+					}
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
 				s.progressColumn(ctx, 1)
@@ -805,18 +836,14 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				pos += progress
+				// If the non-whitespace character immediately following the quote is ':', the quote should be treated as a map key.
+				// Therefore, do not return and continue processing as a normal map key.
+				if ctx.currentCharWithSkipWhitespace() == ':' {
+					continue
+				}
 				return
 			}
 		case '\r', '\n':
-			// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.
-			// > Line breaks inside scalar content must be normalized by the YAML processor. Each such line break must be parsed into a single line feed character.
-			// > Outside scalar content, YAML allows any line break to be used to terminate lines.
-			// > -- https://yaml.org/spec/1.2/spec.html
-			if c == '\r' && ctx.nextChar() == '\n' {
-				ctx.addOriginBuf('\r')
-				ctx.progress(1)
-				c = '\n'
-			}
 			s.scanNewLine(ctx, c)
 			continue
 		case ' ':

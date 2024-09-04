@@ -480,7 +480,7 @@ func (c *Compiler) mapCode(typ *runtime.Type) (*MapCode, error) {
 
 func (c *Compiler) listElemCode(typ *runtime.Type) (Code, error) {
 	switch {
-	case c.isPtrMarshalJSONType(typ):
+	case c.implementsMarshalJSONType(typ) || c.implementsMarshalJSONType(runtime.PtrTo(typ)):
 		return c.marshalJSONCode(typ)
 	case !typ.Implements(marshalTextType) && runtime.PtrTo(typ).Implements(marshalTextType):
 		return c.marshalTextCode(typ)
@@ -506,8 +506,6 @@ func (c *Compiler) listElemCode(typ *runtime.Type) (Code, error) {
 
 func (c *Compiler) mapKeyCode(typ *runtime.Type) (Code, error) {
 	switch {
-	case c.implementsMarshalJSON(typ):
-		return c.marshalJSONCode(typ)
 	case c.implementsMarshalText(typ):
 		return c.marshalTextCode(typ)
 	}
@@ -619,6 +617,13 @@ func (c *Compiler) structCode(typ *runtime.Type, isPtr bool) (*StructCode, error
 	return code, nil
 }
 
+func toElemType(t *runtime.Type) *runtime.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
 func (c *Compiler) structFieldCode(structCode *StructCode, tag *runtime.StructTag, isPtr, isOnlyOneFirstField bool) (*StructFieldCode, error) {
 	field := tag.Field
 	fieldType := runtime.Type2RType(field.Type)
@@ -628,7 +633,7 @@ func (c *Compiler) structFieldCode(structCode *StructCode, tag *runtime.StructTa
 		key:           tag.Key,
 		tag:           tag,
 		offset:        field.Offset,
-		isAnonymous:   field.Anonymous && !tag.IsTaggedKey,
+		isAnonymous:   field.Anonymous && !tag.IsTaggedKey && toElemType(fieldType).Kind() == reflect.Struct,
 		isTaggedKey:   tag.IsTaggedKey,
 		isNilableType: c.isNilableType(fieldType),
 		isNilCheck:    true,

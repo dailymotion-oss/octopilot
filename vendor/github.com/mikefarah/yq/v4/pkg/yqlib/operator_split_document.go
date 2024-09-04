@@ -1,12 +1,13 @@
 package yqlib
 
-func splitDocumentOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-	log.Debugf("-- splitDocumentOperator")
+func splitDocumentOperator(_ *dataTreeNavigator, context Context, _ *ExpressionNode) (Context, error) {
+	log.Debugf("splitDocumentOperator")
 
 	var index uint
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
-		candidate.Document = index
+		candidate.SetDocument(index)
+		candidate.SetParent(nil)
 		index = index + 1
 	}
 
