@@ -251,7 +251,7 @@ func stageSubmodules(ctx context.Context, repo *git.Repository, opts *GitOptions
 			return fmt.Errorf("failed to get submodule %s status: %w", s.Config().Name, err)
 		}
 
-		if status.IsClean() {
+		if status.Current.IsZero() || status.IsClean() {
 			continue
 		}
 
@@ -287,8 +287,17 @@ func stageSubmodules(ctx context.Context, repo *git.Repository, opts *GitOptions
 		return fmt.Errorf("failed to update index: %w", err)
 	}
 
-	// Clean-up submodules from working tree to avoid
+	// Reset submodules in the working tree to avoid them being considered by AddGlob or similar later on.
 	for _, s := range submodules {
+		status, err := s.Status()
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s status: %w", s.Config().Name, err)
+		}
+
+		if status.Current.IsZero() {
+			continue
+		}
+
 		err = s.UpdateContext(ctx, &git.SubmoduleUpdateOptions{Init: false, NoFetch: true, RecurseSubmodules: git.NoRecurseSubmodules})
 		if err != nil {
 			return fmt.Errorf("failed to update submodule %s: %w", s.Config().Name, err)
