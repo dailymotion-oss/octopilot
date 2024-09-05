@@ -2,9 +2,7 @@ package repository
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/google/go-github/v57/github"
