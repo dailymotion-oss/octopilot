@@ -39,6 +39,8 @@ linters-settings:
   nolintlint:
     require-specific: true
     require-explanation: true
+  exhaustive:
+    default-signifies-exhaustive: true
   revive:
     #enable-all-rules: true
     rules:

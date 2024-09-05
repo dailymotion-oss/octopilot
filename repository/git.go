@@ -185,39 +185,6 @@ func createBranchWithAPI(ctx context.Context, opts createBranchOptions) error {
 	return nil
 }
 
-type resetBranchOptions struct {
-	GitHubOpts GitHubOptions
-	Repository Repository
-	BranchName string
-	CommitSHA  string
-}
-
-func resetBranchWithAPI(ctx context.Context, opts resetBranchOptions) error {
-	client, _, err := githubClient(ctx, opts.GitHubOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create github client: %w", err)
-	}
-
-	branchRef := fmt.Sprintf("refs/heads/%s", opts.BranchName)
-
-	_, _, err = client.Git.UpdateRef(
-		ctx,
-		opts.Repository.Owner,
-		opts.Repository.Name,
-		&github.Reference{
-			Ref: &branchRef,
-			Object: &github.GitObject{
-				SHA: &opts.CommitSHA,
-			},
-		},
-		true,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update branch ref: %w", err)
-	}
-	return nil
-}
-
 type switchBranchOptions struct {
 	Repository   Repository
 	BranchName   string
@@ -386,8 +353,8 @@ func buildDiffTreeEntries(ctx context.Context, base, head *object.Commit) ([]*gi
 
 	for _, c := range treeDiff {
 		var path, mode, treeType, sha, content *string
-
 		var entry object.TreeEntry
+
 		switch c.To.TreeEntry.Mode {
 		case filemode.Empty:
 			entry = c.From.TreeEntry
