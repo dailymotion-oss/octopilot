@@ -79,12 +79,3 @@ func searchRepositories(ctx context.Context, ghClient *github.Client, query stri
 
 	return repos, resp, nil
 }
-
-// base64EncodeFile returns the contents of a file in base64
-func base64EncodeFile(path string) (string, error) {
-	fileContent, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("unable to read file: %w", err)
-	}
-	return base64.StdEncoding.EncodeToString(fileContent), nil
-}

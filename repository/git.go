@@ -280,7 +280,6 @@ func stageSubmodules(ctx context.Context, repo *git.Repository, opts *GitOptions
 			return fmt.Errorf("failed to get submodule %s index entry: %w", s.Config().Name, err)
 		}
 		entry.Hash = status.Current
-
 	}
 
 	err = repo.Storer.SetIndex(index)
