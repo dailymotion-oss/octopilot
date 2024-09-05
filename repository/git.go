@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -228,13 +229,83 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	return nil
 }
 
+func stageSubmodules(ctx context.Context, repo *git.Repository, opts *GitOptions) error {
+	workTree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to open worktree: %w", err)
+	}
+
+	index, err := repo.Storer.Index()
+	if err != nil {
+		return fmt.Errorf("failed to get the repo index: %w", err)
+	}
+
+	submodules, err := workTree.Submodules()
+	if err != nil {
+		return fmt.Errorf("failed to parse submodules: %w", err)
+	}
+
+	for _, s := range submodules {
+		status, err := s.Status()
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s status: %w", s.Config().Name, err)
+		}
+
+		if status.IsClean() {
+			continue
+		}
+
+		path := s.Config().Path
+
+		shouldStage := opts.StageAllChanged
+
+		if !shouldStage {
+			for _, p := range opts.StagePatterns {
+				shouldStage, err = filepath.Match(p, path)
+				if err != nil {
+					return fmt.Errorf("failed to compare stage pattern %s to path %s: %w", p, path, err)
+				}
+				if shouldStage {
+					break
+				}
+			}
+		}
+
+		if !shouldStage {
+			continue
+		}
+
+		entry, err := index.Entry(path)
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s index entry: %w", s.Config().Name, err)
+		}
+		entry.Hash = status.Current
+
+	}
+
+	err = repo.Storer.SetIndex(index)
+	if err != nil {
+		return fmt.Errorf("failed to update index: %w", err)
+	}
+
+	// Clean-up submodules from working tree to avoid
+	for _, s := range submodules {
+		err = s.UpdateContext(ctx, &git.SubmoduleUpdateOptions{Init: false, NoFetch: true, RecurseSubmodules: git.NoRecurseSubmodules})
+		if err != nil {
+			return fmt.Errorf("failed to update submodule %s: %w", s.Config().Name, err)
+		}
+	}
+
+	return nil
+}
+
 type commitOptions struct {
 	Repository    Repository
 	CommitMessage CommitMessage
 	GitOpts       GitOptions
 }
 
-func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
+func commitChanges(ctx context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)
@@ -251,6 +322,11 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOption
 		"repository": opts.Repository.FullName(),
 		"status":     status.String(),
 	}).Debug("Git status")
+
+	err = stageSubmodules(ctx, gitRepo, &opts.GitOpts)
+	if err != nil {
+		return false, fmt.Errorf("failed to stage submodules: %w", err)
+	}
 
 	for _, pattern := range opts.GitOpts.StagePatterns {
 		err = workTree.AddGlob(pattern)
@@ -442,9 +518,15 @@ func pushChangesWithAPI(ctx context.Context, gitRepo *git.Repository, opts pushO
 		return fmt.Errorf("failed to create github client: %w", err)
 	}
 
-	tree, _, err := client.Git.CreateTree(ctx, opts.Repository.Owner, opts.Repository.Name, parentCommitSHA, treeEntries)
-	if err != nil {
-		return fmt.Errorf("failed to create tree: %w", err)
+	var treeSHA string
+	if len(treeEntries) > 0 {
+		tree, _, err := client.Git.CreateTree(ctx, opts.Repository.Owner, opts.Repository.Name, parentCommitSHA, treeEntries)
+		if err != nil {
+			return fmt.Errorf("failed to create tree: %w", err)
+		}
+		treeSHA = tree.GetSHA()
+	} else {
+		treeSHA = parentCommit.TreeHash.String()
 	}
 
 	newCommit, _, err := client.Git.CreateCommit(
@@ -453,7 +535,7 @@ func pushChangesWithAPI(ctx context.Context, gitRepo *git.Repository, opts pushO
 		opts.Repository.Name,
 		&github.Commit{
 			Message: ptr(opts.CommitMessage.String()),
-			Tree:    tree,
+			Tree:    &github.Tree{SHA: ptr(treeSHA)},
 			Parents: []*github.Commit{&github.Commit{SHA: &parentCommitSHA}},
 		},
 		&github.CreateCommitOptions{},
