@@ -15,10 +15,10 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/utils/merkletrie"
 	"github.com/google/go-github/v57/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/sirupsen/logrus"
@@ -102,7 +102,7 @@ func initSubmodules(ctx context.Context, repo *git.Repository, token string, rec
 	for _, s := range subModules {
 		// Hack: rewrite Github hosted submodule SSH URLs to use HTTPS because token auth only works with that
 		// go-git does not expose a way of doing insteadOf type rewrites for submodules, so this will have to do for now
-		s.Config().URL = strings.Replace(s.Config().URL, fmt.Sprintf("git@%s:", githubURL.Hostname()), githubURL.String(), 1)
+		s.Config().URL = strings.Replace(s.Config().URL, fmt.Sprintf("git@%s:", githubURL.Hostname()), fmt.Sprintf("%s://%s/", githubURL.Scheme, githubURL.Hostname()), 1)
 
 		// Only use basic auth for Github. This lets us use any public Git repo not hosted on Github.
 		var auth transport.AuthMethod
@@ -186,39 +186,6 @@ func createBranchWithAPI(ctx context.Context, opts createBranchOptions) error {
 	return nil
 }
 
-type resetBranchOptions struct {
-	GitHubOpts GitHubOptions
-	Repository Repository
-	BranchName string
-	CommitSHA  string
-}
-
-func resetBranchWithAPI(ctx context.Context, opts resetBranchOptions) error {
-	client, _, err := githubClient(ctx, opts.GitHubOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create github client: %w", err)
-	}
-
-	branchRef := fmt.Sprintf("refs/heads/%s", opts.BranchName)
-
-	_, _, err = client.Git.UpdateRef(
-		ctx,
-		opts.Repository.Owner,
-		opts.Repository.Name,
-		&github.Reference{
-			Ref: &branchRef,
-			Object: &github.GitObject{
-				SHA: &opts.CommitSHA,
-			},
-		},
-		true,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update branch ref: %w", err)
-	}
-	return nil
-}
-
 type switchBranchOptions struct {
 	Repository   Repository
 	BranchName   string
@@ -262,13 +229,91 @@ func switchBranch(_ context.Context, gitRepo *git.Repository, opts switchBranchO
 	return nil
 }
 
+func stageSubmodules(ctx context.Context, repo *git.Repository, opts *GitOptions) error {
+	workTree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to open worktree: %w", err)
+	}
+
+	index, err := repo.Storer.Index()
+	if err != nil {
+		return fmt.Errorf("failed to get the repo index: %w", err)
+	}
+
+	submodules, err := workTree.Submodules()
+	if err != nil {
+		return fmt.Errorf("failed to parse submodules: %w", err)
+	}
+
+	for _, s := range submodules {
+		status, err := s.Status()
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s status: %w", s.Config().Name, err)
+		}
+
+		if status.Current.IsZero() || status.IsClean() {
+			continue
+		}
+
+		path := s.Config().Path
+
+		shouldStage := opts.StageAllChanged
+
+		if !shouldStage {
+			for _, p := range opts.StagePatterns {
+				shouldStage, err = filepath.Match(p, path)
+				if err != nil {
+					return fmt.Errorf("failed to compare stage pattern %s to path %s: %w", p, path, err)
+				}
+				if shouldStage {
+					break
+				}
+			}
+		}
+
+		if !shouldStage {
+			continue
+		}
+
+		entry, err := index.Entry(path)
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s index entry: %w", s.Config().Name, err)
+		}
+		entry.Hash = status.Current
+	}
+
+	err = repo.Storer.SetIndex(index)
+	if err != nil {
+		return fmt.Errorf("failed to update index: %w", err)
+	}
+
+	// Reset submodules in the working tree to avoid them being considered by AddGlob or similar later on.
+	for _, s := range submodules {
+		status, err := s.Status()
+		if err != nil {
+			return fmt.Errorf("failed to get submodule %s status: %w", s.Config().Name, err)
+		}
+
+		if status.Current.IsZero() {
+			continue
+		}
+
+		err = s.UpdateContext(ctx, &git.SubmoduleUpdateOptions{Init: false, NoFetch: true, RecurseSubmodules: git.NoRecurseSubmodules})
+		if err != nil {
+			return fmt.Errorf("failed to update submodule %s: %w", s.Config().Name, err)
+		}
+	}
+
+	return nil
+}
+
 type commitOptions struct {
 	Repository    Repository
 	CommitMessage CommitMessage
 	GitOpts       GitOptions
 }
 
-func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
+func commitChanges(ctx context.Context, gitRepo *git.Repository, opts commitOptions) (bool, error) {
 	workTree, err := gitRepo.Worktree()
 	if err != nil {
 		return false, fmt.Errorf("failed to open worktree: %w", err)
@@ -285,6 +330,11 @@ func commitChanges(_ context.Context, gitRepo *git.Repository, opts commitOption
 		"repository": opts.Repository.FullName(),
 		"status":     status.String(),
 	}).Debug("Git status")
+
+	err = stageSubmodules(ctx, gitRepo, &opts.GitOpts)
+	if err != nil {
+		return false, fmt.Errorf("failed to stage submodules: %w", err)
+	}
 
 	for _, pattern := range opts.GitOpts.StagePatterns {
 		err = workTree.AddGlob(pattern)
@@ -367,36 +417,78 @@ func getLatestCommit(_ context.Context, gitRepo *git.Repository) (*object.Commit
 	return latestCommit, nil
 }
 
-func compareCommits(base, head *object.Commit) (*CommitFileChanges, error) {
-	baseTree, err := base.Tree()
+func buildDiffTreeEntries(ctx context.Context, base, head *object.Commit) ([]*github.TreeEntry, error) {
+	parentTree, err := base.Tree()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get base commit tree: %w", err)
 	}
 
-	headTree, err := head.Tree()
+	commitTree, err := head.Tree()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get head commit tree: %w", err)
 	}
 
-	changes, err := baseTree.Diff(headTree)
+	treeDiff, err := parentTree.DiffContext(ctx, commitTree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compare commit trees: %w", err)
 	}
 
-	commitFileChanges := CommitFileChanges{}
-	for _, change := range changes {
-		action, err := change.Action()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get commit change action: %w", err)
+	treeEntries := []*github.TreeEntry{}
+
+	for _, c := range treeDiff {
+		var path, mode, treeType, sha, content *string
+		var entry object.TreeEntry
+
+		switch c.To.TreeEntry.Mode {
+		case filemode.Empty:
+			entry = c.From.TreeEntry
+		case filemode.Dir, filemode.Submodule:
+			entry = c.To.TreeEntry
+			sha = ptr(entry.Hash.String())
+		default:
+			entry = c.To.TreeEntry
+
+			file, err := c.To.Tree.TreeEntryFile(&entry)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get tree entry file: %w", err)
+			}
+
+			s, err := file.Contents()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read tree entry contents: %w", err)
+			}
+			content = ptr(s)
 		}
 
-		if action == merkletrie.Delete {
-			commitFileChanges.Deleted = append(commitFileChanges.Deleted, change.From.Name)
-		} else {
-			commitFileChanges.Upserted = append(commitFileChanges.Upserted, change.To.Name)
-		}
+		path = ptr(entry.Name)
+		treeType = ptr(treeEntryModeToTreeType(entry.Mode))
+		mode = ptr(fmt.Sprintf("%06o", uint32(entry.Mode)))
+
+		treeEntries = append(treeEntries, &github.TreeEntry{
+			Path:    path,
+			Type:    treeType,
+			Mode:    mode,
+			SHA:     sha,
+			Content: content,
+		})
 	}
-	return &commitFileChanges, nil
+
+	return treeEntries, nil
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func treeEntryModeToTreeType(m filemode.FileMode) string {
+	switch m {
+	case filemode.Dir:
+		return "tree"
+	case filemode.Submodule:
+		return "commit"
+	default:
+		return "blob"
+	}
 }
 
 func pushChangesWithAPI(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
@@ -422,74 +514,60 @@ func pushChangesWithAPI(ctx context.Context, gitRepo *git.Repository, opts pushO
 		if err != nil {
 			return fmt.Errorf("failed to create branch: %w", err)
 		}
-	} else if opts.ResetFromBase {
-		err = resetBranchWithAPI(ctx, resetBranchOptions{
-			GitHubOpts: opts.GitHubOpts,
-			Repository: opts.Repository,
-			BranchName: opts.BranchName,
-			CommitSHA:  parentCommitSHA,
-		})
+	}
+
+	treeEntries, err := buildDiffTreeEntries(ctx, parentCommit, commit)
+	if err != nil {
+		return fmt.Errorf("failed to build a diff of tree entries: %w", err)
+	}
+
+	client, _, err := githubClient(ctx, opts.GitHubOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	var treeSHA string
+	if len(treeEntries) > 0 {
+		tree, _, err := client.Git.CreateTree(ctx, opts.Repository.Owner, opts.Repository.Name, parentCommitSHA, treeEntries)
 		if err != nil {
-			return fmt.Errorf("failed to reset branch: %w", err)
+			return fmt.Errorf("failed to create tree: %w", err)
 		}
+		treeSHA = tree.GetSHA()
+	} else {
+		treeSHA = parentCommit.TreeHash.String()
 	}
 
-	changes, err := compareCommits(parentCommit, commit)
-	if err != nil {
-		return fmt.Errorf("failed to compare commits: %w", err)
-	}
-
-	deletions := make([]githubv4.FileDeletion, 0, len(changes.Deleted))
-	for _, path := range changes.Deleted {
-		deletions = append(deletions, githubv4.FileDeletion{
-			Path: githubv4.String(path),
-		})
-	}
-
-	additions := make([]githubv4.FileAddition, 0, len(changes.Upserted))
-	repoDirPath := filepath.Join(opts.GitCloneDir, opts.Repository.Owner, opts.Repository.Name)
-	for _, path := range changes.Upserted {
-		base64FileContent, err := base64EncodeFile(filepath.Join(repoDirPath, path))
-		if err != nil {
-			return fmt.Errorf("failed to encode file to base64: %w", err)
-		}
-		additions = append(additions, githubv4.FileAddition{
-			Path:     githubv4.String(path),
-			Contents: githubv4.Base64String(base64FileContent),
-		})
-	}
-
-	inputs := githubv4.CreateCommitOnBranchInput{
-		Branch: githubv4.CommittableBranch{
-			RepositoryNameWithOwner: githubv4.NewString(githubv4.String(opts.Repository.FullName())),
-			BranchName:              githubv4.NewString(githubv4.String(opts.BranchName)),
+	newCommit, _, err := client.Git.CreateCommit(
+		ctx,
+		opts.Repository.Owner,
+		opts.Repository.Name,
+		&github.Commit{
+			Message: ptr(opts.CommitMessage.String()),
+			Tree:    &github.Tree{SHA: ptr(treeSHA)},
+			Parents: []*github.Commit{&github.Commit{SHA: &parentCommitSHA}},
 		},
-		Message: githubv4.CommitMessage{
-			Headline: githubv4.String(opts.CommitMessage.Headline),
-			Body:     githubv4.NewString(githubv4.String(opts.CommitMessage.Body)),
-		},
-		FileChanges: &githubv4.FileChanges{
-			Additions: &additions,
-			Deletions: &deletions,
-		},
-		ExpectedHeadOid: githubv4.GitObjectID(parentCommitSHA),
-	}
-
-	var mutation struct {
-		CreateCommitOnBranchInput struct {
-			ClientMutationID string
-		} `graphql:"createCommitOnBranch(input: $input)"`
-	}
-
-	gqlClient, err := githubGraphqlClient(ctx, opts.GitHubOpts)
+		&github.CreateCommitOptions{},
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create github GraphQL client: %w", err)
+		return fmt.Errorf("failed to create commit: %w", err)
 	}
 
-	err = gqlClient.Mutate(ctx, &mutation, inputs, nil)
+	_, _, err = client.Git.UpdateRef(
+		ctx,
+		opts.Repository.Owner,
+		opts.Repository.Name,
+		&github.Reference{
+			Ref: ptr(fmt.Sprintf("refs/heads/%s", opts.BranchName)),
+			Object: &github.GitObject{
+				SHA: newCommit.SHA,
+			},
+		},
+		opts.ResetFromBase,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to push branch %s to %s: %w", opts.BranchName, opts.Repository.FullName(), err)
+		return fmt.Errorf("failed to update branch ref: %w", err)
 	}
+
 	return nil
 }
 

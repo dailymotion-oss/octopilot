@@ -965,7 +965,7 @@ func isCheckConclusionPassing(c *githubv4.CheckConclusionState) bool {
 	if c == nil {
 		return false
 	}
-	switch *c { //nolint: exhaustive // default should catch the rest
+	switch *c {
 	case githubv4.CheckConclusionStateSuccess, githubv4.CheckConclusionStateNeutral, githubv4.CheckConclusionStateSkipped:
 		return true
 	default:
