@@ -437,18 +437,18 @@ func buildDiffTreeEntries(ctx context.Context, base, head *object.Commit) ([]*gi
 
 	for _, c := range treeDiff {
 		var path, mode, treeType, sha, content *string
-		var entry object.TreeEntry
+		var entry object.ChangeEntry
 
 		switch c.To.TreeEntry.Mode {
 		case filemode.Empty:
-			entry = c.From.TreeEntry
+			entry = c.From
 		case filemode.Dir, filemode.Submodule:
-			entry = c.To.TreeEntry
-			sha = ptr(entry.Hash.String())
+			entry = c.To
+			sha = ptr(entry.TreeEntry.Hash.String())
 		default:
-			entry = c.To.TreeEntry
+			entry = c.To
 
-			file, err := c.To.Tree.TreeEntryFile(&entry)
+			file, err := c.To.Tree.TreeEntryFile(&entry.TreeEntry)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get tree entry file: %w", err)
 			}
@@ -461,8 +461,8 @@ func buildDiffTreeEntries(ctx context.Context, base, head *object.Commit) ([]*gi
 		}
 
 		path = ptr(entry.Name)
-		treeType = ptr(treeEntryModeToTreeType(entry.Mode))
-		mode = ptr(fmt.Sprintf("%06o", uint32(entry.Mode)))
+		treeType = ptr(treeEntryModeToTreeType(entry.TreeEntry.Mode))
+		mode = ptr(fmt.Sprintf("%06o", uint32(entry.TreeEntry.Mode)))
 
 		treeEntries = append(treeEntries, &github.TreeEntry{
 			Path:    path,
