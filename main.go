@@ -56,6 +56,9 @@ func init() {
 	pflag.StringVar(&options.GitHub.PrivateKeyPath, "github-privatekey-path", os.Getenv("GITHUB_PRIVATEKEY_PATH"), "For the `app` GitHub auth method, contains the GitHubApp Private key file path `/some/key.pem` (used if the github-privatekey is empty). Default to the GITHUB_PRIVATEKEY_PATH env var.")
 	pflag.StringVar(&options.GitHub.URL, "github-url", repository.PublicGithubURL, `GitHub server URL`)
 
+	// Github push flags
+	pflag.BoolVar(&options.GitHub.AlwaysPushChangesWithGit, "always-push-changes-with-git", false, `Always push changes with Git. By default, changes are pushed using Git if the auth method is "token" and using the Github API when auth method is "app".`)
+
 	// pull-request flags
 	pflag.StringVar(&options.GitHub.PullRequest.Title, "pr-title", "", "The title of the Pull Request to create. Default to the commit title.")
 	pflag.StringVar(&options.GitHub.PullRequest.TitleUpdateOperation, "pr-title-update-operation", "", `The type of operation when updating the PR's title: "ignore" (keep old value), "replace", "prepend" or "append". Default is: "ignore" for "append" strategy, "replace" for "reset" strategy, and not applicable for "recreate" strategy.`)
