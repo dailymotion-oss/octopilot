@@ -65,12 +65,16 @@ func CurrentRepositoryURL() string {
 		return ""
 	}
 	repoURL := getConfigValue(filepath.Join(gitDir, "config"), "remote.origin.url")
-	repoURL = strings.TrimSuffix(repoURL, ".git")
-	repoURL = strings.TrimPrefix(repoURL, "git@github.com:")
-	if len(repoURL) > 0 && !strings.HasPrefix(repoURL, "http") {
-		repoURL = "https://github.com/" + repoURL
+	return normaliseRepositeURL(repoURL)
+}
+
+func normaliseRepositeURL(url string) string {
+	if strings.HasPrefix(url, "git@") {
+		url = strings.Replace(url, ":", "/", 1)
+		url = strings.Replace(url, "git@", "https://", 1)
 	}
-	return repoURL
+	url = strings.TrimSuffix(url, ".git")
+	return url
 }
 
 // getConfigValue returns the value associated with the given key in the given git config file path.
