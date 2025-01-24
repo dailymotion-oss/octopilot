@@ -10,7 +10,7 @@ require (
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/google/go-github/v57 v57.0.0
 	github.com/imdario/mergo v0.3.16
-	github.com/mattn/go-zglob v0.0.4
+	github.com/mattn/go-zglob v0.0.6
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mikefarah/yq/v4 v4.28.2
 	github.com/mitchellh/go-homedir v1.1.0
