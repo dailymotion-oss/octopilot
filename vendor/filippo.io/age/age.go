@@ -1,8 +1,6 @@
-// Copyright 2019 Google LLC
-//
+// Copyright 2019 The age Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file or at
-// https://developers.google.com/open-source/licenses/bsd
+// license that can be found in the LICENSE file.
 
 // Package age implements file encryption according to the age-encryption.org/v1
 // specification.
@@ -12,13 +10,13 @@
 // ScryptRecipient and ScryptIdentity. For compatibility with existing SSH keys
 // use the filippo.io/age/agessh package.
 //
-// Age encrypted files are binary and not malleable. For encoding them as text,
+// age encrypted files are binary and not malleable. For encoding them as text,
 // use the filippo.io/age/armor package.
 //
-// Key management
+// # Key management
 //
-// Age does not have a global keyring. Instead, since age keys are small,
-// textual, and cheap, you are encoraged to generate dedicated keys for each
+// age does not have a global keyring. Instead, since age keys are small,
+// textual, and cheap, you are encouraged to generate dedicated keys for each
 // task and application.
 //
 // Recipient public keys can be passed around as command line flags and in
@@ -36,7 +34,7 @@
 // infrastructure, you might want to consider implementing your own Recipient
 // and Identity.
 //
-// Backwards compatibility
+// # Backwards compatibility
 //
 // Files encrypted with a stable version (not alpha, beta, or release candidate)
 // of age, or with any v1.0.0 beta or release candidate, will decrypt with any
@@ -53,6 +51,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"filippo.io/age/internal/format"
 	"filippo.io/age/internal/stream"
@@ -86,6 +85,21 @@ type Recipient interface {
 	Wrap(fileKey []byte) ([]*Stanza, error)
 }
 
+// RecipientWithLabels can be optionally implemented by a Recipient, in which
+// case Encrypt will use WrapWithLabels instead of Wrap.
+//
+// Encrypt will succeed only if the labels returned by all the recipients
+// (assuming the empty set for those that don't implement RecipientWithLabels)
+// are the same.
+//
+// This can be used to ensure a recipient is only used with other recipients
+// with equivalent properties (for example by setting a "postquantum" label) or
+// to ensure a recipient is always used alone (by returning a random label, for
+// example to preserve its authentication properties).
+type RecipientWithLabels interface {
+	WrapWithLabels(fileKey []byte) (s []*Stanza, labels []string, err error)
+}
+
 // A Stanza is a section of the age header that encapsulates the file key as
 // encrypted to a specific recipient.
 //
@@ -113,26 +127,23 @@ func Encrypt(dst io.Writer, recipients ...Recipient) (io.WriteCloser, error) {
 		return nil, errors.New("no recipients specified")
 	}
 
-	// As a best effort, prevent an API user from generating a file that the
-	// ScryptIdentity will refuse to decrypt. This check can't unfortunately be
-	// implemented as part of the Recipient interface, so it lives as a special
-	// case in Encrypt.
-	for _, r := range recipients {
-		if _, ok := r.(*ScryptRecipient); ok && len(recipients) != 1 {
-			return nil, errors.New("an ScryptRecipient must be the only one for the file")
-		}
-	}
-
 	fileKey := make([]byte, fileKeySize)
 	if _, err := rand.Read(fileKey); err != nil {
 		return nil, err
 	}
 
 	hdr := &format.Header{}
+	var labels []string
 	for i, r := range recipients {
-		stanzas, err := r.Wrap(fileKey)
+		stanzas, l, err := wrapWithLabels(r, fileKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to wrap key for recipient #%d: %v", i, err)
+		}
+		sort.Strings(l)
+		if i == 0 {
+			labels = l
+		} else if !slicesEqual(labels, l) {
+			return nil, fmt.Errorf("incompatible recipients")
 		}
 		for _, s := range stanzas {
 			hdr.Recipients = append(hdr.Recipients, (*format.Stanza)(s))
@@ -158,6 +169,26 @@ func Encrypt(dst io.Writer, recipients ...Recipient) (io.WriteCloser, error) {
 	return stream.NewWriter(streamKey(fileKey, nonce), dst)
 }
 
+func wrapWithLabels(r Recipient, fileKey []byte) (s []*Stanza, labels []string, err error) {
+	if r, ok := r.(RecipientWithLabels); ok {
+		return r.WrapWithLabels(fileKey)
+	}
+	s, err = r.Wrap(fileKey)
+	return
+}
+
+func slicesEqual(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	for i := range s1 {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // NoIdentityMatchError is returned by Decrypt when none of the supplied
 // identities match the encrypted file.
 type NoIdentityMatchError struct {
@@ -181,7 +212,7 @@ func Decrypt(src io.Reader, identities ...Identity) (io.Reader, error) {
 
 	hdr, payload, err := format.Parse(src)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read header: %v", err)
+		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 
 	stanzas := make([]*Stanza, 0, len(hdr.Recipients))
@@ -214,7 +245,7 @@ func Decrypt(src io.Reader, identities ...Identity) (io.Reader, error) {
 
 	nonce := make([]byte, streamNonceSize)
 	if _, err := io.ReadFull(payload, nonce); err != nil {
-		return nil, fmt.Errorf("failed to read nonce: %v", err)
+		return nil, fmt.Errorf("failed to read nonce: %w", err)
 	}
 
 	return stream.NewReader(streamKey(fileKey, nonce), payload)
