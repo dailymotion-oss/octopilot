@@ -51,7 +51,7 @@ jobs:
           VERSION: ${{ steps.tag.outputs.TAG }}
 
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v2
+        uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: '0.84.0'
           extended: true
