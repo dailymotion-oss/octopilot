@@ -57,6 +57,44 @@ func TestFindGitDirectory(t *testing.T) {
 	}
 }
 
+func TestNormaliseRepositeURL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ssh url",
+			input:    "git@github.com:dailymotion-oss/octopilot.git",
+			expected: "https://github.com/dailymotion-oss/octopilot",
+		},
+		{
+			name:     "https url",
+			input:    "https://github.com/dailymotion-oss/octopilot",
+			expected: "https://github.com/dailymotion-oss/octopilot",
+		},
+		{
+			name:     "ghe ssh url",
+			input:    "git@github.example.com:dailymotion-oss/octopilot.git",
+			expected: "https://github.example.com/dailymotion-oss/octopilot",
+		},
+		{
+			name:     "ghe https url",
+			input:    "https://github.example.com/dailymotion-oss/octopilot",
+			expected: "https://github.example.com/dailymotion-oss/octopilot",
+		},
+	}
+
+	for i := range tests {
+		test := tests[i]
+		t.Run(test.name, func(t *testing.T) {
+			actual := normaliseRepositeURL(test.input)
+			assert.Equal(t, test.expected, actual)
+		})
+	}
+}
+
 // note that this test can't be run in parallel, because it needs to change the working directory
 func TestCurrentRepositoryURL(t *testing.T) {
 	baseDir, err := os.Getwd()
