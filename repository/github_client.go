@@ -25,7 +25,7 @@ func githubAuthenticatedHTTPClient(ctx context.Context, ghOptions GitHubOptions)
 	case "token":
 		httpClient, token, err = githubTokenClient(ctx, ghOptions.Token)
 	case "app":
-		httpClient, token, err = githubAppClient(ctx, ghOptions.AppID, ghOptions.InstallationID, ghOptions.PrivateKey, ghOptions.PrivateKeyPath)
+		httpClient, token, err = githubAppClient(ctx, ghOptions)
 	default:
 		return nil, "", fmt.Errorf("GitHub auth method unrecognized (allowed values: app, token): %s", ghOptions.AuthMethod)
 	}
@@ -95,19 +95,22 @@ func githubTokenClient(ctx context.Context, token string) (*http.Client, string,
 	return oauth2.NewClient(ctx, tokenSource), token, nil
 }
 
-func githubAppClient(ctx context.Context, appID int64, installationID int64, privateKey string, privateKeyPath string) (*http.Client, string, error) {
+func githubAppClient(ctx context.Context, ghOptions GitHubOptions) (*http.Client, string, error) {
 	var (
 		tr  = http.DefaultTransport
 		itr *ghinstallation.Transport
 		err error
 	)
-	if len(privateKey) > 0 {
-		itr, err = ghinstallation.New(tr, appID, installationID, []byte(privateKey))
+	if len(ghOptions.PrivateKey) > 0 {
+		itr, err = ghinstallation.New(tr, ghOptions.AppID, ghOptions.InstallationID, []byte(ghOptions.PrivateKey))
 	} else {
-		itr, err = ghinstallation.NewKeyFromFile(tr, appID, installationID, privateKeyPath)
+		itr, err = ghinstallation.NewKeyFromFile(tr, ghOptions.AppID, ghOptions.InstallationID, ghOptions.PrivateKey)
 	}
 	if err != nil {
 		return nil, "", err
+	}
+	if ghOptions.isEnterprise() {
+		itr.BaseURL = ghOptions.URL + "/api/v3"
 	}
 	token, err := itr.Token(ctx)
 	if err != nil {
