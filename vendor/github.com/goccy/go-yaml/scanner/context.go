@@ -19,7 +19,6 @@ type Context struct {
 	isRawFolded        bool
 	isLiteral          bool
 	isFolded           bool
-	isSingleLine       bool
 	literalOpt         string
 }
 
@@ -33,14 +32,13 @@ var (
 
 func createContext() *Context {
 	return &Context{
-		idx:          0,
-		tokens:       token.Tokens{},
-		isSingleLine: true,
+		idx:    0,
+		tokens: token.Tokens{},
 	}
 }
 
 func newContext(src []rune) *Context {
-	ctx := ctxPool.Get().(*Context)
+	ctx, _ := ctxPool.Get().(*Context)
 	ctx.reset(src)
 	return ctx
 }
@@ -49,13 +47,24 @@ func (c *Context) release() {
 	ctxPool.Put(c)
 }
 
+func (c *Context) clear() {
+	c.resetBuffer()
+	c.isRawFolded = false
+	c.isLiteral = false
+	c.isFolded = false
+	c.literalOpt = ""
+}
+
 func (c *Context) reset(src []rune) {
 	c.idx = 0
 	c.size = len(src)
 	c.src = src
 	c.tokens = c.tokens[:0]
 	c.resetBuffer()
-	c.isSingleLine = true
+	c.isRawFolded = false
+	c.isLiteral = false
+	c.isFolded = false
+	c.literalOpt = ""
 }
 
 func (c *Context) resetBuffer() {
@@ -63,10 +72,6 @@ func (c *Context) resetBuffer() {
 	c.obuf = c.obuf[:0]
 	c.notSpaceCharPos = 0
 	c.notSpaceOrgCharPos = 0
-}
-
-func (c *Context) isSaveIndentMode() bool {
-	return c.isLiteral || c.isFolded || c.isRawFolded
 }
 
 func (c *Context) breakLiteral() {
@@ -120,7 +125,7 @@ func (c *Context) isEOS() bool {
 }
 
 func (c *Context) isNextEOS() bool {
-	return len(c.src)-1 <= c.idx+1
+	return len(c.src) <= c.idx+1
 }
 
 func (c *Context) next() bool {
@@ -139,7 +144,10 @@ func (c *Context) previousChar() rune {
 }
 
 func (c *Context) currentChar() rune {
-	return c.src[c.idx]
+	if c.size > c.idx {
+		return c.src[c.idx]
+	}
+	return rune(0)
 }
 
 func (c *Context) nextChar() rune {
@@ -165,19 +173,22 @@ func (c *Context) progress(num int) {
 	c.idx += num
 }
 
-func (c *Context) nextPos() int {
-	return c.idx + 1
-}
-
 func (c *Context) existsBuffer() bool {
 	return len(c.bufferedSrc()) != 0
 }
 
 func (c *Context) bufferedSrc() []rune {
 	src := c.buf[:c.notSpaceCharPos]
-	if len(src) > 0 && src[len(src)-1] == '\n' && c.isDocument() && c.literalOpt == "-" {
-		// remove end '\n' character
-		src = src[:len(src)-1]
+	if c.isDocument() && c.literalOpt == "-" {
+		// remove end '\n' character and trailing empty lines
+		// https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator
+		for {
+			if len(src) > 0 && src[len(src)-1] == '\n' {
+				src = src[:len(src)-1]
+				continue
+			}
+			break
+		}
 	}
 	return src
 }
@@ -198,4 +209,11 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	}
 	c.resetBuffer()
 	return tk
+}
+
+func (c *Context) lastToken() *token.Token {
+	if len(c.tokens) != 0 {
+		return c.tokens[len(c.tokens)-1]
+	}
+	return nil
 }
