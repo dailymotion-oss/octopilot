@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -8,13 +9,12 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 var (
-	ErrInvalidTokenType  = xerrors.New("invalid token type")
-	ErrInvalidAnchorName = xerrors.New("invalid anchor name")
-	ErrInvalidAliasName  = xerrors.New("invalid alias name")
+	ErrInvalidTokenType  = errors.New("invalid token type")
+	ErrInvalidAnchorName = errors.New("invalid anchor name")
+	ErrInvalidAliasName  = errors.New("invalid alias name")
 )
 
 // NodeType type identifier of node
@@ -191,13 +191,18 @@ type Node interface {
 	addReadLen(int)
 	// clean read length
 	clearLen()
+}
+
+// MapKeyNode type for map key node
+type MapKeyNode interface {
+	Node
 	// String node to text without comment
 	stringWithoutComment() string
 }
 
 // ScalarNode type for scalar node
 type ScalarNode interface {
-	Node
+	MapKeyNode
 	GetValue() interface{}
 }
 
@@ -266,15 +271,58 @@ func readNode(p []byte, node Node) (int, error) {
 		return 0, io.EOF
 	}
 	size := min(remain, len(p))
-	for idx, b := range s[readLen : readLen+size] {
+	for idx, b := range []byte(s[readLen : readLen+size]) {
 		p[idx] = byte(b)
 	}
 	node.addReadLen(size)
 	return size, nil
 }
 
+func checkLineBreak(t *token.Token) bool {
+	if t.Prev != nil {
+		lbc := "\n"
+		prev := t.Prev
+		var adjustment int
+		// if the previous type is sequence entry use the previous type for that
+		if prev.Type == token.SequenceEntryType {
+			// as well as switching to previous type count any new lines in origin to account for:
+			// -
+			//   b: c
+			adjustment = strings.Count(strings.TrimRight(t.Origin, lbc), lbc)
+			if prev.Prev != nil {
+				prev = prev.Prev
+			}
+		}
+		lineDiff := t.Position.Line - prev.Position.Line - 1
+		if lineDiff > 0 {
+			if prev.Type == token.StringType {
+				// Remove any line breaks included in multiline string
+				adjustment += strings.Count(strings.TrimRight(strings.TrimSpace(prev.Origin), lbc), lbc)
+			}
+			// Due to the way that comment parsing works its assumed that when a null value does not have new line in origin
+			// it was squashed therefore difference is ignored.
+			//foo:
+			//  bar:
+			//  # comment
+			//  baz: 1
+			//becomes
+			//foo:
+			//  bar: null # comment
+			//
+			//  baz: 1
+			if prev.Type == token.NullType {
+				return strings.Count(prev.Origin, lbc) > 0
+			}
+			if lineDiff-adjustment > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Null create node for null value
-func Null(tk *token.Token) Node {
+func Null(tk *token.Token) *NullNode {
 	return &NullNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -282,7 +330,7 @@ func Null(tk *token.Token) Node {
 }
 
 // Bool create node for boolean value
-func Bool(tk *token.Token) Node {
+func Bool(tk *token.Token) *BoolNode {
 	b, _ := strconv.ParseBool(tk.Value)
 	return &BoolNode{
 		BaseNode: &BaseNode{},
@@ -292,26 +340,20 @@ func Bool(tk *token.Token) Node {
 }
 
 // Integer create node for integer value
-func Integer(tk *token.Token) Node {
-	value := removeUnderScoreFromNumber(tk.Value)
+func Integer(tk *token.Token) *IntegerNode {
 	switch tk.Type {
 	case token.BinaryIntegerType:
 		// skip two characters because binary token starts with '0b'
-		skipCharacterNum := 2
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			negativePrefix = "-"
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 2, 64)
+		parsedNum := parseNumber("0b", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 2, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(negativePrefix+value[skipCharacterNum:], 2, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 2, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
@@ -319,28 +361,16 @@ func Integer(tk *token.Token) Node {
 		}
 	case token.OctetIntegerType:
 		// octet token starts with '0o' or '-0o' or '0' or '-0'
-		skipCharacterNum := 1
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			if len(value) > 2 && value[2] == 'o' {
-				skipCharacterNum++
-			}
-			negativePrefix = "-"
-		} else {
-			if value[1] == 'o' {
-				skipCharacterNum++
-			}
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 8, 64)
+		parsedNum := parseNumber("0o", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 8, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(value[skipCharacterNum:], 8, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 8, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
@@ -348,36 +378,32 @@ func Integer(tk *token.Token) Node {
 		}
 	case token.HexIntegerType:
 		// hex token starts with '0x' or '-0x'
-		skipCharacterNum := 2
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			negativePrefix = "-"
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 16, 64)
+		parsedNum := parseNumber("0x", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 16, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(value[skipCharacterNum:], 16, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 16, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
 			Value:    i,
 		}
 	}
-	if value[0] == '-' || value[0] == '+' {
-		i, _ := strconv.ParseInt(value, 10, 64)
+	parsedNum := parseNumber("", tk.Value)
+	if parsedNum.isNegative {
+		i, _ := strconv.ParseInt(parsedNum.String(), 10, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
 			Value:    i,
 		}
 	}
-	i, _ := strconv.ParseUint(value, 10, 64)
+	i, _ := strconv.ParseUint(parsedNum.String(), 10, 64)
 	return &IntegerNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -385,9 +411,44 @@ func Integer(tk *token.Token) Node {
 	}
 }
 
+type parsedNumber struct {
+	isNegative bool
+	num        string
+}
+
+func (n *parsedNumber) String() string {
+	if n.isNegative {
+		return "-" + n.num
+	}
+	return n.num
+}
+
+func parseNumber(prefix, value string) *parsedNumber {
+	isNegative := value[0] == '-'
+	trimmed := strings.TrimPrefix(value, "+")
+	trimmed = strings.TrimPrefix(trimmed, "-")
+	trimmed = strings.TrimPrefix(trimmed, prefix)
+
+	num := make([]rune, 0, len(trimmed))
+	for _, v := range trimmed {
+		if v == '_' {
+			continue
+		}
+		num = append(num, v)
+	}
+	if len(num) == 0 {
+		num = append(num, '0')
+	}
+	return &parsedNumber{
+		isNegative: isNegative,
+		num:        string(num),
+	}
+}
+
 // Float create node for float value
-func Float(tk *token.Token) Node {
-	f, _ := strconv.ParseFloat(removeUnderScoreFromNumber(tk.Value), 64)
+func Float(tk *token.Token) *FloatNode {
+	parsedNum := parseNumber("", tk.Value)
+	f, _ := strconv.ParseFloat(parsedNum.String(), 64)
 	return &FloatNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -467,7 +528,7 @@ func Mapping(tk *token.Token, isFlowStyle bool, values ...*MappingValueNode) *Ma
 }
 
 // MappingValue create node for mapping value
-func MappingValue(tk *token.Token, key Node, value Node) *MappingValueNode {
+func MappingValue(tk *token.Token, key MapKeyNode, value Node) *MappingValueNode {
 	return &MappingValueNode{
 		BaseNode: &BaseNode{},
 		Start:    tk,
@@ -561,11 +622,11 @@ func (f *File) String() string {
 	for _, doc := range f.Docs {
 		docs = append(docs, doc.String())
 	}
-	return strings.Join(docs, "\n")
-}
-
-func (f *File) stringWithoutComment() string {
-	return f.String()
+	if len(docs) > 0 {
+		return strings.Join(docs, "\n") + "\n"
+	} else {
+		return ""
+	}
 }
 
 // DocumentNode type of Document
@@ -609,17 +670,9 @@ func (d *DocumentNode) String() string {
 	return strings.Join(doc, "\n")
 }
 
-func (d *DocumentNode) stringWithoutComment() string {
-	return d.String()
-}
-
 // MarshalYAML encodes to a YAML text
 func (d *DocumentNode) MarshalYAML() ([]byte, error) {
 	return []byte(d.String()), nil
-}
-
-func removeUnderScoreFromNumber(num string) string {
-	return strings.ReplaceAll(num, "_", "")
 }
 
 // NullNode type of null node
@@ -654,7 +707,7 @@ func (n *NullNode) GetValue() interface{} {
 // String returns `null` text
 func (n *NullNode) String() string {
 	if n.Comment != nil {
-		return fmt.Sprintf("null %s", n.Comment.String())
+		return addCommentString("null", n.Comment)
 	}
 	return n.stringWithoutComment()
 }
@@ -956,7 +1009,7 @@ func (n *MergeKeyNode) GetValue() interface{} {
 
 // String returns '<<' value
 func (n *MergeKeyNode) String() string {
-	return n.Token.Value
+	return n.stringWithoutComment()
 }
 
 func (n *MergeKeyNode) stringWithoutComment() string {
@@ -1137,7 +1190,7 @@ func (m *MapNodeIter) Next() bool {
 }
 
 // Key returns the key of the iterator's current map node entry.
-func (m *MapNodeIter) Key() Node {
+func (m *MapNodeIter) Key() MapKeyNode {
 	return m.values[m.idx].Key
 }
 
@@ -1153,6 +1206,7 @@ type MappingNode struct {
 	End         *token.Token
 	IsFlowStyle bool
 	Values      []*MappingValueNode
+	FootComment *CommentGroupNode
 }
 
 func (n *MappingNode) startPos() *token.Position {
@@ -1260,14 +1314,6 @@ func (n *MappingNode) String() string {
 	return n.blockStyleString(commentMode)
 }
 
-func (n *MappingNode) stringWithoutComment() string {
-	commentMode := false
-	if n.IsFlowStyle || len(n.Values) == 0 {
-		return n.flowStyleString(commentMode)
-	}
-	return n.blockStyleString(commentMode)
-}
-
 // MapRange implements MapNode protocol
 func (n *MappingNode) MapRange() *MapNodeIter {
 	return &MapNodeIter{
@@ -1311,7 +1357,7 @@ func (n *MappingKeyNode) AddColumn(col int) {
 
 // String tag to text
 func (n *MappingKeyNode) String() string {
-	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+	return n.stringWithoutComment()
 }
 
 func (n *MappingKeyNode) stringWithoutComment() string {
@@ -1326,9 +1372,10 @@ func (n *MappingKeyNode) MarshalYAML() ([]byte, error) {
 // MappingValueNode type of mapping value
 type MappingValueNode struct {
 	*BaseNode
-	Start *token.Token
-	Key   Node
-	Value Node
+	Start       *token.Token
+	Key         MapKeyNode
+	Value       Node
+	FootComment *CommentGroupNode
 }
 
 // Replace replace value node.
@@ -1377,18 +1424,27 @@ func (n *MappingValueNode) SetIsFlowStyle(isFlow bool) {
 
 // String mapping value to text
 func (n *MappingValueNode) String() string {
+	var text string
 	if n.Comment != nil {
-		return fmt.Sprintf(
+		text = fmt.Sprintf(
 			"%s\n%s",
 			n.Comment.StringWithSpace(n.Key.GetToken().Position.Column-1),
 			n.toString(),
 		)
+	} else {
+		text = n.toString()
 	}
-	return n.toString()
+	if n.FootComment != nil {
+		text += fmt.Sprintf("\n%s", n.FootComment.StringWithSpace(n.Key.GetToken().Position.Column-1))
+	}
+	return text
 }
 
 func (n *MappingValueNode) toString() string {
 	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
+	if checkLineBreak(n.Key.GetToken()) {
+		space = fmt.Sprintf("%s%s", "\n", space)
+	}
 	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
 	keyComment := n.Key.GetComment()
@@ -1430,26 +1486,6 @@ func (n *MappingValueNode) toString() string {
 			n.Key.String(),
 			strings.TrimLeft(n.Value.String(), " "),
 		)
-	}
-	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-}
-
-func (n *MappingValueNode) stringWithoutComment() string {
-	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
-	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
-	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
-	if _, ok := n.Value.(ScalarNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if keyIndentLevel < valueIndentLevel {
-		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*AnchorNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*AliasNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	}
 	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
 }
@@ -1499,17 +1535,18 @@ func (m *ArrayNodeIter) Len() int {
 // SequenceNode type of sequence node
 type SequenceNode struct {
 	*BaseNode
-	Start         *token.Token
-	End           *token.Token
-	IsFlowStyle   bool
-	Values        []Node
-	ValueComments []*CommentGroupNode
+	Start             *token.Token
+	End               *token.Token
+	IsFlowStyle       bool
+	Values            []Node
+	ValueHeadComments []*CommentGroupNode
+	FootComment       *CommentGroupNode
 }
 
 // Replace replace value node.
 func (n *SequenceNode) Replace(idx int, value Node) error {
 	if len(n.Values) <= idx {
-		return xerrors.Errorf(
+		return fmt.Errorf(
 			"invalid index for sequence: sequence length is %d, but specified %d index",
 			len(n.Values), idx,
 		)
@@ -1524,9 +1561,7 @@ func (n *SequenceNode) Replace(idx int, value Node) error {
 func (n *SequenceNode) Merge(target *SequenceNode) {
 	column := n.Start.Position.Column - target.Start.Position.Column
 	target.AddColumn(column)
-	for _, value := range target.Values {
-		n.Values = append(n.Values, value)
-	}
+	n.Values = append(n.Values, target.Values...)
 }
 
 // SetIsFlowStyle set value to IsFlowStyle field recursively.
@@ -1583,13 +1618,19 @@ func (n *SequenceNode) blockStyleString() string {
 
 	for idx, value := range n.Values {
 		valueStr := value.String()
+		newLinePrefix := ""
+		if strings.HasPrefix(valueStr, "\n") {
+			valueStr = valueStr[1:]
+			newLinePrefix = "\n"
+		}
 		splittedValues := strings.Split(valueStr, "\n")
 		trimmedFirstValue := strings.TrimLeft(splittedValues[0], " ")
 		diffLength := len(splittedValues[0]) - len(trimmedFirstValue)
 		if len(splittedValues) > 1 && value.Type() == StringType || value.Type() == LiteralType {
 			// If multi-line string, the space characters for indent have already been added, so delete them.
+			prefix := space + "  "
 			for i := 1; i < len(splittedValues); i++ {
-				splittedValues[i] = strings.TrimLeft(splittedValues[i], " ")
+				splittedValues[i] = strings.TrimPrefix(splittedValues[i], prefix)
 			}
 		}
 		newValues := []string{trimmedFirstValue}
@@ -1603,23 +1644,20 @@ func (n *SequenceNode) blockStyleString() string {
 			newValues = append(newValues, fmt.Sprintf("%s  %s", space, trimmed))
 		}
 		newValue := strings.Join(newValues, "\n")
-		if len(n.ValueComments) == len(n.Values) && n.ValueComments[idx] != nil {
-			values = append(values, n.ValueComments[idx].StringWithSpace(n.Start.Position.Column-1))
+		if len(n.ValueHeadComments) == len(n.Values) && n.ValueHeadComments[idx] != nil {
+			values = append(values, fmt.Sprintf("%s%s", newLinePrefix, n.ValueHeadComments[idx].StringWithSpace(n.Start.Position.Column-1)))
+			newLinePrefix = ""
 		}
-		values = append(values, fmt.Sprintf("%s- %s", space, newValue))
+		values = append(values, fmt.Sprintf("%s%s- %s", newLinePrefix, space, newValue))
+	}
+	if n.FootComment != nil {
+		values = append(values, n.FootComment.StringWithSpace(n.Start.Position.Column-1))
 	}
 	return strings.Join(values, "\n")
 }
 
 // String sequence to text
 func (n *SequenceNode) String() string {
-	if n.IsFlowStyle || len(n.Values) == 0 {
-		return n.flowStyleString()
-	}
-	return n.blockStyleString()
-}
-
-func (n *SequenceNode) stringWithoutComment() string {
 	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
@@ -1696,10 +1734,6 @@ func (n *AnchorNode) String() string {
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }
 
-func (n *AnchorNode) stringWithoutComment() string {
-	return n.String()
-}
-
 // MarshalYAML encodes to a YAML text
 func (n *AnchorNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
@@ -1750,10 +1784,6 @@ func (n *AliasNode) String() string {
 	return fmt.Sprintf("*%s", n.Value.String())
 }
 
-func (n *AliasNode) stringWithoutComment() string {
-	return fmt.Sprintf("*%s", n.Value.String())
-}
-
 // MarshalYAML encodes to a YAML text
 func (n *AliasNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
@@ -1788,10 +1818,6 @@ func (n *DirectiveNode) AddColumn(col int) {
 
 // String directive to text
 func (n *DirectiveNode) String() string {
-	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
-}
-
-func (n *DirectiveNode) stringWithoutComment() string {
 	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
 }
 
@@ -1833,10 +1859,6 @@ func (n *TagNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 
-func (n *TagNode) stringWithoutComment() string {
-	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
-}
-
 // MarshalYAML encodes to a YAML text
 func (n *TagNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
@@ -1870,10 +1892,6 @@ func (n *CommentNode) AddColumn(col int) {
 // String comment to text
 func (n *CommentNode) String() string {
 	return fmt.Sprintf("#%s", n.Token.Value)
-}
-
-func (n *CommentNode) stringWithoutComment() string {
-	return ""
 }
 
 // MarshalYAML encodes to a YAML text
@@ -1920,17 +1938,16 @@ func (n *CommentGroupNode) String() string {
 }
 
 func (n *CommentGroupNode) StringWithSpace(col int) string {
-	space := strings.Repeat(" ", col)
 	values := []string{}
+	space := strings.Repeat(" ", col)
 	for _, comment := range n.Comments {
+		space := space
+		if checkLineBreak(comment.Token) {
+			space = fmt.Sprintf("%s%s", "\n", space)
+		}
 		values = append(values, space+comment.String())
 	}
 	return strings.Join(values, "\n")
-
-}
-
-func (n *CommentGroupNode) stringWithoutComment() string {
-	return ""
 }
 
 // MarshalYAML encodes to a YAML text
@@ -2139,10 +2156,10 @@ func Merge(dst Node, src Node) error {
 	err := &ErrInvalidMergeType{dst: dst, src: src}
 	switch dst.Type() {
 	case DocumentType:
-		node := dst.(*DocumentNode)
+		node, _ := dst.(*DocumentNode)
 		return Merge(node.Body, src)
 	case MappingType:
-		node := dst.(*MappingNode)
+		node, _ := dst.(*MappingNode)
 		target, ok := src.(*MappingNode)
 		if !ok {
 			return err
@@ -2150,7 +2167,7 @@ func Merge(dst Node, src Node) error {
 		node.Merge(target)
 		return nil
 	case SequenceType:
-		node := dst.(*SequenceNode)
+		node, _ := dst.(*SequenceNode)
 		target, ok := src.(*SequenceNode)
 		if !ok {
 			return err
