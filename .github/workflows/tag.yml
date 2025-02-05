@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.DM_BOT_TOKEN }}
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - uses: fregante/setup-git-user@v1
+      - uses: fregante/setup-git-user@v2
 
       - name: tag
         uses: jenkins-x-plugins/jx-release-version@v2.7.10
