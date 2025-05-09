@@ -6,7 +6,6 @@ import (
 
 	"github.com/jinzhu/copier"
 	logging "gopkg.in/op/go-logging.v1"
-	"gopkg.in/yaml.v3"
 )
 
 type operatorHandler func(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error)
@@ -37,13 +36,10 @@ func compoundAssignFunction(d *dataTreeNavigator, context Context, expressionNod
 
 	for el := lhs.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
-		clone, err := candidate.Copy()
-		if err != nil {
-			return Context{}, err
-		}
-		valueCopyExp := &ExpressionNode{Operation: &Operation{OperationType: valueOpType, CandidateNode: clone}}
+		clone := candidate.Copy()
+		valueCopyExp := &ExpressionNode{Operation: &Operation{OperationType: referenceOpType, CandidateNode: clone}}
 
-		valueExpression := &ExpressionNode{Operation: &Operation{OperationType: valueOpType, CandidateNode: candidate}}
+		valueExpression := &ExpressionNode{Operation: &Operation{OperationType: referenceOpType, CandidateNode: candidate}}
 
 		assignmentOpNode := &ExpressionNode{Operation: assignmentOp, LHS: valueExpression, RHS: calculation(valueCopyExp, expressionNode.RHS)}
 
@@ -55,14 +51,7 @@ func compoundAssignFunction(d *dataTreeNavigator, context Context, expressionNod
 	return context, nil
 }
 
-func unwrapDoc(node *yaml.Node) *yaml.Node {
-	if node.Kind == yaml.DocumentNode {
-		return node.Content[0]
-	}
-	return node
-}
-
-func emptyOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+func emptyOperator(_ *dataTreeNavigator, context Context, _ *ExpressionNode) (Context, error) {
 	context.MatchingNodes = list.New()
 	return context, nil
 }
@@ -129,7 +118,7 @@ func doCrossFunc(d *dataTreeNavigator, context Context, expressionNode *Expressi
 	}
 	log.Debugf("crossFunction LHS len: %v", lhs.MatchingNodes.Len())
 
-	if prefs.CalcWhenEmpty && lhs.MatchingNodes.Len() == 0 {
+	if prefs.CalcWhenEmpty && context.MatchingNodes.Len() > 0 && lhs.MatchingNodes.Len() == 0 {
 		err := resultsForRHS(d, context, nil, prefs, expressionNode.RHS, results)
 		if err != nil {
 			return Context{}, err
@@ -187,8 +176,13 @@ func createBooleanCandidate(owner *CandidateNode, value bool) *CandidateNode {
 	if !value {
 		valString = "false"
 	}
-	node := &yaml.Node{Kind: yaml.ScalarNode, Value: valString, Tag: "!!bool"}
-	return owner.CreateReplacement(node)
+	noob := owner.CreateReplacement(ScalarNode, "!!bool", valString)
+	if owner.IsMapKey {
+		noob.IsMapKey = false
+		noob.Key = owner
+	}
+
+	return noob
 }
 
 func createTraversalTree(path []interface{}, traversePrefs traversePreferences, targetKey bool) *ExpressionNode {
