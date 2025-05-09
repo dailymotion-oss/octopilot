@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
-
-	"gopkg.in/yaml.v3"
 )
 
 type PrinterWriter interface {
@@ -24,7 +23,7 @@ func NewSinglePrinterWriter(writer io.Writer) PrinterWriter {
 	}
 }
 
-func (sp *singlePrinterWriter) GetWriter(node *CandidateNode) (*bufio.Writer, error) {
+func (sp *singlePrinterWriter) GetWriter(_ *CandidateNode) (*bufio.Writer, error) {
 	return sp.bufferedWriter, nil
 }
 
@@ -35,13 +34,13 @@ type multiPrintWriter struct {
 	index          int
 }
 
-func NewMultiPrinterWriter(expression *ExpressionNode, format PrinterOutputFormat) PrinterWriter {
+func NewMultiPrinterWriter(expression *ExpressionNode, format *Format) PrinterWriter {
 	extension := "yml"
 
 	switch format {
-	case JSONOutputFormat:
+	case JSONFormat:
 		extension = "json"
-	case PropsOutputFormat:
+	case PropertiesFormat:
 		extension = "properties"
 	}
 
@@ -56,23 +55,26 @@ func NewMultiPrinterWriter(expression *ExpressionNode, format PrinterOutputForma
 func (sp *multiPrintWriter) GetWriter(node *CandidateNode) (*bufio.Writer, error) {
 	name := ""
 
-	indexVariableNode := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: fmt.Sprintf("%v", sp.index)}
-	indexVariableCandidate := CandidateNode{Node: &indexVariableNode}
+	indexVariableNode := CandidateNode{Kind: ScalarNode, Tag: "!!int", Value: fmt.Sprintf("%v", sp.index)}
 
 	context := Context{MatchingNodes: node.AsList()}
-	context.SetVariable("index", indexVariableCandidate.AsList())
+	context.SetVariable("index", indexVariableNode.AsList())
 	result, err := sp.treeNavigator.GetMatchingNodes(context, sp.nameExpression)
 	if err != nil {
 		return nil, err
 	}
 	if result.MatchingNodes.Len() > 0 {
-		name = result.MatchingNodes.Front().Value.(*CandidateNode).Node.Value
+		name = result.MatchingNodes.Front().Value.(*CandidateNode).Value
 	}
 	var extensionRegexp = regexp.MustCompile(`\.[a-zA-Z0-9]+$`)
 	if !extensionRegexp.MatchString(name) {
 		name = fmt.Sprintf("%v.%v", name, sp.extension)
 	}
 
+	err = os.MkdirAll(filepath.Dir(name), 0750)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Create(name)
 
 	if err != nil {
