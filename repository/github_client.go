@@ -104,7 +104,7 @@ func githubAppClient(ctx context.Context, ghOptions GitHubOptions) (*http.Client
 	if len(ghOptions.PrivateKey) > 0 {
 		itr, err = ghinstallation.New(tr, ghOptions.AppID, ghOptions.InstallationID, []byte(ghOptions.PrivateKey))
 	} else {
-		itr, err = ghinstallation.NewKeyFromFile(tr, ghOptions.AppID, ghOptions.InstallationID, ghOptions.PrivateKey)
+		itr, err = ghinstallation.NewKeyFromFile(tr, ghOptions.AppID, ghOptions.InstallationID, ghOptions.PrivateKeyPath)
 	}
 	if err != nil {
 		return nil, "", err
