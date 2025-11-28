@@ -6,7 +6,7 @@ import (
 
 func selectOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 
-	log.Debugf("-- selectOperation")
+	log.Debugf("selectOperation")
 	var results = list.New()
 
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
@@ -18,16 +18,11 @@ func selectOperator(d *dataTreeNavigator, context Context, expressionNode *Expre
 		}
 
 		// find any truthy node
-		var errDecoding error
 		includeResult := false
 
 		for resultEl := rhs.MatchingNodes.Front(); resultEl != nil; resultEl = resultEl.Next() {
 			result := resultEl.Value.(*CandidateNode)
-			includeResult, errDecoding = isTruthy(result)
-			log.Debugf("isTruthy %v", includeResult)
-			if errDecoding != nil {
-				return Context{}, errDecoding
-			}
+			includeResult = isTruthyNode(result)
 			if includeResult {
 				break
 			}
