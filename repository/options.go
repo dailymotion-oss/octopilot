@@ -49,14 +49,15 @@ type GitOptions struct {
 
 // GitHubOptions holds all the options required to perform github operations: auth, PRs, ...
 type GitHubOptions struct {
-	URL            string
-	AuthMethod     string
-	Token          string
-	AppID          int64
-	InstallationID int64
-	PrivateKey     string
-	PrivateKeyPath string
-	PullRequest    PullRequestOptions
+	URL                      string
+	AuthMethod               string
+	Token                    string
+	AppID                    int64
+	InstallationID           int64
+	PrivateKey               string
+	PrivateKeyPath           string
+	PullRequest              PullRequestOptions
+	AlwaysPushChangesWithGit bool
 }
 
 func (o *GitHubOptions) isEnterprise() bool {

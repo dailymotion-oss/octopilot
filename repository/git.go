@@ -620,6 +620,10 @@ type pushOptions struct {
 }
 
 func pushChanges(ctx context.Context, gitRepo *git.Repository, opts pushOptions) error {
+	if opts.GitHubOpts.AlwaysPushChangesWithGit {
+		return pushChangesWithGit(ctx, gitRepo, opts)
+	}
+
 	switch opts.GitHubOpts.AuthMethod {
 	case "token":
 		return pushChangesWithGit(ctx, gitRepo, opts)
