@@ -102,3 +102,21 @@ All the following flags only apply if `--pr-merge` is enabled.
   - `statusChecks` waits only for status checks to be passing. This is the default.
   - `all` waits for every rule (approvals, commit signature, etc).
   - `bypass` will bypass branch protection rules when possible (i.e. the authenticated user/app have permissions to do so).
+
+### Required GitHub permissions for --pr-merge
+
+When using the `--pr-merge` option, Octopilot requires specific GitHub
+permissions to evaluate branch protection rules, required status checks,
+and to merge pull requests.
+
+These permissions apply to both GitHub Apps and Personal Access Tokens (PATs).
+Depending on repository rules, additional permissions may be required.
+
+| Permission | Level | Why it is required |
+|-----------|------|-------------------|
+| Pull requests | Read & write | Create and merge pull requests |
+| Contents | Read & write | Required by GitHub to merge pull requests |
+| Commit statuses | Read | Read CI status of commits |
+| Checks | Read | Evaluate required status checks |
+| Administration | Read | Read branch protection rules |
+| Metadata | Read | Mandatory GitHub permission |
