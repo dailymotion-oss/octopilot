@@ -1,10 +1,4 @@
-# Dockerfile used by GoReleaser
-# Requires the binary to be pre-built
-
-FROM alpine:3.15
-
-RUN apk add --no-cache ca-certificates
-
-COPY octopilot /usr/local/bin/octopilot
-
-ENTRYPOINT ["octopilot"]
+FROM cgr.dev/chainguard/static:latest
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/octopilot /usr/local/bin/octopilot
+ENTRYPOINT ["/usr/local/bin/octopilot"]

@@ -16,23 +16,29 @@ builds:
       - CGO_ENABLED=0
 
 archives:
-  - format: binary
+  - formats: [binary]
 
-dockers:
+dockers_v2:
   - dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:{{ .Version }}"
-      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:{{ .Tag }}"
-      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:v{{ .Major }}"
-      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/dailymotion-oss/{{.ProjectName}}:latest"
-    build_flag_templates:
+    images:
+      - 'ghcr.io/{{ envOrDefault "GITHUB_REPOSITORY_OWNER" "dailymotion-oss" }}/{{.ProjectName}}'
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+      - "v{{ .Major }}.{{ .Minor }}"
+      - "latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
       - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
+    labels:
+      org.opencontainers.image.created: "{{.Date}}"
+      org.opencontainers.image.name: "{{.ProjectName}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.version: "{{.Version}}"
+      org.opencontainers.image.source: "{{.GitURL}}"
 
 changelog:
   sort: asc
