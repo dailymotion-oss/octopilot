@@ -1,6 +1,6 @@
 module github.com/dailymotion-oss/octopilot
 
-go 1.21
+go 1.22.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -54,7 +54,7 @@ require (
 	github.com/aws/aws-sdk-go v1.43.43 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
